@@ -1,4 +1,4 @@
-def dumdum(dummy1, dummy2):
+def dummy_equals(dummy1, dummy2):
     """
     Dummy function for testing initial template.
 
