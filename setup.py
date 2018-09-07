@@ -41,5 +41,3 @@ setup(name='anprx',
       platforms='any',
       packages=['anprx'],
       install_requires=install_requires)
-      #setup_requires=["pytest-runner"],
-      #tests_require=["pytest"])
