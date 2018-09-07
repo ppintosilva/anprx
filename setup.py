@@ -30,7 +30,7 @@ install_requires = [r.strip() for r in requirements_lines]
 
 # now call setup
 setup(name='anprx',
-      version='1.0.0',
+      version='0.0.1',
       description=short_description,
       long_description=long_description,
       classifiers=classifiers,
