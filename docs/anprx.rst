@@ -4,8 +4,10 @@ anprx package
 Submodules
 ----------
 
-anprx.utils module
+utils module
 ----------------------
+
+.. autodata:: anprx.utils.settings
 
 .. automodule:: anprx.utils
     :members:
