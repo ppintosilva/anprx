@@ -226,8 +226,8 @@ def get_meanpoint(points):
 
 def bbox_from_points(points,
                      rel_margins = RelativeMargins(0.025,0.025,0.025,0.025),
-                     area_lower_threshold_km2 = 0.01, # 0.01 sq km
-                     area_upper_threshold_km2 = 10.0): # 10 sq km
+                     min_area = 0.01, # 0.01 sq km
+                     max_area = 10.0): # 10 sq km
     """
     Get the bounding box that encompasses a set of points.
 
@@ -238,6 +238,12 @@ def bbox_from_points(points,
 
     rel_margins : RelativeMargins
         margins as a proportion of latitude/longitude difference
+
+    min_area : float
+        minimum area of bounding box in squared km
+
+    max_area : float
+        maximum area of bounding box in squared km
 
     Returns
     -------
@@ -263,19 +269,19 @@ def bbox_from_points(points,
     bbox_area = get_bbox_area(bbox, unit = const.SQUARED_KM)
     print(bbox_area)
 
-    if bbox_area < area_lower_threshold_km2:
+    if bbox_area < min_area:
         midpoint = get_meanpoint(points)
 
         bbox_ = ox.core.bbox_from_point(
            point = (midpoint.lat, midpoint.lng),
-           distance = math.sqrt(area_lower_threshold_km2 * 1e6))
+           distance = math.sqrt(min_area * 1e6))
 
         bbox = BBox(north = bbox_[0],
                     south = bbox_[1],
                     east = bbox_[2],
                     west = bbox_[3])
 
-    elif bbox_area > area_upper_threshold_km2:
+    elif bbox_area > max_area:
         # Too large network
         raise TooBigBBox("BBox is too big: area of bounding box exceeds the upper bound. This is a safety feature. You can surpass this by re-running with a larger upper bound.")
 
@@ -285,49 +291,59 @@ def bbox_from_points(points,
 ###
 
 #
-# def get_surrounding_network(points : List[Point],
-#                             rel_margins = RelativeMargins(0.025,0.025,0.025,0.025),
-#                             abs_margins = AbsoluteMargins(0,0,0,0),
-#                             area_lower_threshold = 0.01, # 0.01 sq km (100m x 100m)
-#                             area_upper_threshold = 10, # 10 sq km
-#                             graph_name = None) -> nx.MultiDiGraph :
-#     """
-#     Get the drivable network that encompasses a set of cameras.
-#
-#     Parameters
-#     ----------
-#     points :
-#         A list of named tuples containing the points coordinates (lng, lat)
-#
-#     margin:
-#         Margin factor for calculating bounding box that encompasses the cameras
-#
-#     Returns
-#     -------
-#     street_network :
-#         NetworkX MultiDiGraph
-#     """
-#
-#
-#
-#     street_network = \
-#         ox.graph_from_bbox(
-#             north = bbox.north,
-#             south = bbox.south,
-#             east = bbox.east,
-#             west = bbox.west,
-#             network_type = "drive_service",
-#             simplify = True,
-#             retain_all = False,
-#             truncate_by_edge = False,
-#             name = graph_name,
-#             timeout = 180,
-#             memory = None,
-#             clean_periphery = True,
-#             infrastructure = 'way["highway"]',
-#             custom_filter = None)
-#
-#     return street_network
+def get_surrounding_network(points,
+                            rel_margins = RelativeMargins(0.025,0.025,0.025,0.025),
+                            min_area = 0.01, # 0.01 sq km (100m x 100m)
+                            max_area = 10, # 10 sq km
+                            graph_name = None):
+    """
+    Get the drivable network that encompasses a set of points.
+
+    Parameters
+    ----------
+    points : List[Point]
+        list of points
+
+    rel_margins : RelativeMargins
+        margins as a proportion of latitude/longitude difference
+
+    min_area : float
+        minimum area of bounding box in squared km
+
+    max_area : float
+        maximum area of bounding box in squared km
+
+    Returns
+    -------
+    street_network :
+        NetworkX MultiDiGraph
+    """
+
+    bbox = bbox_from_points(
+        points = points,
+        rel_margins = rel_margins,
+        min_area = min_area,
+        max_area = max_area)
+
+
+    street_network = \
+        ox.graph_from_bbox(
+            north = bbox.north,
+            south = bbox.south,
+            east = bbox.east,
+            west = bbox.west,
+            network_type = "drive_service",
+            simplify = True,
+            retain_all = False,
+            truncate_by_edge = False,
+            name = graph_name,
+            timeout = 180,
+            memory = None,
+            clean_periphery = True,
+            infrastructure = 'way["highway"]',
+            custom_filter = None)
+
+    return street_network
 #
 #
 # net = get_surrounding_network(points)
