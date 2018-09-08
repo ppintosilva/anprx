@@ -10,7 +10,7 @@ Getting started
 A Section
 =========
 
-Get started with dummy!
+Get started with anprx!
 
 .. image::
      _static/dum_lord.png
