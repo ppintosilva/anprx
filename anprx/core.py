@@ -18,28 +18,39 @@ from . import constants as const
 ###
 ###
 
+Point = namedtuple(
+    'Point',
+    [
+        'lat',
+        'lng'
+    ])
+"""
+Represents a point on the surface of the Earth, given by latitude and longitude.
+"""
 
-class Point(NamedTuple):
-    lat: float
-    lng: float
+BBox = namedtuple(
+    'BBox',
+    [
+        'north',
+        'south',
+        'east',
+        'west'
+    ])
+"""
+Represents a bounding box, defined by 4 coordinate pairs. However, redundancy is avoid by providing instead 2 values of latitudes, north and south, and 2 values of longitude, east and west.
+"""
 
-class BBox(NamedTuple):
-    north: float
-    south: float
-    east: float
-    west: float
-
-class AbsoluteMargins(NamedTuple):
-    north: float
-    south: float
-    east: float
-    west: float
-
-class RelativeMargins(NamedTuple):
-    north: float
-    south: float
-    east: float
-    west: float
+RelativeMargins = namedtuple(
+    'RelativeMargins',
+    [
+        'north',
+        'south',
+        'east',
+        'west'
+    ])
+"""
+Relative margins [0,1] for a given bounding box.
+"""
 
 class TooBigBBox(ValueError):
     def __init__(self,*args,**kwargs):
@@ -269,6 +280,9 @@ def bbox_from_points(points,
         raise TooBigBBox("BBox is too big: area of bounding box exceeds the upper bound. This is a safety feature. You can surpass this by re-running with a larger upper bound.")
 
     return bbox
+
+###
+###
 
 #
 # def get_surrounding_network(points : List[Point],
