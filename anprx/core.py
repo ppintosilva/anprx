@@ -41,6 +41,10 @@ class RelativeMargins(NamedTuple):
     east: float
     west: float
 
+class TooBigBBox(ValueError):
+    def __init__(self,*args,**kwargs):
+        Exception.__init__(self,*args,**kwargs)
+
 ###
 ###
 
@@ -162,7 +166,7 @@ def get_bbox_area(bbox,
         # 1 degree squared = 111119 meters * 111119 meters = 12347432161
         deg_to_distance_squared = const.DEG_TO_M_SQUARED if unit == const.SQUARED_M else const.DEG_TO_KM_SQUARED
 
-        area = deg_to_distance_squared * deg_length * deg_width
+        area = abs(deg_to_distance_squared * deg_length * deg_width)
 
     elif method == const.METHOD_AREA_SINS:
         earth_radius = const.EARTH_RADIUS_M if unit == const.SQUARED_M else const.EARTH_RADIUS_KM
@@ -209,114 +213,63 @@ def get_meanpoint(points):
 ###
 ###
 
-# def bbox_from_points(points,
-#                      rel_margins = RelativeMargins(0,0,0,0),
-#                      min_distance):
-#     """
-#     Get the bounding box that encompasses a set of points.
-#
-#     Parameters
-#     ---------
-#     points : List[Point]
-#         list of points
-#
-#     rel_margins : RelativeMargins
-#         margins as a proportion of latitude/longitude difference
-#
-#     Returns
-#     -------
-#     longitudes
-#         List[float]
-#     """
-#     if len(points) == 0:
-#
-#
-#     latitudes = latitudes_from_points(points)
-#     longitudes = longitudes_from_points(points)
-#
-#     max_lat = max(latitudes)
-#     min_lat = min(latitudes)
-#     max_lng = max(longitudes)
-#     min_lng = min(longitudes)
-#
-#     BBox(north = max_lat + (max_lat - min_lat) * rel_margins.north,
-#                 south = min_lat - (max_lat - min_lat) * rel_margins.south,
-#                 east = max_lng + (max_lng - min_lng) * rel_margins.east,
-#                 west = min_lng - (max_lng - min_lng) * rel_margins.west)
-#
-#     bbox_area = area_from_bbox(bbox)
-#
-#     if bbox_area < area_lower_threshold: # just a single element in list
-#         midpoint = get_midpoint(points)
-#
-#         bbox_ = ox.core.bbox_from_point(
-#            point = (midpoint.lat, midpoint.lng),
-#            distance = math.sqrt(area_lower_threshold * 1e6))
-#
-#         bbox = BBox(north = bbox_[0],
-#                     south = bbox_[1],
-#                     east = bbox_[2],
-#                     west = bbox_[3])
-#
-#     elif bbox_area >= area_upper_threshold:
-#         # Too large network -
-#         return None
-#
-# ###
-# ###
-#
-# # lat1= 54.97092396
-# # lng1 = -1.622966153
-# # lat2 = 54.97080711
-# # lng2 = - 1.622935367
-# #
-# # ox.great_circle_vec(
-# #         lat1= lat1,
-# #         lng1 = lng1,
-# #         lat2 = lat2,
-# #         lng2 = lng2)
-# #
-# # area_from_bbox(BBox(lat1,lat2,lng1,lng2))
-#
-# # bbox = ox.core.bbox_from_point(
-# #    point= (lat1, lng1),
-# #    distance = 500)
-# #
-# # area_from_bbox(BBox(bbox[0],bbox[1], bbox[3], bbox[2]))
-# # area_from_bbox_km(BBox(bbox[0],bbox[1], bbox[3], bbox[2]))
-# #
-# # area_from_bbox(BBox(37.471016,37.356754, -122.117561, -122.045029))
-# # area_from_bbox_km(BBox(37.471016,37.356754, -122.117561, -122.045029))
-#
-# # def deg2meters(degrees):
-# #     return degrees * 111110
-# #
-# # def meters2deg(meters):
-# #     return meters / 111110
-# #
-# # def latdiff2meters(lat_diff):
-# #     return deg2meters(lat_diff)
-# #
-# # def lngdiff2meters(lng_diff, lat_diff):
-# #     return math.cos(np.deg2rad(lat_diff)) * deg2meters(lng_diff)
-# #
-# # # Longitude along the same latitude
-# # def meters2lngdiff(meters, lat):
-# #     return meters2deg(meters) / math.cos(np.deg2rad(lat))
-# #
-# # # Latitude diff
-# # def meters2latdiff(meters):
-# #     return meters2deg(meters)
-#
-#
-#
-#
-# points = points_from_lists([54.97092396,54.97080711], [-1.622966153,- 1.622935367])
-# points
-# #
-# # get_midpoint([Point(54.97092396, -1.622966153)])
-# # get_midpoint(points)
-#
+def bbox_from_points(points,
+                     rel_margins = RelativeMargins(0.025,0.025,0.025,0.025),
+                     area_lower_threshold_km2 = 0.01, # 0.01 sq km
+                     area_upper_threshold_km2 = 10.0): # 10 sq km
+    """
+    Get the bounding box that encompasses a set of points.
+
+    Parameters
+    ---------
+    points : List[Point]
+        list of points
+
+    rel_margins : RelativeMargins
+        margins as a proportion of latitude/longitude difference
+
+    Returns
+    -------
+    longitudes
+        List[float]
+    """
+    if len(points) == 0:
+        raise ValueError("List of points is empty.")
+
+    latitudes = latitudes_from_points(points)
+    longitudes = longitudes_from_points(points)
+
+    max_lat = max(latitudes)
+    min_lat = min(latitudes)
+    max_lng = max(longitudes)
+    min_lng = min(longitudes)
+
+    bbox = BBox(north = max_lat + (max_lat - min_lat) * rel_margins.north,
+                south = min_lat - (max_lat - min_lat) * rel_margins.south,
+                east = max_lng + (max_lng - min_lng) * rel_margins.east,
+                west = min_lng - (max_lng - min_lng) * rel_margins.west)
+
+    bbox_area = get_bbox_area(bbox, unit = const.SQUARED_KM)
+    print(bbox_area)
+
+    if bbox_area < area_lower_threshold_km2:
+        midpoint = get_meanpoint(points)
+
+        bbox_ = ox.core.bbox_from_point(
+           point = (midpoint.lat, midpoint.lng),
+           distance = math.sqrt(area_lower_threshold_km2 * 1e6))
+
+        bbox = BBox(north = bbox_[0],
+                    south = bbox_[1],
+                    east = bbox_[2],
+                    west = bbox_[3])
+
+    elif bbox_area > area_upper_threshold_km2:
+        # Too large network
+        raise TooBigBBox("BBox is too big: area of bounding box exceeds the upper bound. This is a safety feature. You can surpass this by re-running with a larger upper bound.")
+
+    return bbox
+
 #
 # def get_surrounding_network(points : List[Point],
 #                             rel_margins = RelativeMargins(0.025,0.025,0.025,0.025),
