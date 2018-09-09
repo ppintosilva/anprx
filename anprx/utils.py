@@ -2,6 +2,7 @@
 # Module: utils.py
 # Description: Global settings, configuration, logging and caching
 # License: MIT, see full license in LICENSE.txt
+# Author: Pedro Pinto da Silva
 # Web: https://github.com/pedroswits/pydummy
 ################################################################################
 # Based on: Geoff Boeing's OSMnx package
@@ -38,6 +39,9 @@ settings = {
     "default_referer" : "Python anprx package (https://github.com/pedroswits/anprx)",
     "default_accept_language" : "en"
 }
+"""
+anprx's global settings.
+"""
 
 ###
 ###
