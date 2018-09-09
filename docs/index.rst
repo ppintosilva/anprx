@@ -10,7 +10,7 @@ Welcome to anprx's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   anprx.rst
+   submodules.rst
 
 Indices and tables
 ==================
