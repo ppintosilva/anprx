@@ -13,163 +13,17 @@ import networkx as nx
 from statistics import mean
 from collections import namedtuple
 
+from .network import *
+from .helpers import *
 from . import constants as const
 
+
 ###
 ###
-
-Point = namedtuple(
-    'Point',
-    [
-        'lat',
-        'lng'
-    ])
-"""
-Represents a point on the surface of the Earth, given by latitude and longitude.
-
-Parameters
----------
-lat : float
-    latitude
-
-lng : float
-    longitude
-"""
-
-
-BBox = namedtuple(
-    'BBox',
-    [
-        'north',
-        'south',
-        'east',
-        'west'
-    ])
-"""
-Represents a bounding box, defined by 4 coordinate pairs. Instead of providing 4 points as input, redundancy is avoided by providing 2 values of latitude, north (max) and south (min), and 2 values of longitude, east (max) and west (min).
-
-Parameters
----------
-north : float
-    maximum latitude
-
-south : float
-    minimum latitude
-
-east : float
-    maximum longitude
-
-west : float
-    minimum longitude
-"""
-
-RelativeMargins = namedtuple(
-    'RelativeMargins',
-    [
-        'north',
-        'south',
-        'east',
-        'west'
-    ])
-"""
-Relative margins [0,1] for a given bounding box. These are calculated as the proportion of the latitude/longitude interval and added in degrees to the respective side.
-
-Parameters
----------
-north : float
-    relative margin for maximum latitude
-
-south : float
-    relative margin for minimum latitude
-
-east : float
-    relative margin for maximum longitude
-
-west : float
-    relative margin for minimum longitude
-"""
 
 class TooBigBBox(ValueError):
     def __init__(self,*args,**kwargs):
         Exception.__init__(self,*args,**kwargs)
-
-###
-###
-
-def points_from_lists(latitudes, longitudes):
-    """
-    Merge two lists, containing latitudes and longitudes,
-    to a list of Points
-
-    Parameters
-    ---------
-    latitudes : List[float]
-        list of latitudes
-
-    longitudes : List[float]
-        list of longitudes
-
-    Returns
-    -------
-    List[Point]
-    """
-    return [ Point(lat, lng) for lat, lng in zip(latitudes, longitudes) ]
-
-###
-###
-
-def points_from_tuples(points):
-    """
-    Transform a list of tuples to a list of points (named tuples).
-
-    Parameters
-    ---------
-    points : List[Tuple]
-        list of points
-
-    Returns
-    -------
-    List[Point]
-    """
-    return [ Point(x[0], x[1]) for x in points ]
-
-###
-###
-
-def latitudes_from_points(points):
-    """
-    Return the latitudes of a list of points.
-
-    Parameters
-    ---------
-    points : List[Point]
-        list of points
-
-    Returns
-    -------
-    latitudes
-        List[float]
-    """
-    return [ point.lat for point in points ]
-
-###
-###
-
-def longitudes_from_points(points):
-    """
-    Return the longitudes of a list of points.
-
-    Parameters
-    ---------
-    points : List[Point]
-        list of points
-
-    Returns
-    -------
-    longitudes
-        List[float]
-    """
-    return [ point.lng for point in points ]
 
 ###
 ###
@@ -389,16 +243,49 @@ def get_surrounding_network(points,
 ###
 ###
 
-def plot_point(camera_xy,
-               edge = None):
+def orientation_by_address(network, camera):
+    """
+    Estimate the orientation of a camera given the address of the street that
+    it observes.
+
+    Parameters
+    ---------
+    network : nx.MultiDiGraph
+        street network
+
+    camera : Camera
+        traffic camera
+
+    Returns
+    -------
+    camera orientation
+        Orientation
+    """
+
+    pass
+
+def orientation_by_position(network, camera):
+    """
+    Estimate the orientation of a camera given the address of the street that
+    it observes.
+
+    Parameters
+    ---------
+    network : nx.MultiDiGraph
+        street network
+
+    camera : Camera
+        traffic camera
+
+    Returns
+    -------
+    camera orientation
+        Orientation
+    """
+    pass
+
+def plot_camera(network, camera):
     """
     Plot a camera on the road network and the edge it observes, if available.
     """
     pass
-#
-# def plot_cameras(cameras_xy,
-#                  edges):
-#     """
-#     Plot cameras on the road network and the edge they observe, if available.
-#     """
-#     pass
