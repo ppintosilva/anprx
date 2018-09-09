@@ -173,14 +173,3 @@ def test_bbox_from_points_with_margins():
                             distance = 500))
 
     assert_bbox_almost_equal(bbox, expected_bbox, decimal = 3)
-
-def test_get_surrounding_network():
-    bbox = bbox_medium
-
-    nw = anprx.Point(bbox.north, bbox.west)
-    sw = anprx.Point(bbox.south, bbox.west)
-    ne = anprx.Point(bbox.north, bbox.east)
-    se = anprx.Point(bbox.south, bbox.east)
-
-    points = [nw, sw, ne, se]
-    network = anprx.get_surrounding_network(points)
