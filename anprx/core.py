@@ -2,6 +2,7 @@
 # Module: core.py
 # Description: Core functions
 # License: MIT
+# Author: Pedro Pinto da Silva
 # Web: https://github.com/pedroswits/anprx
 ################################################################################
 
@@ -11,7 +12,6 @@ import osmnx as ox
 import networkx as nx
 from statistics import mean
 from collections import namedtuple
-from typing import Dict, Tuple, List, NamedTuple
 
 from . import constants as const
 
@@ -26,7 +26,16 @@ Point = namedtuple(
     ])
 """
 Represents a point on the surface of the Earth, given by latitude and longitude.
+
+Parameters
+---------
+lat : float
+    latitude
+
+lng : float
+    longitude
 """
+
 
 BBox = namedtuple(
     'BBox',
@@ -37,7 +46,21 @@ BBox = namedtuple(
         'west'
     ])
 """
-Represents a bounding box, defined by 4 coordinate pairs. However, redundancy is avoid by providing instead 2 values of latitudes, north and south, and 2 values of longitude, east and west.
+Represents a bounding box, defined by 4 coordinate pairs. Instead of providing 4 points as input, redundancy is avoided by providing 2 values of latitude, north (max) and south (min), and 2 values of longitude, east (max) and west (min).
+
+Parameters
+---------
+north : float
+    maximum latitude
+
+south : float
+    minimum latitude
+
+east : float
+    maximum longitude
+
+west : float
+    minimum longitude
 """
 
 RelativeMargins = namedtuple(
@@ -49,7 +72,21 @@ RelativeMargins = namedtuple(
         'west'
     ])
 """
-Relative margins [0,1] for a given bounding box.
+Relative margins [0,1] for a given bounding box. These are calculated as the proportion of the latitude/longitude interval and added in degrees to the respective side.
+
+Parameters
+---------
+north : float
+    relative margin for maximum latitude
+
+south : float
+    relative margin for minimum latitude
+
+east : float
+    relative margin for maximum longitude
+
+west : float
+    relative margin for minimum longitude
 """
 
 class TooBigBBox(ValueError):
@@ -143,10 +180,14 @@ def get_bbox_area(bbox,
     """
     Calculate the area of a bounding boxself.
     Choose one of two possible methods:
-        METHOD_AREA_SIMPLE :
-            Calculate the area as a rectangle using length as latitude difference and width as longitude difference corrected by mean latitude point.
-        METHOD_AREA_SINS :
-            As explained in: http://mathfax.com/area-of-a-latitude-longitude-rectangle/
+
+    **METHOD_AREA_SIMPLE**
+
+    Calculate the area as a rectangle using length as latitude difference and width as longitude difference corrected by mean latitude point.
+
+    **METHOD_AREA_SINS**
+
+    As explained in: http://mathfax.com/area-of-a-latitude-longitude-rectangle/
 
     Parameters
     ---------
@@ -344,18 +385,16 @@ def get_surrounding_network(points,
             custom_filter = None)
 
     return street_network
-#
-#
-# net = get_surrounding_network(points)
-# ox.plot_graph(net)
-#
-#
-# def plot_camera(camera_xy,
-#                 edge = None):
-#     """
-#     Plot a camera on the road network and the edge it observes, if available.
-#     """
-#     pass
+
+###
+###
+
+def plot_point(camera_xy,
+               edge = None):
+    """
+    Plot a camera on the road network and the edge it observes, if available.
+    """
+    pass
 #
 # def plot_cameras(cameras_xy,
 #                  edges):
