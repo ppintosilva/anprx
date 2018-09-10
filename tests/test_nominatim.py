@@ -14,3 +14,8 @@ def test_nominatim_lookup_ways():
     result = anprx.lookup_ways("Newcastle A186 Westgate Rd")
 
     assert expected == result
+
+def test_nominatim_lookup_ways_fail():
+    result = anprx.lookup_ways("AAAAAAAAAAA")
+
+    assert result == []
