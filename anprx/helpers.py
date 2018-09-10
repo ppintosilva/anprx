@@ -107,7 +107,7 @@ def edges_with_at_least_one_property(network, properties):
     """
     for u,v,d in network.edges(data = True):
         for key, values in properties.items():
-            if d[key] in values:
+            if key in d.keys() and d[key] in values:
                 yield (u,v)
 
 ###
@@ -133,7 +133,8 @@ def edges_with_all_properties(network, properties):
     for u,v,d in network.edges(data = True):
         nmatches = 0
         for key, values in properties.items():
-            if d[key] in values:
+
+            if key in d.keys() and d[key] in values:
                 nmatches = nmatches + 1
             else:
                 break
