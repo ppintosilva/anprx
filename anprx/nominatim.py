@@ -31,4 +31,4 @@ def lookup_ways(address):
 
     response_json = ox.nominatim_request(params = params)
 
-    return list(map(lambda x: x["osm_id"], filter(lambda x: x['osm_type'] == "way", response_json)))
+    return list(map(lambda x: int(x["osm_id"]), filter(lambda x: x['osm_type'] == "way", response_json)))
