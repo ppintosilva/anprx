@@ -7,10 +7,10 @@ import osmnx as ox
 latitudes = [54.97092396,54.97080711]
 longitudes = [-1.622966153, -1.622935367]
 
-point1 = anprx.Point(lat = 54.97092396,
-                     lng = -1.622966153)
-point2 = anprx.Point(lat = 54.97080711,
-                     lng = -1.622935367)
+point1 = anprx.Point(lat = latitudes[0],
+                     lng = longitudes[0])
+point2 = anprx.Point(lat = latitudes[1],
+                     lng = longitudes[1])
 
 bbox_small = anprx.BBox(latitudes[0], latitudes[1],
                         longitudes[0], longitudes[1])
@@ -23,41 +23,28 @@ bbox_uk = anprx.BBox(59.478568831926395, 49.82380908513249,
                      -10.8544921875, 2.021484375)
 
 
-def test_points_from_lists():
-    assert anprx.points_from_lists(latitudes, longitudes) == [ point1, point2 ]
-
-def test_points_from_tuples():
-    points = [(latitudes[0], longitudes[0]), (latitudes[1], longitudes[1])]
-    assert anprx.points_from_tuples(points) == [ point1, point2 ]
-
-def test_latitudes_from_points():
-    assert anprx.latitudes_from_points([point1,point2]) == latitudes
-
-def test_longitudes_from_points():
-    assert anprx.longitudes_from_points([point1,point2]) == longitudes
-
 def test_bbox_area_small():
     bbox = bbox_small
 
     expected_area_km2 = 2.55e-05
     observed_area_km2_simple = anprx.get_bbox_area(
                             bbox = bbox,
-                            unit = anprx.constants.SQUARED_KM,
-                            method = anprx.constants.METHOD_AREA_SIMPLE)
+                            unit = anprx.Units.km,
+                            method = anprx.BBoxAreaMethod.simple)
     observed_area_km2_sins = anprx.get_bbox_area(
                             bbox = bbox,
-                            unit = anprx.constants.SQUARED_KM,
-                            method = anprx.constants.METHOD_AREA_SINS)
+                            unit = anprx.Units.km,
+                            method = anprx.BBoxAreaMethod.sins)
 
     expected_area_m2 = 2.55e-05 * 1e6
     observed_area_m2_simple = anprx.get_bbox_area(
                             bbox = bbox,
-                            unit = anprx.constants.SQUARED_M,
-                            method = anprx.constants.METHOD_AREA_SIMPLE)
+                            unit = anprx.Units.m,
+                            method = anprx.BBoxAreaMethod.simple)
     observed_area_m2_sins = anprx.get_bbox_area(
                             bbox = bbox,
-                            unit = anprx.constants.SQUARED_M,
-                            method = anprx.constants.METHOD_AREA_SINS)
+                            unit = anprx.Units.m,
+                            method = anprx.BBoxAreaMethod.sins)
 
     np.testing.assert_almost_equal(expected_area_km2, observed_area_km2_simple, decimal = 6)
     np.testing.assert_almost_equal(expected_area_m2, observed_area_m2_simple, decimal = 1)
@@ -71,22 +58,22 @@ def test_bbox_area_large():
     expected_area_km2 = 888000
     observed_area_km2_simple = anprx.get_bbox_area(
                             bbox = bbox,
-                            unit = anprx.constants.SQUARED_KM,
-                            method = anprx.constants.METHOD_AREA_SIMPLE)
+                            unit = anprx.Units.km,
+                            method = anprx.BBoxAreaMethod.simple)
     observed_area_km2_sins = anprx.get_bbox_area(
                             bbox = bbox,
-                            unit = anprx.constants.SQUARED_KM,
-                            method = anprx.constants.METHOD_AREA_SINS)
+                            unit = anprx.Units.km,
+                            method = anprx.BBoxAreaMethod.sins)
 
     expected_area_m2 = 888000 * 1e6
     observed_area_m2_simple = anprx.get_bbox_area(
                             bbox = bbox,
-                            unit = anprx.constants.SQUARED_M,
-                            method = anprx.constants.METHOD_AREA_SIMPLE)
+                            unit = anprx.Units.m,
+                            method = anprx.BBoxAreaMethod.simple)
     observed_area_m2_sins = anprx.get_bbox_area(
                             bbox = bbox,
-                            unit = anprx.constants.SQUARED_M,
-                            method = anprx.constants.METHOD_AREA_SINS)
+                            unit = anprx.Units.m,
+                            method = anprx.BBoxAreaMethod.sins)
 
     np.testing.assert_almost_equal(expected_area_km2, observed_area_km2_simple, decimal = -5)
     np.testing.assert_almost_equal(expected_area_m2, observed_area_m2_simple, decimal = -10)
@@ -137,7 +124,7 @@ def test_large_bbox_from_points():
 
     points = [nw, sw, ne, se]
 
-    with pytest.raises(anprx.TooBigBBox):
+    with pytest.raises(anprx.GiantBBox):
         anprx.bbox_from_points(points)
 
 def test_bbox_from_points_no_margins():
