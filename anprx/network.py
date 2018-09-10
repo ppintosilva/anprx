@@ -111,6 +111,31 @@ osm_way : int
 ###
 ###
 
+Edge = namedtuple(
+    'Edge',
+    [
+        'from_',
+        'to_',
+        'osmid'
+    ])
+"""
+Directed edge of the street network which represents a OpenStreetMap way and a road segment.
+
+Attributes
+----------
+from_ : int
+    from node id (osmid)
+
+to_ : int
+    to node id (osmid)
+
+osmid : int
+    OpenStreetMap id of way that is represented by this edge.
+"""
+
+###
+###
+
 class Camera(object):
     """
     Represents a traffic camera located on the side of the road, observing the street.
@@ -143,7 +168,7 @@ class Camera(object):
         self.point = point
         self.address = address
 
-    def has_label(self):
+    def has_address(self):
         return self.address is None
 
 ###
