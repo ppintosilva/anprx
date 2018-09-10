@@ -15,13 +15,14 @@ from collections import namedtuple
 
 from .network import *
 from .helpers import *
-from . import constants as const
+from .constants import *
+from .nominatim import lookup_ways
 
 
 ###
 ###
 
-class TooBigBBox(ValueError):
+class GiantBBox(ValueError):
     def __init__(self,*args,**kwargs):
         Exception.__init__(self,*args,**kwargs)
 
@@ -29,17 +30,17 @@ class TooBigBBox(ValueError):
 ###
 
 def get_bbox_area(bbox,
-                  unit = const.SQUARED_KM,
-                  method = const.METHOD_AREA_SIMPLE):
+                  unit = Units.km,
+                  method = BBoxAreaMethod.simple):
     """
     Calculate the area of a bounding boxself.
     Choose one of two possible methods:
 
-    **METHOD_AREA_SIMPLE**
+    **anpx.constants.BBoxAreaMethod.simple**
 
     Calculate the area as a rectangle using length as latitude difference and width as longitude difference corrected by mean latitude point.
 
-    **METHOD_AREA_SINS**
+    **anpx.constants.BBoxAreaMethod.sins**
 
     As explained in: http://mathfax.com/area-of-a-latitude-longitude-rectangle/
 
@@ -56,10 +57,8 @@ def get_bbox_area(bbox,
     float
         area in provided units
     """
-    if unit not in {const.SQUARED_M, const.SQUARED_KM}:
-        raise ValueError("unit must be one of: units.SQUARED_KM , units.SQUARED_M")
 
-    if method == const.METHOD_AREA_SIMPLE:
+    if method == BBoxAreaMethod.simple:
         # Latitude difference in degrees
         deg_length = bbox.north - bbox.south
 
@@ -70,14 +69,11 @@ def get_bbox_area(bbox,
 
         # 1 degree = 111110 meters
         # 1 degree squared = 111119 meters * 111119 meters = 12347432161
-        deg_to_distance_squared = const.DEG_TO_M_SQUARED if unit == const.SQUARED_M else const.DEG_TO_KM_SQUARED
+        area = abs(deg2sq_distance(unit) * deg_length * deg_width)
 
-        area = abs(deg_to_distance_squared * deg_length * deg_width)
+    elif method == BBoxAreaMethod.sins:
 
-    elif method == const.METHOD_AREA_SINS:
-        earth_radius = const.EARTH_RADIUS_M if unit == const.SQUARED_M else const.EARTH_RADIUS_KM
-
-        rrad = (math.pi/180) * earth_radius ** 2
+        rrad = (math.pi/180) * earth_radius(unit) ** 2
         sin_lat_diff = math.sin(np.deg2rad(bbox.north)) - math.sin(np.deg2rad(bbox.south))
         lng_diff = bbox.west - bbox.east
 
@@ -120,6 +116,7 @@ def get_meanpoint(points):
 ###
 
 def bbox_from_points(points,
+                     unit = Units.km,
                      rel_margins = RelativeMargins(0.025,0.025,0.025,0.025),
                      min_area = 0.01, # 0.01 sq km
                      max_area = 10.0): # 10 sq km
@@ -130,6 +127,9 @@ def bbox_from_points(points,
     ---------
     points : List[Point]
         list of points
+
+    unit : Units
+        unit of distance (m, km)
 
     rel_margins : RelativeMargins
         margins as a proportion of latitude/longitude difference
@@ -161,15 +161,19 @@ def bbox_from_points(points,
                 east = max_lng + (max_lng - min_lng) * rel_margins.east,
                 west = min_lng - (max_lng - min_lng) * rel_margins.west)
 
-    bbox_area = get_bbox_area(bbox, unit = const.SQUARED_KM)
-    print(bbox_area)
+    bbox_area = get_bbox_area(bbox, unit = unit)
 
     if bbox_area < min_area:
         midpoint = get_meanpoint(points)
 
+        if unit == Units.m:
+            length = math.sqrt(min_area)
+        elif unit == Units.km:
+            length = math.sqrt(min_area * 1e6)
+
         bbox_ = ox.core.bbox_from_point(
            point = (midpoint.lat, midpoint.lng),
-           distance = math.sqrt(min_area * 1e6))
+           distance = length)
 
         bbox = BBox(north = bbox_[0],
                     south = bbox_[1],
@@ -178,14 +182,13 @@ def bbox_from_points(points,
 
     elif bbox_area > max_area:
         # Too large network
-        raise TooBigBBox("BBox is too big: area of bounding box exceeds the upper bound. This is a safety feature. You can surpass this by re-running with a larger upper bound.")
+        raise GiantBBox("BBox is too big: area of bounding box exceeds the upper bound. This is a safety feature. You can surpass this by re-running with a larger upper bound.")
 
     return bbox
 
 ###
 ###
 
-#
 def get_surrounding_network(points,
                             rel_margins = RelativeMargins(0.025,0.025,0.025,0.025),
                             min_area = 0.01, # 0.01 sq km (100m x 100m)
@@ -243,6 +246,49 @@ def get_surrounding_network(points,
 ###
 ###
 
+def edges_from_osmid(network, osmids):
+    """
+    Get the network edge that matches a given osmid.
+
+    Parameters
+    ---------
+    network : nx.MultiDiGraph
+        a street network
+
+    osmids : list(int)
+        osmids of network edge = OSM way = road segment
+
+    Returns
+    -------
+    generator
+        generator of edges (Edge)
+    """
+    properties = {"osmid" : set(osmids)}
+    for u,v in list(edges_with_properties(network, properties)):
+        yield Edge(from_ = u, to_ = v, osmid = network[u][v]["osmid"])
+
+###
+###
+
+def distance_to_edge(network, edge, point):
+    """
+    Calculate the distance of a given point to an edge of the network (road segment)
+
+    Parameters
+    ---------
+    network : nx.MultiDiGraph
+        street network
+
+    point : point
+        point
+
+    Returns
+    -------
+    distance to road segment
+        float
+    """
+    pass
+
 def orientation_by_address(network, camera):
     """
     Estimate the orientation of a camera given the address of the street that
@@ -261,6 +307,15 @@ def orientation_by_address(network, camera):
     camera orientation
         Orientation
     """
+    if not camera.has_address():
+        raise ValueError("Given camera has no defined address.")
+
+    osm_ids = lookup_ways(camera.address)
+
+    if len(osm_ids) == 0:
+        raise ValueError("No ways found for the given address. Is the address valid?")
+
+
 
     pass
 
