@@ -1,4 +1,5 @@
 from distutils.core import setup
+import setuptools
 
 short_description = "Create, visualise and levarage networks of ANPR cameras on the road network."
 
