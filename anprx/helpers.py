@@ -105,7 +105,8 @@ def flatten(list_):
     """
     for el in list_:
         if isinstance(el, collections.Iterable) and not isinstance(el, (str, bytes)):
-            yield from flatten(el)
+            for element in el:
+                yield flatten(element)
         else:
             yield el
 
