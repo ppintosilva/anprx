@@ -6,7 +6,9 @@
 # Web: https://github.com/pedroswits/anprx
 ################################################################################
 
+import collections
 import networkx as nx
+from .utils import log
 from .network import *
 from .constants import *
 
@@ -88,6 +90,57 @@ def longitudes_from_points(points):
 ###
 ###
 
+def flatten(list_):
+    """
+    Flatten a list of objects which may contain other lists as elements.
+
+    Parameters
+    ---------
+    list_ : object
+        data dictionary
+
+    Returns
+    -------
+    generator
+    """
+    for el in list_:
+        if isinstance(el, collections.Iterable) and not isinstance(el, (str, bytes)):
+            yield from flatten(el)
+        else:
+            yield el
+
+###
+###
+
+def is_in(value, values_set):
+    """
+    Computes whether an object is present in, or has at least one element that is present in, values_set. Calculates if two sets are not disjoint, but value does not have to be a set.
+
+    Parameters
+    ---------
+    value : object
+        data dictionary
+
+    values_set : set
+        set of values
+
+    Returns
+    -------
+    bool
+    """
+    try:
+        iter(value)
+        is_iterable = True
+    except TypeError:
+        is_iterable = False
+
+    if is_iterable and not isinstance(value, (str, bytes)):
+        return not set(value).isdisjoint(values_set)
+    else:
+        return value in values_set
+###
+###
+
 def edges_with_at_least_one_property(network, properties):
     """
     Find edges that match at least once in all property sets: (key, values)
@@ -103,12 +156,12 @@ def edges_with_at_least_one_property(network, properties):
     Returns
     -------
     generator
-        generator of edges (u,v)
+        generator of edges (u,v,key)
     """
-    for u,v,d in network.edges(data = True):
+    for u,v,k,d in network.edges(keys = True, data = True):
         for key, values in properties.items():
-            if key in d.keys() and d[key] in values:
-                yield (u,v)
+            if key in d.keys() and is_in(d[key], values):
+                yield (u,v,k)
 
 ###
 ###
@@ -128,18 +181,20 @@ def edges_with_all_properties(network, properties):
     Returns
     -------
     generator
-        generator of edges (u,v)
+        generator of edges (u,v,key)
     """
-    for u,v,d in network.edges(data = True):
+
+    for u,v,k,d in network.edges(keys = True, data = True):
         nmatches = 0
         for key, values in properties.items():
 
-            if key in d.keys() and d[key] in values:
+            if key in d.keys() and is_in(d[key], values):
                 nmatches = nmatches + 1
             else:
                 break
+
         if nmatches == len(properties.keys()):
-            yield (u,v)
+            yield (u,v,k)
 
 ###
 ###
