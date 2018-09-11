@@ -116,7 +116,8 @@ Edge = namedtuple(
     [
         'from_',
         'to_',
-        'osmid'
+        'key',
+        'osmids'
     ])
 """
 Directed edge of the street network which represents a OpenStreetMap way and a road segment.
@@ -129,8 +130,13 @@ from_ : int
 to_ : int
     to node id (osmid)
 
-osmid : int
-    OpenStreetMap id of way that is represented by this edge.
+key : int
+    index in the list of edges between from and to nodesself.
+
+osmids : list
+    OpenStreetMap ids of ways that are represented by this network edge.
+
+Node: In nx.MultiDiGraph graphs, nodes can have multiple edges between them, and so the key attribute is used to differentiate these.
 """
 
 ###
