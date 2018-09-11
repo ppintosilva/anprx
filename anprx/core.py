@@ -17,6 +17,7 @@ from .network import *
 from .helpers import *
 from .constants import *
 from .nominatim import lookup_ways
+from .utils import settings, config, log
 
 
 ###
@@ -256,16 +257,18 @@ def edges_from_osmid(network, osmids):
         a street network
 
     osmids : list(int)
-        osmids of network edge = OSM way = road segment
+        osmids of network edge = 1+ OSM ways = road segment
 
     Returns
     -------
     generator
         generator of edges (Edge)
     """
-    properties = {"osmid" : set(osmids)}
-    for u,v in list(edges_with_properties(network, properties)):
-        yield Edge(from_ = u, to_ = v, osmid = network[u][v]["osmid"])
+    properties = {"osmid" : osmids}
+    log("Looking for the edges with the osmids: {}".format(set(osmids)))
+
+    for u,v,k in list(edges_with_properties(network, properties)):
+        yield Edge(from_ = u, to_ = v, key = k, osmids = network[u][v][k]["osmid"])
 
 ###
 ###
