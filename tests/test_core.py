@@ -1,7 +1,9 @@
+import os
 import anprx
 import pytest
 import numpy as np
 import osmnx as ox
+import networkx as nx
 
 
 latitudes = [54.97092396,54.97080711]
@@ -160,3 +162,36 @@ def test_bbox_from_points_with_margins():
                             distance = 500))
 
     assert_bbox_almost_equal(bbox, expected_bbox, decimal = 3)
+
+
+def test_edges_from_osmid():
+    expected_osmids = \
+        [37899441,
+         461119586,
+         4725926,
+         4692270,
+         4655478,
+         2544439,
+         31992849]
+
+    network_pickle_filename = "tests/data/test_network_USB_1000.pkl"
+    if os.path.exists(network_pickle_filename):
+        network = nx.read_gpickle(path = network_pickle_filename)
+    else:
+        network = ox.graph_from_point(
+            center_point = (54.97351, -1.62545),
+            distance = 1000, #meters
+            distance_type='bbox',
+            network_type="drive_service")
+        nx.write_gpickle(G = network, path = network_pickle_filename)
+
+
+    all_osmids = list(anprx.flatten(network.edges(data = "osmid")))
+
+    assert not set(expected_osmids).isdisjoint(set(all_osmids))
+
+    edges = list(anprx.edges_from_osmid(network, expected_osmids))
+
+    returned_osmids = set(anprx.flatten(map(lambda edge: edge.osmids, edges)))
+
+    assert not set(returned_osmids).isdisjoint(set(expected_osmids))
