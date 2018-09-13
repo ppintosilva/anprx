@@ -97,7 +97,7 @@ def flatten(list_):
     Parameters
     ---------
     list_ : object
-        data dictionary
+        list
 
     Returns
     -------
@@ -105,8 +105,8 @@ def flatten(list_):
     """
     for el in list_:
         if isinstance(el, collections.Iterable) and not isinstance(el, (str, bytes)):
-            for element in el:
-                yield flatten(element)
+            for element in flatten(el):
+                yield element
         else:
             yield el
 
@@ -115,7 +115,7 @@ def flatten(list_):
 
 def is_in(value, values_set):
     """
-    Computes whether an object is present in, or has at least one element that is present in, values_set. Calculates if two sets are not disjoint, but value does not have to be a set.
+    Computes whether an object is present in, or has at least one element that is present in, values_set. This is equivalent to computing whether two sets intersect (not disjoint), but where value does not have to be a set.
 
     Parameters
     ---------
