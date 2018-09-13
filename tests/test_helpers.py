@@ -118,3 +118,13 @@ def test_edges_with_all_properties():
                  match_by = anprx.PropertiesFilter.all))
 
     assert fish_type == set([])
+
+def test_flatten():
+    l1 = list(range(0,6))
+    l2 = list(range(6,10))
+    l3 = [l1, l2]
+
+    assert list(anprx.flatten(l1)) == l1
+    assert list(anprx.flatten(l2)) == l2
+    assert list(anprx.flatten(l1 + [l2])) == l1 + l2
+    assert list(anprx.flatten(l3)) == l1 + l2
