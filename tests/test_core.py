@@ -1,4 +1,5 @@
 import os
+import sys
 import anprx
 import pytest
 import numpy as np
@@ -174,13 +175,20 @@ def test_edges_from_osmid():
          2544439,
          31992849]
 
-    network_pickle_filename = "tests/data/test_network_USB_1000.pkl"
+    distance = 1000
+    if sys.version_info.major == 3:
+        prefix = "py3"
+    else:
+        prefix = "py2"
+
+    network_pickle_filename = "tests/data/{}_test_network_USB_{}.pkl".format(prefix, distance)
+
     if os.path.exists(network_pickle_filename):
         network = nx.read_gpickle(path = network_pickle_filename)
     else:
         network = ox.graph_from_point(
             center_point = (54.97351, -1.62545),
-            distance = 1000, #meters
+            distance = distance, #meters
             distance_type='bbox',
             network_type="drive_service")
         nx.write_gpickle(G = network, path = network_pickle_filename)
