@@ -7,27 +7,64 @@ import osmnx as ox
 import networkx as nx
 
 
-latitudes = [54.97092396,54.97080711]
-longitudes = [-1.622966153, -1.622935367]
+def get_points():
+    latitudes = [54.97092396,54.97080711]
+    longitudes = [-1.622966153, -1.622935367]
 
-point1 = anprx.Point(lat = latitudes[0],
-                     lng = longitudes[0])
-point2 = anprx.Point(lat = latitudes[1],
-                     lng = longitudes[1])
+    point1 = anprx.Point(lat = latitudes[0],
+                         lng = longitudes[0])
+    point2 = anprx.Point(lat = latitudes[1],
+                         lng = longitudes[1])
 
-bbox_small = anprx.BBox(latitudes[0], latitudes[1],
-                        longitudes[0], longitudes[1])
+    return (point1, point2)
 
-bbox_medium = anprx.BBox(*ox.bbox_from_point(
-                        point= (54.97351405, -1.62545930208892),
-                        distance = 500))
+def get_bbox(size):
 
-bbox_uk = anprx.BBox(59.478568831926395, 49.82380908513249,
-                     -10.8544921875, 2.021484375)
+    if size == "small":
+        return anprx.BBox(54.97092396, 54.97080711,
+                         -1.622966153, -1.622935367)
+
+    elif size == "medium":
+        return anprx.BBox(*ox.bbox_from_point(
+                                point= (54.97351405, -1.62545930208892),
+                                distance = 500))
+
+    elif size == "uk":
+        return anprx.BBox(59.478568831926395, 49.82380908513249,
+                          -10.8544921875, 2.021484375)
+
+    else:
+        raise ValueError("No such bbox size")
+
+def assert_bbox_almost_equal(bbox1, bbox2, decimal = 5):
+    np.testing.assert_almost_equal(bbox1.north, bbox2.north, decimal = decimal)
+    np.testing.assert_almost_equal(bbox1.south, bbox2.south, decimal = decimal)
+    np.testing.assert_almost_equal(bbox1.west, bbox2.west, decimal = decimal)
+    np.testing.assert_almost_equal(bbox1.east, bbox2.east, decimal = decimal)
+
+def get_network(distance = 1000, center = (54.97351, -1.62545)):
+    if sys.version_info.major == 3:
+        prefix = "py3"
+    else:
+        prefix = "py2"
+
+    network_pickle_filename = "tests/data/{}_test_network_USB_{}.pkl".format(prefix, distance)
+
+    if os.path.exists(network_pickle_filename):
+        network = nx.read_gpickle(path = network_pickle_filename)
+    else:
+        network = ox.graph_from_point(
+            center_point = center,
+            distance = distance, #meters
+            distance_type='bbox',
+            network_type="drive_service")
+        nx.write_gpickle(G = network, path = network_pickle_filename)
+
+    return network
 
 
 def test_bbox_area_small():
-    bbox = bbox_small
+    bbox = get_bbox(size = "small")
 
     expected_area_km2 = 2.55e-05
     observed_area_km2_simple = anprx.get_bbox_area(
@@ -56,7 +93,7 @@ def test_bbox_area_small():
 
 
 def test_bbox_area_large():
-    bbox = bbox_uk
+    bbox = get_bbox(size = "uk")
 
     expected_area_km2 = 888000
     observed_area_km2_simple = anprx.get_bbox_area(
@@ -84,23 +121,20 @@ def test_bbox_area_large():
     np.testing.assert_almost_equal(expected_area_m2, observed_area_m2_sins, decimal = -10)
 
 def test_meanpoint():
+    point1, point2 = get_points()
+
     meanpoint = anprx.get_meanpoint([point1, point2])
 
     np.testing.assert_almost_equal(54.97086, meanpoint.lat, decimal=5)
     np.testing.assert_almost_equal(-1.622945, meanpoint.lng, decimal=5)
-
-def assert_bbox_almost_equal(bbox1, bbox2, decimal = 5):
-    np.testing.assert_almost_equal(bbox1.north, bbox2.north, decimal = decimal)
-    np.testing.assert_almost_equal(bbox1.south, bbox2.south, decimal = decimal)
-    np.testing.assert_almost_equal(bbox1.west, bbox2.west, decimal = decimal)
-    np.testing.assert_almost_equal(bbox1.east, bbox2.east, decimal = decimal)
 
 def test_empty_bbox_from_points():
     with pytest.raises(ValueError):
         anprx.bbox_from_points([])
 
 def test_small_bbox_from_points():
-    bbox = bbox_small
+    point1, point2 = get_points()
+    bbox = get_bbox(size = "small")
 
     nw = anprx.Point(bbox.north, bbox.west)
     sw = anprx.Point(bbox.south, bbox.west)
@@ -118,7 +152,7 @@ def test_small_bbox_from_points():
 
 
 def test_large_bbox_from_points():
-    bbox = bbox_uk
+    bbox = get_bbox(size = "uk")
 
     nw = anprx.Point(bbox.north, bbox.west)
     sw = anprx.Point(bbox.south, bbox.west)
@@ -131,7 +165,7 @@ def test_large_bbox_from_points():
         anprx.bbox_from_points(points)
 
 def test_bbox_from_points_no_margins():
-    bbox = bbox_medium
+    bbox = get_bbox(size = "medium")
 
     nw = anprx.Point(bbox.north, bbox.west)
     sw = anprx.Point(bbox.south, bbox.west)
@@ -148,7 +182,7 @@ def test_bbox_from_points_no_margins():
     assert_bbox_almost_equal(bbox, expected_bbox)
 
 def test_bbox_from_points_with_margins():
-    bbox = bbox_medium
+    bbox = get_bbox(size = "medium")
 
     nw = anprx.Point(bbox.north, bbox.west)
     sw = anprx.Point(bbox.south, bbox.west)
@@ -175,24 +209,7 @@ def test_edges_from_osmid():
          2544439,
          31992849]
 
-    distance = 1000
-    if sys.version_info.major == 3:
-        prefix = "py3"
-    else:
-        prefix = "py2"
-
-    network_pickle_filename = "tests/data/{}_test_network_USB_{}.pkl".format(prefix, distance)
-
-    if os.path.exists(network_pickle_filename):
-        network = nx.read_gpickle(path = network_pickle_filename)
-    else:
-        network = ox.graph_from_point(
-            center_point = (54.97351, -1.62545),
-            distance = distance, #meters
-            distance_type='bbox',
-            network_type="drive_service")
-        nx.write_gpickle(G = network, path = network_pickle_filename)
-
+    network = get_network(distance = 1000)
 
     all_osmids = list(anprx.flatten(network.edges(data = "osmid")))
 
@@ -203,3 +220,6 @@ def test_edges_from_osmid():
     returned_osmids = set(anprx.flatten(map(lambda edge: edge.osmids, edges)))
 
     assert not set(returned_osmids).isdisjoint(set(expected_osmids))
+
+
+# def test_distance_to_edge():
