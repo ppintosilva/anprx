@@ -56,3 +56,15 @@ class PropertiesFilter(Enum):
     __order__ = 'all at_least_one'
     all = 1
     at_least_one = 2
+
+class EdgeDistanceMethod(Enum):
+    __order__ = "sum_of_distances, mean_of_distances, closest_node, farthest_node"
+    sum_of_distances = 1
+    mean_of_distances = 2
+    closest_node = 3
+    farthest_node = 4
+
+class OrientationMethod(Enum):
+    __order__ = "address, position"
+    address = 1
+    position = 2
