@@ -10,6 +10,7 @@ import math
 import numpy as np
 import osmnx as ox
 import networkx as nx
+from scipy import spatial
 from statistics import mean
 from collections import namedtuple
 
@@ -18,6 +19,7 @@ from .helpers import *
 from .constants import *
 from .nominatim import lookup_ways
 from .utils import settings, config, log
+from .navigation import as_lvector
 
 
 ###
@@ -268,12 +270,15 @@ def edges_from_osmid(network, osmids):
     log("Looking for the edges with the osmids: {}".format(set(osmids)))
 
     for u,v,k in list(edges_with_properties(network, properties)):
-        yield Edge(from_ = u, to_ = v, key = k, osmids = network[u][v][k]["osmid"])
+        yield Edge(network, from_ = u, to_ = v, key = k)
 
 ###
 ###
 
-def distance_to_edge(network, edge, point):
+def distance_to_edge(network,
+                     edge,
+                     point,
+                     method = EdgeDistanceMethod.farthest_node):
     """
     Calculate the distance of a given point to an edge of the network (road segment)
 
@@ -282,20 +287,97 @@ def distance_to_edge(network, edge, point):
     network : nx.MultiDiGraph
         street network
 
+    edge : Edge
+        network edge
+
     point : point
         point
+
+    method : anprx.constants.EdgeDistanceMethod
+        metric used to compute distance to edge
 
     Returns
     -------
     distance to road segment
         float
     """
+    distance_node_from = ox.great_circle_vec(
+                                lat1 = point.lat,
+                                lng1 = point.lng,
+                                lat2 = edge.from_.point.lat,
+                                lng2 = edge.from_.point.lng,
+                                earth_radius = earth_radius(unit = Units.m))
+
+    distance_node_to = ox.great_circle_vec(
+                                lat1 = point.lat,
+                                lng1 = point.lng,
+                                lat2 = edge.to_.point.lat,
+                                lng2 = edge.to_.point.lng,
+                                earth_radius = earth_radius(unit = Units.m))
+
+    distances = [ distance_node_to, distance_node_from ]
+
+    if method == EdgeDistanceMethod.closest_node:
+        return min(distances)
+
+    elif method == EdgeDistanceMethod.farthest_node:
+        return max(distances)
+
+    elif method == EdgeDistanceMethod.sum_of_distances:
+        return sum(distances)
+
+    elif method == EdgeDistanceMethod.mean_of_distances:
+        return mean(distances)
+
+    else:
+        raise ValueError("Invalid method for computing edge distance")
+
+
+def create_kd_tree():
     pass
 
-def orientation_by_address(network, camera):
+
+def get_nodes_in_radius(network,
+                        point,
+                        maximum_radius,
+                        minimum_radius,
+                        tree = None):
+    if tree is None:
+        tree = spatial.cKDTree()
+
+    pass
+
+
+def get_edges_in_radius(network,
+                        point,
+                        maximum_radius,
+                        minimum_radius):
+    pass
+
+def sample_orientation_vectors(camera,
+                               minimum_range = 10,
+                               maximum_range = 35,
+                               sample_rate = 1):
     """
-    Estimate the orientation of a camera given the address of the street that
-    it observes.
+    Get
+
+    Parameters
+    ---------
+    camera : Camera
+        traffic camera
+
+    Returns
+    -------
+    sample orientation vectors
+
+    """
+    vectors = [ as_vector(camera.point, ) for degree in range(0, 360-sample_rate, sample_rate) ]
+
+
+
+def get_orientation(network, camera, method = OrientationMethod.address):
+    """
+    Estimate the orientation of a camera.
 
     Parameters
     ---------
@@ -305,41 +387,42 @@ def orientation_by_address(network, camera):
     camera : Camera
         traffic camera
 
+    method : anprx.constants.OrientationMethod
+         address - filter nearby roads using the address of the street that the camera observes.
+         position - guess camera orientation based on camera location alone
+
     Returns
     -------
     camera orientation
         Orientation
     """
-    if not camera.has_address():
-        raise ValueError("Given camera has no defined address.")
 
-    osm_ids = lookup_ways(camera.address)
 
-    if len(osm_ids) == 0:
-        raise ValueError("No ways found for the given address. Is the address valid?")
+    # if not camera.has_address():
+    #     raise ValueError("Given camera has no defined address.")
+    #
+    # osm_ids = lookup_ways(camera.address)
+    #
+    # if len(osm_ids) == 0:
+    #     raise ValueError("No ways found for the given address. Is the address valid?")
 
 
 
     pass
 
-def orientation_by_position(network, camera):
-    """
-    Estimate the orientation of a camera given the address of the street that
-    it observes.
+def add_edges_to_plot(fig, axis, edges):
+    pass
 
-    Parameters
-    ---------
-    network : nx.MultiDiGraph
-        street network
+def add_nodes_to_plot(fig, axis, edges):
+    pass
 
-    camera : Camera
-        traffic camera
+def plot_edges(network, edges):
+    pass
 
-    Returns
-    -------
-    camera orientation
-        Orientation
-    """
+def plot_nodes(network, edges):
+    pass
+
+def add_camera_to_plot(network, camera):
     pass
 
 def plot_camera(network, camera):
