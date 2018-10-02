@@ -18,7 +18,7 @@ Point = namedtuple(
         'lng'
     ])
 """
-Represents a point on the surface of the Earth, given by latitude and longitude.
+Represents a point on the surface of the Earth, given by latitude and longitude, in degrees.
 
 Attributes
 ----------
@@ -125,6 +125,10 @@ class Node(object):
     """
     def __init__(self, network, id):
         self.id = id
+
+        if not id in network:
+            raise ValueError("No such node in network")
+
         self.point = Point(lat = network.node[id]['y'],
                            lng = network.node[id]['x'])
 
@@ -168,6 +172,9 @@ class Edge(object):
 
         self.key = key
 
+        if not network.has_edge(self.from_.id, self.to_.id, key = self.key):
+            raise ValueError("No such edge in network")
+
         self.osmids = network[self.from_.id][self.to_.id][self.key]["osmid"]
 
 ###
@@ -175,11 +182,11 @@ class Edge(object):
 
 class Camera(object):
     """
-    Represents a traffic camera located on the side of the road, observing the street.
-    This may represent any type of camera recording a road segment, at a given
-    bearing/angle. The orientation of the camera may be estimated by providing
-    the address of the street it observes for labelled data, or solely based
-    on it's location, for unlabelled data.
+    Represents a traffic camera located on the roadside, observing the street.
+    This may represent any type of camera recording a road segment with a given
+    orientation in respect to the true North (bearing). The orientation of the camera
+    may be estimated by providing the address of the street it observes, in the case
+    of labelled data, or solely based on it's location, in the case of unlabelled data.
 
     Attributes
     ----------
@@ -211,7 +218,7 @@ class Camera(object):
 ###
 ###
 
-# class CameraNetwork(nx.MultiDiGraph):
+# class AnprNetwork(nx.MultiDiGraph):
 #     """
 #     Represents a street network containing a set of traffic cameras.
 #
@@ -220,7 +227,7 @@ class Camera(object):
 #     cameras : list(Camera)
 #         traffic cameras
 #     """
-#     def __init__(self, cameras):
+#     def __init__(self, cameras, **kwargs):
 #         """
 #         Parameters
 #         ---------
@@ -232,3 +239,17 @@ class Camera(object):
 #         #
 #         # Get network
 #         #
+#         self.data = get_surrounding_network(
+#                         points = [ camera.point for camera in cameras ],
+#                         **kwargs)
+#
+#         # Calculate kdtree for nearest neighbor search
+#
+#         self.tree = spatial.KDTree()
+#
+#
+#         # Calculate orientation if does not exist
+#
+#         # Add cameras as nodes?
+#
+#         # If yes - Re-calculate kdtree
