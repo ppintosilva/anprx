@@ -105,8 +105,7 @@ def flatten(list_):
     """
     for el in list_:
         if isinstance(el, collections.Iterable) and not isinstance(el, (str, bytes)):
-            for element in flatten(el):
-                yield element
+            yield from flatten(el)
         else:
             yield el
 
@@ -213,14 +212,14 @@ def edges_with_properties(network, properties, match_by = PropertiesFilter.all):
         properties of edges to filter by
 
     match_by : int
-        . One of const.FILTER_PROPERTIES.
+        One of const.FILTER_PROPERTIES.
 
     Returns
     -------
     generator
         generator of edges (Edge)
     """
-    if match_by == PropertiesFilter.at_least_one:
+    if   match_by == PropertiesFilter.at_least_one:
         return edges_with_at_least_one_property(network, properties)
 
     elif match_by == PropertiesFilter.all:
