@@ -71,7 +71,7 @@ def great_circle_distance(origin, destination):
 
     """
     inner_p = np.inner(origin, destination)
-    outer_p = np.cross(origin, destination), ord=2)
+    outer_p = np.cross(origin, destination, ord=2)
 
     return const.earth_radius() * math.atan2(np.linalg.norm(outer_p, inner_p))
 
@@ -105,7 +105,7 @@ def true_bearing(origin, destination):
 
 
 
-def as_local_vector(origin, point):
+def as_lvector(origin, point):
     """
     Represents a Point as a vector in a (local) cartesian coordinate system, where another Point is the origin.
 
@@ -122,7 +122,7 @@ def as_local_vector(origin, point):
     Returns
     -------
     np.ndarray (2,)
-        vector representing the target Point in the new cartesian coordinate system
+        vector representing the target Point in the new (local) cartesian coordinate system
 
     """
     origin_nvec = to_nvector(origin)
