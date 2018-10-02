@@ -222,4 +222,28 @@ def test_edges_from_osmid():
     assert not set(returned_osmids).isdisjoint(set(expected_osmids))
 
 
-# def test_distance_to_edge():
+def test_distance_to_edge():
+    point1, point2 = get_points()
+
+    network = get_network(distance = 1000)
+
+    edge = anprx.Edge(network = network,
+                from_ = 826286632,
+                to_ = 29825878,
+                key = 0)
+
+    assert \
+        anprx.distance_to_edge(
+                network = network,
+                edge = edge,
+                point = point1,
+                method = anprx.EdgeDistanceMethod.farthest_node) \
+        < 100
+
+    assert \
+        anprx.distance_to_edge(
+                network = network,
+                edge = edge,
+                point = point2,
+                method = anprx.EdgeDistanceMethod.mean_of_distances) \
+        < 100
