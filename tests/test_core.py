@@ -217,7 +217,7 @@ def test_edges_from_osmid():
 
     edges = list(anprx.edges_from_osmid(network, expected_osmids))
 
-    returned_osmids = set(anprx.flatten(map(lambda edge: edge.osmids, edges)))
+    returned_osmids = set(anprx.flatten(map(lambda edge: network[edge.u][edge.v][edge.k]["osmid"], edges)))
 
     assert not set(returned_osmids).isdisjoint(set(expected_osmids))
 
@@ -227,10 +227,9 @@ def test_distance_to_edge():
 
     network = get_network(distance = 1000)
 
-    edge = anprx.Edge(network = network,
-                from_ = 826286632,
-                to_ = 29825878,
-                key = 0)
+    edge = anprx.Edge(u = 826286632,
+                      v = 29825878,
+                      k = 0)
 
     assert \
         anprx.distance_to_edge(
@@ -247,3 +246,26 @@ def test_distance_to_edge():
                 point = point2,
                 method = anprx.EdgeDistanceMethod.mean_of_distances) \
         < 100
+
+
+def test_nodes_and_edges_in_range():
+    point1, point2 = get_points()
+
+    network = get_network(distance = 1000)
+
+    nn_ids, nn_distances = anprx.get_nodes_in_range(network, [point1, point2], 100)
+
+    assert len(nn_ids) == 2
+    assert len(nn_distances) == 2
+
+    assert len(nn_ids[0]) > 0
+    assert len(nn_ids[1]) > 0
+    assert len(nn_distances[0]) == len(nn_ids[0])
+    assert len(nn_distances[1]) == len(nn_ids[1])
+
+
+    edges = anprx.get_edges_in_range(network, nn_ids)
+
+    assert len(edges) == 2
+    assert len(edges[0]) >= len(nn_ids[0])
+    assert len(edges[1]) >= len(nn_ids[1])

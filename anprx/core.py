@@ -7,10 +7,11 @@
 ################################################################################
 
 import math
+import time
 import numpy as np
 import osmnx as ox
+import pandas as pd
 import networkx as nx
-from scipy import spatial
 from statistics import mean
 from collections import namedtuple
 
@@ -251,7 +252,7 @@ def get_surrounding_network(points,
 
 def edges_from_osmid(network, osmids):
     """
-    Get the network edge that matches a given osmid.
+    Get the network edge(s) that match a given osmid.
 
     Parameters
     ---------
@@ -264,13 +265,13 @@ def edges_from_osmid(network, osmids):
     Returns
     -------
     generator
-        generator of edges (Edge)
+        generator of Edge(u,v,k)
     """
     properties = {"osmid" : osmids}
     log("Looking for the edges with the osmids: {}".format(set(osmids)))
 
     for u,v,k in list(edges_with_properties(network, properties)):
-        yield Edge(network, from_ = u, to_ = v, key = k)
+        yield Edge(u, v, k)
 
 ###
 ###
@@ -304,15 +305,15 @@ def distance_to_edge(network,
     distance_node_from = ox.great_circle_vec(
                                 lat1 = point.lat,
                                 lng1 = point.lng,
-                                lat2 = edge.from_.point.lat,
-                                lng2 = edge.from_.point.lng,
+                                lat2 = network.node[edge.u]['y'],
+                                lng2 = network.node[edge.u]['x'],
                                 earth_radius = earth_radius(unit = Units.m))
 
     distance_node_to = ox.great_circle_vec(
                                 lat1 = point.lat,
                                 lng1 = point.lng,
-                                lat2 = edge.to_.point.lat,
-                                lng2 = edge.to_.point.lng,
+                                lat2 = network.node[edge.v]['y'],
+                                lng2 = network.node[edge.v]['x'],
                                 earth_radius = earth_radius(unit = Units.m))
 
     distances = [ distance_node_to, distance_node_from ]
@@ -333,49 +334,111 @@ def distance_to_edge(network,
         raise ValueError("Invalid method for computing edge distance")
 
 
-def create_kd_tree():
-    pass
+###
+###
 
-
-def get_nodes_in_radius(network,
-                        point,
-                        maximum_radius,
-                        minimum_radius,
-                        tree = None):
-    if tree is None:
-        tree = spatial.cKDTree()
-
-    pass
-
-
-def get_edges_in_radius(network,
-                        point,
-                        maximum_radius,
-                        minimum_radius):
-    pass
-
-def sample_orientation_vectors(camera,
-                               minimum_range = 10,
-                               maximum_range = 35,
-                               sample_rate = 1):
+def get_nodes_in_range(network,
+                       points,
+                       radius,
+                       tree = None):
     """
-    Get
+    Get nodes whose distance is within radius meters of a point, for a bunch of points.
 
     Parameters
     ---------
-    camera : Camera
-        traffic camera
+    network : nx.MultiDiGraph
+        street network
+
+    points : list[Points]
+        list of points
+
+    radius : float
+        maximum distance in meters
+
+    tree : sklearn.neighbors.BallTree
+        ball-tree for quick nearest-neighbor lookup using the haversine formula
 
     Returns
     -------
-    sample orientation vectors
-
+    nearest nodes and distances, sorted according to points
+        (np.array[np.array[float]] , np.array[np.array[float]] ]
     """
-    vectors = [ as_vector(camera.point, ) for degree in range(0, 360-sample_rate, sample_rate) ]
+    start_time = time.time()
 
+    if tree is None:
+        tree, nodes = get_balltree(network)
+        log("BallTree instance is None. Call get_balltree.")
 
+    points_rad = np.deg2rad(np.array(points))
 
-def get_orientation(network, camera, method = OrientationMethod.address):
+    nn_node_idx, nn_node_distances = \
+            tree.query_radius(points_rad,
+                              r = radius/rad2distance(Units.m),
+                              return_distance = True)
+
+    if nodes is None:
+        nodes = pd.DataFrame({'x': nx.get_node_attributes(network, 'x'),
+                              'y': nx.get_node_attributes(network, 'y')})
+
+    log("INDEXES = \n{}".format(np.asarray(nn_node_idx)))
+    node_ids = [ np.array(nodes.iloc[point_nn].index).astype(np.int64) for point_nn in nn_node_idx ]
+
+    log("OSMIDS = \n{}".format(node_ids))
+
+    # nn = [ (ids, distances ) for ids, distances in zip(nn_ids, nn_node_distances) ]
+    nn_node_distances = nn_node_distances * rad2distance(Units.m)
+
+    log("Found nearest nodes to {} points in {:,.2f}".format(len(points), time.time()-start_time))
+
+    return node_ids, nn_node_distances
+
+###
+###
+
+def get_edges_in_range(network, points_nodes_in_range):
+    """
+    Get nodes whose distance is within radius meters of a point, for a bunch of points.
+
+    Parameters
+    ---------
+    network : nx.MultiDiGraph
+        street network
+
+    points : list[Points]
+        list of points
+
+    radius : float
+        maximum distance in meters
+
+    tree : sklearn.neighbors.BallTree
+        ball-tree for quick nearest-neighbor lookup using the haversine formula
+
+    Returns
+    -------
+    nearest nodes and distances, sorted according to points
+        (np.array[np.array[float]] , np.array[np.array[float]] ]
+    """
+    points_edges_in_range = list()
+
+    for point_nodes_in_range in points_nodes_in_range:
+
+        edges = set()
+        for node in point_nodes_in_range:
+            node_edges = \
+                list(network.in_edges(node, keys = True)) + \
+                list(network.out_edges(node, keys = True,))
+
+            for edge in node_edges:
+                edges.add(Edge(edge[0], edge[1], edge[2]))
+
+        points_edges_in_range.append(edges)
+
+    return points_edges_in_range
+
+###
+###
+
+def estimate_orientation(network, camera, filter_by = Filter.address):
     """
     Estimate the orientation of a camera.
 
@@ -387,9 +450,9 @@ def get_orientation(network, camera, method = OrientationMethod.address):
     camera : Camera
         traffic camera
 
-    method : anprx.constants.OrientationMethod
+    filter_by : anprx.constants.Filter
          address - filter nearby roads using the address of the street that the camera observes.
-         position - guess camera orientation based on camera location alone
+         none - guess camera orientation based on camera location alone
 
     Returns
     -------
@@ -397,35 +460,71 @@ def get_orientation(network, camera, method = OrientationMethod.address):
         Orientation
     """
 
+    near_nodes = get_nodes_in_range(network, camera.point, radius = camera.radius)
 
-    # if not camera.has_address():
-    #     raise ValueError("Given camera has no defined address.")
+    near_edges = get_edges_in_range(nodes)
+
+    log("Found {} nodes and {} edges within {} meters of camera {}.".format(len(near_nodes), len(near_edges), camera.radius, camera.id))
+
+    if filter_by == Filter.address:
+
+        if not camera.has_address():
+            raise ValueError("The given camera has no defined address.")
+
+        osm_ids = lookup_ways(camera.address)
+
+        if len(osm_ids) == 0:
+            raise ValueError("No ways found for the given address. Is the address valid?")
+
+        filtered_edges = near_edges & set(edges_from_osmid(network, osm_ids))
+
+        log("Filtered {} out of {} edges from camera {} based on address: {}.".format(len(near_edges) - len(filtered_edges), len(near_edges), camera.id, camera.address))
+
+    else:
+        filtered_edges = near_edges
+
+    # # Nodes as vectors
+    # nodes_lvectors =
     #
-    # osm_ids = lookup_ways(camera.address)
+    # edges_lvectors =
     #
-    # if len(osm_ids) == 0:
-    #     raise ValueError("No ways found for the given address. Is the address valid?")
+    # # Determine edge that maximizes camera placement
+    # return nodes_lvectors, edges_lvectors
+
+###
+###
+
+# 
+# def sample_orientation_vectors(camera,
+#                                minimum_range = 10,
+#                                maximum_range = 35,
+#                                sample_rate = 1):
+#     """
+#     Get
+#
+#     Parameters
+#     ---------
+#     camera : Camera
+#         traffic camera
+#
+#     Returns
+#     -------
+#     sample orientation vectors
+#
+#     """
+#     vectors = [ as_vector(camera.point, ) for degree in range(0, 360-sample_rate, sample_rate) ]
 
 
+###
+###
 
+def plot_edges(network, edges, fig = None, axis = None):
     pass
 
-def add_edges_to_plot(fig, axis, edges):
+def plot_nodes(network, nodes, fig = None, axis = None):
     pass
 
-def add_nodes_to_plot(fig, axis, edges):
-    pass
-
-def plot_edges(network, edges):
-    pass
-
-def plot_nodes(network, edges):
-    pass
-
-def add_camera_to_plot(network, camera):
-    pass
-
-def plot_camera(network, camera):
+def plot_camera(network, camera, fig = None, axis = None):
     """
     Plot a camera on the road network and the edge it observes, if available.
     """
