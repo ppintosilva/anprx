@@ -111,71 +111,27 @@ osm_way : int
 ###
 ###
 
-class Node(object):
-    """
-    Node of a street network which represents a OpenStreetMap node and a road junction.
+Edge = namedtuple(
+    'Edge',
+    [
+        'u',
+        'v',
+        'k'
+    ])
+"""
+Directed edge of the street network which represents a OpenStreetMap way and a road segment.
 
-    Attributes
-    ----------
-    id : int
-        node id (osmid)
+Attributes
+----------
+u : Node or int
+    from node
 
-    point : Point
-        point that represents node (road junction)
-    """
-    def __init__(self, network, id):
-        self.id = id
+v : Node or int
+    to node
 
-        if not id in network:
-            raise ValueError("No such node in network")
-
-        self.point = Point(lat = network.node[id]['y'],
-                           lng = network.node[id]['x'])
-
-
-class Edge(object):
-    """
-    Directed edge of the street network which represents a OpenStreetMap way and a road segment.
-
-    Attributes
-    ----------
-    from_ : Node or int
-        from node
-
-    to_ : Node or int
-        to node
-
-    key : int
-        index in the list of edges between from and to nodesself.
-
-    osmids : list
-        OpenStreetMap ids of ways that are represented by this network edge.
-
-    Node: In nx.MultiDiGraph graphs, nodes can have multiple edges between them, and so the key attribute is used to differentiate these.
-    """
-    def __init__(self, network, from_, to_, key):
-        """
-        """
-        if isinstance(from_, Node):
-            self.from_ = from_
-        elif isinstance(from_, int):
-            self.from_ = Node(network = network, id = from_)
-        else:
-            raise ValueError("from_ must be a Node or an int")
-
-        if isinstance(to_, Node):
-            self.to_ = to_
-        elif isinstance(to_, int):
-            self.to_ = Node(network = network, id = to_)
-        else:
-            raise ValueError("to_ must be a Node or an int")
-
-        self.key = key
-
-        if not network.has_edge(self.from_.id, self.to_.id, key = self.key):
-            raise ValueError("No such edge in network")
-
-        self.osmids = network[self.from_.id][self.to_.id][self.key]["osmid"]
+k : int
+    index in the list of edges between u and v.
+"""
 
 ###
 ###
@@ -199,7 +155,7 @@ class Camera(object):
     orientation : dict of str : Orientation
         camera orientation
     """
-    def __init__(self, point, address = None):
+    def __init__(self, id, point, address = None, radius = 50):
         """
         Parameters
         ---------
@@ -209,8 +165,10 @@ class Camera(object):
         address : str
             address of the street observed by the camera as labelled by a human
         """
+        self.id = id
         self.point = point
         self.address = address
+        self.radius = radius
 
     def has_address(self):
         return self.address is None
