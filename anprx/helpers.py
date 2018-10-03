@@ -7,10 +7,13 @@
 ################################################################################
 
 import collections
+import numpy as np
+import pandas as pd
 import networkx as nx
 from .utils import log
 from .network import *
 from .constants import *
+from sklearn.neighbors import BallTree
 
 def points_from_lists(latitudes, longitudes):
     """
@@ -217,7 +220,7 @@ def edges_with_properties(network, properties, match_by = PropertiesFilter.all):
     Returns
     -------
     generator
-        generator of edges (Edge)
+        generator of edges (u,v,key)
     """
     if   match_by == PropertiesFilter.at_least_one:
         return edges_with_at_least_one_property(network, properties)
@@ -227,3 +230,30 @@ def edges_with_properties(network, properties, match_by = PropertiesFilter.all):
 
     else:
         raise ValueError("Invalid 'match_by' value. Pick one of PropertiesFilter.{{{}}}.".format(PropertiesFilter.__order__))
+
+###
+###
+
+
+def get_balltree(network):
+    """
+    G
+
+    Parameters
+    ---------
+    network : nx.MultiDiGraph
+        a street network
+
+    Returns
+    -------
+    tree
+        instance of sklearn.neighbors.BallTree
+    """
+    nodes = pd.DataFrame({'x': nx.get_node_attributes(network, 'x'),
+                          'y': nx.get_node_attributes(network, 'y')})
+
+    nodes_rad = np.deg2rad(nodes[['y', 'x']].astype(np.float))
+
+    tree = BallTree(nodes_rad, metric='haversine')
+
+    return tree, nodes
