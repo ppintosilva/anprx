@@ -36,6 +36,18 @@ def deg2distance(unit = Units.km):
         valid_units = {Units.m.name, Units.km.name}
         raise ValueError("Unit must be in one of {}".format(valid_units))
 
+def rad2distance(unit = Units.m):
+    if unit == Units.m:
+        return 6367000
+
+    elif unit == Units.km:
+        return 6367
+
+    else:
+        valid_units = {Units.m.name, Units.km.name}
+        raise ValueError("Unit must be in one of {}".format(valid_units))
+
+
 def deg2sq_distance(unit = Units.m):
     if unit == Units.m:
         return 12347432161
@@ -64,7 +76,7 @@ class EdgeDistanceMethod(Enum):
     closest_node = 3
     farthest_node = 4
 
-class OrientationMethod(Enum):
-    __order__ = "address, position"
-    address = 1
-    position = 2
+class Filter(Enum):
+    __order__ = "none, address"
+    none = 1
+    address = 2
