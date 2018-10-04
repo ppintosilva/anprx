@@ -201,11 +201,12 @@ def log(message,
         # message at requested level
         logger = get_logger(level=level, name=name, filename=filename)
 
-        complete_message = "%s:%i - %s() - %s" % (
-            os.path.basename(func.co_filename),
-            func.co_firstlineno,
-            func.co_name,
-            message)
+        complete_message = "{:>17} -> {:27} {}]"\
+            .format(
+                os.path.basename(func.co_filename) +
+                ':' + str(func.co_firstlineno),
+                func.co_name + '()',
+                message)
 
         if level == lg.DEBUG:
             logger.debug(complete_message)
@@ -270,7 +271,7 @@ def get_logger(level = None,
 
         # create file handler and log formatter and set them up
         handler = lg.FileHandler(log_filename, encoding='utf-8')
-        formatter = lg.Formatter('%(asctime)s - [%(levelname)s] - %(message)s')
+        formatter = lg.Formatter('[%(asctime)s %(levelname)10s %(message)s')
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         logger.setLevel(level)
