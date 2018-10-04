@@ -43,7 +43,7 @@ def assert_log_file():
 ###
 
 def test_get_app_folder():
-    anprx.settings["app_folder"] == os.path.expanduser("~/.pyanprx")
+    assert anprx.settings["app_folder"] == os.path.expanduser("~/.anprx")
 
 ###
 
@@ -67,7 +67,9 @@ def test_config_invalid_setting():
 ###
 
 def test_config(destroy_folders):
-    anprx.config(log_to_console = True)
+    # Changing the config generates a log entry and if no log files exist, then
+    anprx.config(app_folder = "/tmp/anprx",
+                 log_to_console = True)
 
     assert anprx.settings["log_to_console"] == True
     assert anprx.settings["cache_http"] == True
@@ -77,16 +79,11 @@ def test_config(destroy_folders):
     assert_log_file()
     destroy_folders
 
-    anprx.config(app_folder = "/tmp/pyanprx")
-
-    assert_file_structure()
-    assert_log_file()
-    destroy_folders
-
 ###
 
 def test_cache(destroy_folders):
-    anprx.config(cache_http = True)
+    anprx.config(app_folder = "/tmp/anprx",
+                 cache_http = True)
 
     url = requests.Request('GET', "https://nominatim.openstreetmap.org/?format=json&addressdetails=1&q=Newcastle+A186+Westgate+Rd").prepare().url
 
