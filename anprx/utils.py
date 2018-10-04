@@ -14,6 +14,7 @@ import os
 import sys
 import json
 import hashlib
+import inspect
 import unicodedata
 import logging as lg
 import datetime as dt
@@ -192,19 +193,28 @@ def log(message,
     if level is None:
         level = settings["log_default_level"]
 
+    func = inspect.currentframe().f_back.f_code
+
     # if logging to file is turned on
     if settings["log_to_file"]:
         # get the current logger (or create a new one, if none), then log
         # message at requested level
         logger = get_logger(level=level, name=name, filename=filename)
+
+        complete_message = "%s:%i - %s() - %s" % (
+            os.path.basename(func.co_filename),
+            func.co_firstlineno,
+            func.co_name,
+            message)
+
         if level == lg.DEBUG:
-            logger.debug(message)
+            logger.debug(complete_message)
         elif level == lg.INFO:
-            logger.info(message)
+            logger.info(complete_message)
         elif level == lg.WARNING:
-            logger.warning(message)
+            logger.warning(complete_message)
         elif level == lg.ERROR:
-            logger.error(message)
+            logger.error(complete_message)
 
     # if logging to console is turned on, convert message to ascii and print to
     # the console
@@ -260,7 +270,7 @@ def get_logger(level = None,
 
         # create file handler and log formatter and set them up
         handler = lg.FileHandler(log_filename, encoding='utf-8')
-        formatter = lg.Formatter('%(asctime)s %(levelname)s %(name)s %(message)s')
+        formatter = lg.Formatter('%(asctime)s - [%(levelname)s] - %(message)s')
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         logger.setLevel(level)
