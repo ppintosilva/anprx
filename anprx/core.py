@@ -349,8 +349,8 @@ def get_nodes_in_range(network,
     network : nx.MultiDiGraph
         street network
 
-    points : list[Points]
-        list of points
+    points : array-like[Point]
+        array of points
 
     radius : float
         maximum distance in meters
@@ -361,15 +361,20 @@ def get_nodes_in_range(network,
     Returns
     -------
     nearest nodes and distances, sorted according to points
-        (np.array[np.array[float]] , np.array[np.array[float]] ]
+        (np.array[np.array[float]],
+         np.array[np.array[float]])
     """
     start_time = time.time()
+
+    log("Computing nodes in range for {} points with radius {}"\
+        .format(len(points), radius))
+    log("Input points: {}".format(points))
 
     if tree is None:
         tree, nodes = get_balltree(network)
         log("BallTree instance is None. Call get_balltree.")
 
-    points_rad = np.deg2rad(np.array(points))
+    points_rad = np.deg2rad(points)
 
     nn_node_idx, nn_node_distances = \
             tree.query_radius(points_rad,
@@ -380,15 +385,14 @@ def get_nodes_in_range(network,
         nodes = pd.DataFrame({'x': nx.get_node_attributes(network, 'x'),
                               'y': nx.get_node_attributes(network, 'y')})
 
-    log("INDEXES = \n{}".format(np.asarray(nn_node_idx)))
-    node_ids = [ np.array(nodes.iloc[point_nn].index).astype(np.int64) for point_nn in nn_node_idx ]
+    node_ids = np.array([ np.array(nodes.iloc[point_nn].index).astype(np.int64) for point_nn in nn_node_idx ])
 
-    log("OSMIDS = \n{}".format(node_ids))
+    log("Found osmids: {}".format(node_ids))
 
     # nn = [ (ids, distances ) for ids, distances in zip(nn_ids, nn_node_distances) ]
     nn_node_distances = nn_node_distances * rad2distance(Units.m)
 
-    log("Found nearest nodes to {} points in {:,.2f}".format(len(points), time.time()-start_time))
+    log("Found nearest nodes to {} points in {:,.3f} seconds".format(len(points), time.time()-start_time))
 
     return node_ids, nn_node_distances
 
@@ -438,7 +442,10 @@ def get_edges_in_range(network, points_nodes_in_range):
 ###
 ###
 
-def estimate_orientation(network, camera, filter_by = Filter.address):
+def estimate_orientation(network,
+                         camera,
+                         filter_by = Filter.address,
+                         set_value = True):
     """
     Estimate the orientation of a camera.
 
@@ -454,47 +461,72 @@ def estimate_orientation(network, camera, filter_by = Filter.address):
          address - filter nearby roads using the address of the street that the camera observes.
          none - guess camera orientation based on camera location alone
 
+    set_value : bool
+        set camera.orientation to estimated/returned value
+
     Returns
     -------
     camera orientation
         Orientation
     """
 
-    near_nodes = get_nodes_in_range(network, camera.point, radius = camera.radius)
+    near_nodes, _ = \
+        get_nodes_in_range(network = network,
+                           points = np.array([camera.point]),
+                           radius = camera.radius)
 
-    near_edges = get_edges_in_range(nodes)
+    near_edges = get_edges_in_range(network, near_nodes)[0]
 
-    log("Found {} nodes and {} edges within {} meters of camera {}.".format(len(near_nodes), len(near_edges), camera.radius, camera.id))
+    log("Found {} nodes and {} edges within {} meters \
+        of camera {}.".format(
+                             len(near_nodes),
+                             len(near_edges),
+                             camera.radius,
+                             camera.id))
 
     if filter_by == Filter.address:
 
         if not camera.has_address():
             raise ValueError("The given camera has no defined address.")
 
-        osm_ids = lookup_ways(camera.address)
+        osmway_ids = lookup_ways(camera.address)
+        address_edges = set(edges_from_osmid(
+                                network = network,
+                                ids = osmway_ids))
 
         if len(osm_ids) == 0:
             raise ValueError("No ways found for the given address. Is the address valid?")
 
-        filtered_edges = near_edges & set(edges_from_osmid(network, osm_ids))
+        filtered_edges = near_edges & address_edges
 
-        log("Filtered {} out of {} edges from camera {} based on address: {}.".format(len(near_edges) - len(filtered_edges), len(near_edges), camera.id, camera.address))
+        log("Filtered {} out of {} edges from camera {} based \
+            on address: {}.".format(
+                                len(near_edges) - len(filtered_edges), len(near_edges),
+                                camera.id,
+                                camera.address))
 
     else:
         filtered_edges = near_edges
 
-    # # Nodes as vectors
-    # nodes_lvectors =
-    #
+    # Nodes as vectors
+    # nodes_lvectors = \
+    #     {
+    #         node_id: as_lvector(
+    #                     origin = camera.point,
+    #                     point = Point(lat = network.node[node_id]['y'],
+    #                                   lng = network.node[node_id]['x']))
+    #         for node_id in near_nodes[0]
+    #     }
+
     # edges_lvectors =
-    #
-    # # Determine edge that maximizes camera placement
-    # return nodes_lvectors, edges_lvectors
+
+    # Determine edge that maximizes camera placement
+    return filtered_edges
 
 ###
 ###
 
-# 
+#
 # def sample_orientation_vectors(camera,
 #                                minimum_range = 10,
 #                                maximum_range = 35,
