@@ -74,8 +74,8 @@ def great_circle_distance(origin, destination):
     inner_p = np.inner(origin, destination)
     outer_p = np.cross(origin, destination)
 
-    atan = math.atan2(y = np.linalg.norm(outer_p, ord = 2),
-                      x = inner_p)
+    atan = math.atan2(np.linalg.norm(outer_p, ord = 2),
+                      inner_p)
 
     return const.earth_radius() * atan
 
@@ -102,7 +102,7 @@ def true_bearing(origin, destination):
     c2 = np.cross(origin, north)
     c1c2 = np.cross(c1,c2)
 
-    bearing_sine = np.linalg.norm(c1c2, ord=2) * np.sign(np.inner(c1c2,a))
+    bearing_sine = np.linalg.norm(c1c2, ord=2) * np.sign(np.inner(c1c2,origin))
     bearing_cossine = np.inner(c1,c2)
     bearing = math.atan2(bearing_sine, bearing_cossine)
     return (np.rad2deg(bearing) + 360) % 360
