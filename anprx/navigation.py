@@ -70,10 +70,14 @@ def great_circle_distance(origin, destination):
         great circle distance ("as the crow flies")
 
     """
-    inner_p = np.inner(origin, destination)
-    outer_p = np.cross(origin, destination, ord=2)
 
-    return const.earth_radius() * math.atan2(np.linalg.norm(outer_p, inner_p))
+    inner_p = np.inner(origin, destination)
+    outer_p = np.cross(origin, destination)
+
+    atan = math.atan2(y = np.linalg.norm(outer_p, ord = 2),
+                      x = inner_p)
+
+    return const.earth_radius() * atan
 
 def true_bearing(origin, destination):
     """
