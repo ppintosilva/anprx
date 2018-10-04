@@ -170,9 +170,6 @@ class Camera(object):
         self.address = address
         self.radius = radius
 
-    def has_address(self):
-        return self.address is None
-
 ###
 ###
 
