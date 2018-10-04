@@ -366,13 +366,11 @@ def get_nodes_in_range(network,
     """
     start_time = time.time()
 
-    log("Computing nodes in range for {} points with radius {}"\
-        .format(len(points), radius))
-    log("Input points: {}".format(points))
+    log("{} input points: {}".format(len(points), points))
 
     if tree is None:
         tree, nodes = get_balltree(network)
-        log("BallTree instance is None. Call get_balltree.")
+        log("BallTree instance is None.")
 
     points_rad = np.deg2rad(points)
 
@@ -477,12 +475,11 @@ def estimate_orientation(network,
 
     near_edges = get_edges_in_range(network, near_nodes)[0]
 
-    log("Found {} nodes and {} edges within {} meters \
-        of camera {}.".format(
-                             len(near_nodes),
-                             len(near_edges),
-                             camera.radius,
-                             camera.id))
+    log("Found {} nodes and {} edges within {} meters of camera {}."\
+            .format(len(near_nodes),
+                    len(near_edges),
+                    camera.radius,
+                    camera.id))
 
     if filter_by == Filter.address:
 
@@ -499,11 +496,11 @@ def estimate_orientation(network,
 
         filtered_edges = near_edges & address_edges
 
-        log("Filtered {} out of {} edges from camera {} based \
-            on address: {}.".format(
-                                len(near_edges) - len(filtered_edges), len(near_edges),
-                                camera.id,
-                                camera.address))
+        log("Filtered {} out of {} edges from camera {} based on address: {}."\
+                .format(len(near_edges) - len(filtered_edges),
+                        len(near_edges),
+                        camera.id,
+                        camera.address))
 
     else:
         filtered_edges = near_edges
