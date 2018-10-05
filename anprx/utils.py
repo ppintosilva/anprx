@@ -16,6 +16,7 @@ import json
 import hashlib
 import inspect
 import unicodedata
+import osmnx as ox
 import logging as lg
 import datetime as dt
 
@@ -43,6 +44,31 @@ settings = {
 """
 anprx's global settings.
 """
+
+###
+###
+
+def init_osmnx():
+    osmnx_folder = os.path.join(settings["app_folder"], "osmnx")
+    if not os.path.exists(osmnx_folder):
+        os.makedirs(osmnx_folder)
+
+    ox.config(
+        data_folder = os.path.join(osmnx_folder, "data"),
+        logs_folder = os.path.join(osmnx_folder, "logs"),
+        imgs_folder = os.path.join(osmnx_folder, "images"),
+        cache_folder = os.path.join(osmnx_folder, "cache"),
+        use_cache = True,
+        log_file = True,
+        log_console = False)
+
+    return True
+
+###
+###
+# Run this here globally so that we don't have to run it everytime before we call an osmnx statement.
+
+init_osmnx()
 
 ###
 ###
@@ -126,6 +152,8 @@ def create_folders(app_folder = None,
 
     if not os.path.exists(app_folder):
         os.makedirs(app_folder)
+
+    init_osmnx()
 
     logs_folder = os.path.join(app_folder, logs_folder_name)
 
