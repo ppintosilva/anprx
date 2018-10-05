@@ -447,6 +447,147 @@ def get_edges_in_range(network,
 #                  **kwargs):
 #
 
+def local_coordinate_system(network,
+                            origin,
+                            radius,
+                            filter_by = Filter.address,
+                            **kwargs):
+    """
+    Generate a local cartesian coordinate system with nodes and edges within radius meters of origin.
+
+    Parameters
+    ---------
+    network : nx.MultiDiGraph
+        street network
+
+    origin : Point
+        point
+
+    radius : float
+        radius of
+
+    filter_by : anprx.constants.Filter
+         address - filter nearby roads using the address of the street that the camera observes.
+         none - guess camera orientation based on camera location alone
+
+    **kwargs : (k,v)
+        extra named arguments required by filter_by:
+            Filter.address : address
+
+    Returns
+    -------
+    camera orientation
+        Orientation
+    """
+
+    start_time = time.time()
+
+    near_nodes, _ = \
+        get_nodes_in_range(network = network,
+                           points = np.array([origin]),
+                           radius = radius)
+
+    log("Near nodes: {}"\
+            .format(near_nodes),
+        level = lg.DEBUG)
+
+    near_edges = get_edges_in_range(network, near_nodes)[0]
+
+    log("Near nodes: {}"\
+            .format(near_edges),
+        level = lg.DEBUG)
+
+    log("Found {} nodes and {} edges within {} meters of origin {}."\
+            .format(len(near_nodes),
+                    len(near_edges),
+                    radius,
+                    origin),
+        level = lg.INFO)
+
+    # Add nodes that where not initially detected as neighbors, but that are included in near_edges
+    all_nodes = { edge[0] for edge in near_edges } | \
+                { edge[1] for edge in near_edges }
+
+    log("All nodes: {}"\
+            .format(all_nodes),
+        level = lg.DEBUG)
+
+    log("Added {} out of range nodes that are part of nearest edges." +
+        "Total nodes: {}."\
+            .format(len(set(near_nodes[0]) & all_nodes),
+                    len(all_nodes)),
+        level = lg.INFO)
+
+    if filter_by == Filter.address:
+        log("Filtering by address.",
+            level = lg.INFO)
+
+        address = kwargs.get("address", None)
+
+        if not address:
+            log("address is None",
+                level = lg.INFO)
+            raise ValueError("The given camera has no defined address.")
+
+        osmway_ids = lookup_ways(address)
+        address_edges = set(edges_from_osmid(
+                                network = network,
+                                osmids  = osmway_ids))
+
+        candidate_edges = near_edges & address_edges
+
+        log("Filtered {} out of {} edges based on address: {}."\
+                .format(len(near_edges) - len(candidate_edges),
+                        len(near_edges),
+                        address),
+            level = lg.INFO)
+
+    else:
+        candidate_edges = near_edges
+
+    log("Candidate edges: {}"\
+            .format(candidate_edges),
+        level = lg.DEBUG)
+
+    # Nodes as vectors
+    nodes_lvectors = \
+        {
+            node_id :
+                as_lvector(
+                    origin = origin,
+                    point = Point(
+                            lat = network.node[node_id]['y'],
+                            lng = network.node[node_id]['x']))
+
+            for node_id in all_nodes
+        }
+
+    log("Nodes lvectors: {}"\
+            .format(nodes_lvectors),
+        level = lg.DEBUG)
+
+    edges_lvectors = \
+        {
+            edge :
+                nodes_lvectors[edge[0]] - nodes_lvectors[edge[1]]
+
+            for edge in candidate_edges
+        }
+
+    log("Nodes lvectors: {}"\
+            .format(edges_lvectors),
+        level = lg.DEBUG)
+
+    log("Obtained coordinate system with origin at point {} in {:,.3f} seconds"\
+            .format(origin, time.time()-start_time),
+        level = lg.INFO)
+
+    return nodes_lvectors, edges_lvectors
+
+###
+###
+
+
 def estimate_orientation(network,
                          camera,
                          filter_by = Filter.address,
@@ -474,81 +615,7 @@ def estimate_orientation(network,
     camera orientation
         Orientation
     """
-
-    near_nodes, _ = \
-        get_nodes_in_range(network = network,
-                           points = np.array([camera.point]),
-                           radius = camera.radius)
-
-    near_edges = get_edges_in_range(network, near_nodes)[0]
-
-    log("Found {} nodes and {} edges within {} meters of camera {}."\
-            .format(len(near_nodes),
-                    len(near_edges),
-                    camera.radius,
-                    camera.id))
-
-    # Add nodes that where not initially detected as neighbors, but that are included in near_edges
-    all_nodes = { edge[0] for edge in near_edges } | \
-                { edge[1] for edge in near_edges }
-
-    log("Added {} out of range nodes that are part of nearest edges. Total nodes: {}.".format(len(set(near_nodes[0]) & all_nodes)), len(all_nodes))
-
-    if filter_by == Filter.address:
-        log("Filtering by address.")
-
-        if not camera.address:
-            log("camera.address is None")
-            raise ValueError("The given camera has no defined address.")
-
-        osmway_ids = lookup_ways(camera.address)
-        address_edges = set(edges_from_osmid(
-                                network = network,
-                                osmids  = osmway_ids))
-
-        candidate_edges = near_edges & address_edges
-
-        log("Filtered {} out of {} edges from camera {} based on address: {}."\
-                .format(len(near_edges) - len(candidate_edges),
-                        len(near_edges),
-                        camera.id,
-                        camera.address))
-
-    else:
-        candidate_edges = near_edges
-
-    log("Candidate edges: {}"\
-            .format(candidate_edges), level = lg.DEBUG)
-
-    # Nodes as vectors
-    nodes_lvectors = \
-        {
-            node_id :
-                as_lvector(
-                    origin = camera.point,
-                    point = Point(
-                            lat = network.node[node_id]['y'],
-                            lng = network.node[node_id]['x']))
-
-            for node_id in all_nodes
-        }
-
-    log("Nodes lvectors: {}"\
-            .format(nodes_lvectors), level = lg.DEBUG)
-
-    edges_lvectors = \
-        {
-            edge :
-                nodes_lvectors[edge[0]] - nodes_lvectors[edge[1]]
-
-            for edge in candidate_edges
-        }
-
-    log("Nodes lvectors: {}"\
-            .format(edges_lvectors), level = lg.DEBUG)
-
-    # Determine the edge that maximizes camera placement
-    return nodes_lvectors, edges_lvectors
+    pass
 
 ###
 ###

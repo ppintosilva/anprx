@@ -271,8 +271,8 @@ def test_nodes_and_edges_in_range():
     assert len(edges[1]) >= len(nn_ids[1])
 
 
-def test_estimate_orientation(caplog):
-    caplog.set_level(logging.INFO, logger="anprx")
+def test_get_local_coordinate_system(caplog):
+    caplog.set_level(logging.DEBUG, logger="anprx")
 
     network = get_network(distance = 1000)
 
@@ -282,7 +282,9 @@ def test_estimate_orientation(caplog):
         address = "Pitt Street, Newcastle Upon Tyne, UK")
 
     nodes_lvectors, edges_lvectors = \
-        anprx.estimate_orientation(
+        anprx.local_coordinate_system(
             network = network,
-            camera = camera,
-            filter_by = anprx.Filter.address)
+            origin = camera.point,
+            radius = camera.radius,
+            filter_by = anprx.Filter.address,
+            address = camera.address)
