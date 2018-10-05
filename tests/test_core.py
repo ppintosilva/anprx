@@ -2,10 +2,10 @@ import os
 import sys
 import anprx
 import pytest
+import logging
 import numpy as np
 import osmnx as ox
 import networkx as nx
-
 
 def get_points():
     latitudes = [54.97092396,54.97080711]
@@ -269,3 +269,20 @@ def test_nodes_and_edges_in_range():
     assert len(edges) == 2
     assert len(edges[0]) >= len(nn_ids[0])
     assert len(edges[1]) >= len(nn_ids[1])
+
+
+def test_estimate_orientation(caplog):
+    caplog.set_level(logging.INFO, logger="anprx")
+
+    network = get_network(distance = 1000)
+
+    camera = anprx.Camera(
+        id = "fake_camera",
+        point = anprx.Point(lat = 54.974537, lng = -1.625644),
+        address = "Pitt Street, Newcastle Upon Tyne, UK")
+
+    nodes_lvectors, edges_lvectors = \
+        anprx.estimate_orientation(
+            network = network,
+            camera = camera,
+            filter_by = anprx.Filter.address)
