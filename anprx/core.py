@@ -11,6 +11,7 @@ import time
 import numpy as np
 import osmnx as ox
 import pandas as pd
+import logging as lg
 import networkx as nx
 from statistics import mean
 from collections import namedtuple
@@ -397,7 +398,8 @@ def get_nodes_in_range(network,
 ###
 ###
 
-def get_edges_in_range(network, points_nodes_in_range):
+def get_edges_in_range(network,
+                       points_nodes_in_range):
     """
     Get nodes whose distance is within radius meters of a point, for a bunch of points.
 
@@ -440,6 +442,11 @@ def get_edges_in_range(network, points_nodes_in_range):
 ###
 ###
 
+# def filter_edges(network,
+#                  filter_by = Filter.address,
+#                  **kwargs):
+#
+
 def estimate_orientation(network,
                          camera,
                          filter_by = Filter.address,
@@ -481,44 +488,67 @@ def estimate_orientation(network,
                     camera.radius,
                     camera.id))
 
-    if filter_by == Filter.address:
+    # Add nodes that where not initially detected as neighbors, but that are included in near_edges
+    all_nodes = { edge[0] for edge in near_edges } | \
+                { edge[1] for edge in near_edges }
 
-        if not camera.has_address():
+    log("Added {} out of range nodes that are part of nearest edges. Total nodes: {}.".format(len(set(near_nodes[0]) & all_nodes)), len(all_nodes))
+
+    if filter_by == Filter.address:
+        log("Filtering by address.")
+
+        if not camera.address:
+            log("camera.address is None")
             raise ValueError("The given camera has no defined address.")
 
         osmway_ids = lookup_ways(camera.address)
         address_edges = set(edges_from_osmid(
                                 network = network,
-                                ids = osmway_ids))
+                                osmids  = osmway_ids))
 
-        if len(osm_ids) == 0:
-            raise ValueError("No ways found for the given address. Is the address valid?")
-
-        filtered_edges = near_edges & address_edges
+        candidate_edges = near_edges & address_edges
 
         log("Filtered {} out of {} edges from camera {} based on address: {}."\
-                .format(len(near_edges) - len(filtered_edges),
+                .format(len(near_edges) - len(candidate_edges),
                         len(near_edges),
                         camera.id,
                         camera.address))
 
     else:
-        filtered_edges = near_edges
+        candidate_edges = near_edges
+
+    log("Candidate edges: {}"\
+            .format(candidate_edges), level = lg.DEBUG)
 
     # Nodes as vectors
-    # nodes_lvectors = \
-    #     {
-    #         node_id: as_lvector(
-    #                     origin = camera.point,
-    #                     point = Point(lat = network.node[node_id]['y'],
-    #                                   lng = network.node[node_id]['x']))
-    #         for node_id in near_nodes[0]
-    #     }
+    nodes_lvectors = \
+        {
+            node_id :
+                as_lvector(
+                    origin = camera.point,
+                    point = Point(
+                            lat = network.node[node_id]['y'],
+                            lng = network.node[node_id]['x']))
 
-    # edges_lvectors =
+            for node_id in all_nodes
+        }
 
-    # Determine edge that maximizes camera placement
-    return filtered_edges
+    log("Nodes lvectors: {}"\
+            .format(nodes_lvectors), level = lg.DEBUG)
+
+    edges_lvectors = \
+        {
+            edge :
+                nodes_lvectors[edge[0]] - nodes_lvectors[edge[1]]
+
+            for edge in candidate_edges
+        }
+
+    log("Nodes lvectors: {}"\
+            .format(edges_lvectors), level = lg.DEBUG)
+
+    # Determine the edge that maximizes camera placement
+    return nodes_lvectors, edges_lvectors
 
 ###
 ###
@@ -542,19 +572,3 @@ def estimate_orientation(network,
 #
 #     """
 #     vectors = [ as_vector(camera.point, ) for degree in range(0, 360-sample_rate, sample_rate) ]
-
-
-###
-###
-
-def plot_edges(network, edges, fig = None, axis = None):
-    pass
-
-def plot_nodes(network, nodes, fig = None, axis = None):
-    pass
-
-def plot_camera(network, camera, fig = None, axis = None):
-    """
-    Plot a camera on the road network and the edge it observes, if available.
-    """
-    pass
