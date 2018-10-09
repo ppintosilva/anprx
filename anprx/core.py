@@ -343,7 +343,7 @@ def get_nodes_in_range(network,
                        radius,
                        tree = None):
     """
-    Get nodes whose distance is within radius meters of a point, for a bunch of points.
+    Get nodes whose distance is within radius meters of a point, for a bunch of points. Vectorised.
 
     Parameters
     ---------
@@ -399,53 +399,42 @@ def get_nodes_in_range(network,
 ###
 
 def get_edges_in_range(network,
-                       points_nodes_in_range):
+                       nodes_in_range):
     """
-    Get nodes whose distance is within radius meters of a point, for a bunch of points.
+    Get edges whose nodes' distance is within radius meters of a point, for a bunch of points. Vectorised.
 
     Parameters
     ---------
     network : nx.MultiDiGraph
         street network
 
-    points : list[Points]
+    points_nodes_in_range : list[Points]
         list of points
-
-    radius : float
-        maximum distance in meters
-
-    tree : sklearn.neighbors.BallTree
-        ball-tree for quick nearest-neighbor lookup using the haversine formula
 
     Returns
     -------
     nearest nodes and distances, sorted according to points
         (np.array[np.array[float]] , np.array[np.array[float]] ]
     """
-    points_edges_in_range = list()
+    edges_in_range = list()
 
-    for point_nodes_in_range in points_nodes_in_range:
+    for point in nodes_in_range:
 
         edges = set()
-        for node in point_nodes_in_range:
-            node_edges = \
-                list(network.in_edges(node, keys = True)) + \
-                list(network.out_edges(node, keys = True,))
+        for nn in point:
+            nearest_edges = \
+                list(network.in_edges(nn, keys = True)) + \
+                list(network.out_edges(nn, keys = True,))
 
-            for edge in node_edges:
+            for edge in nearest_edges:
                 edges.add(Edge(edge[0], edge[1], edge[2]))
 
-        points_edges_in_range.append(edges)
+        edges_in_range.append(edges)
 
-    return points_edges_in_range
+    return edges_in_range
 
 ###
 ###
-
-# def filter_edges(network,
-#                  filter_by = Filter.address,
-#                  **kwargs):
-#
 
 def local_coordinate_system(network,
                             origin,
@@ -589,11 +578,10 @@ def local_coordinate_system(network,
 
 
 def estimate_orientation(network,
-                         camera,
-                         filter_by = Filter.address,
-                         set_value = True):
+                         cameras,
+                         set_values = True):
     """
-    Estimate the orientation of a camera.
+    Estimate the orientation of ANPR cameras.
 
     Parameters
     ---------
