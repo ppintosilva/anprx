@@ -11,6 +11,110 @@ import numpy as np
 from collections import namedtuple
 from . import constants as const
 
+###
+###
+
+Point = namedtuple(
+    'Point',
+    [
+        'lat',
+        'lng'
+    ])
+"""
+Represents a point on the surface of the Earth, given by latitude and longitude, in degrees.
+
+Attributes
+----------
+lat : float
+    latitude
+
+lng : float
+    longitude
+"""
+
+###
+###
+
+BBox = namedtuple(
+    'BBox',
+    [
+        'north',
+        'south',
+        'east',
+        'west'
+    ])
+"""
+Represents a bounding box, defined by 4 coordinate pairs. Instead of providing 4 points as input, redundancy is avoided by providing 2 values of latitude, north (max) and south (min), and 2 values of longitude, east (max) and west (min).
+
+Attributes
+---------
+north : float
+    maximum latitude
+
+south : float
+    minimum latitude
+
+east : float
+    maximum longitude
+
+west : float
+    minimum longitude
+"""
+
+###
+###
+
+RelativeMargins = namedtuple(
+    'RelativeMargins',
+    [
+        'north',
+        'south',
+        'east',
+        'west'
+    ])
+"""
+Relative margins [0,1] for a given bounding box. These are calculated as the proportion of the latitude/longitude interval and added in degrees to the respective side.
+
+Attributes
+---------
+north : float
+    relative margin for maximum latitude
+
+south : float
+    relative margin for minimum latitude
+
+east : float
+    relative margin for maximum longitude
+
+west : float
+    relative margin for minimum longitude
+"""
+
+###
+###
+
+Orientation = namedtuple(
+    'Orientation',
+    [
+        'bearing',
+        'osm_way'
+    ])
+"""
+Orientation of a traffic camera.
+
+Attributes
+----------
+bearing : float
+    Mean bearing of camera
+
+osm_way : int
+    OpenStreetMap Id of the way (road segment) that is observed by the camera.
+"""
+
+###
+###
+
+
 def to_point(nvector):
     """
     Converts a point represented by an n-vector to latitude and longitude.

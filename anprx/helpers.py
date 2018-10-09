@@ -11,8 +11,8 @@ import numpy as np
 import pandas as pd
 import networkx as nx
 from .utils import log
-from .network import *
 from .constants import *
+from .navigation import *
 from sklearn.neighbors import BallTree
 
 def points_from_lists(latitudes, longitudes):
