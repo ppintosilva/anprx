@@ -43,12 +43,8 @@ def assert_bbox_almost_equal(bbox1, bbox2, decimal = 5):
     np.testing.assert_almost_equal(bbox1.east, bbox2.east, decimal = decimal)
 
 def get_network(distance = 1000, center = (54.97351, -1.62545)):
-    if sys.version_info.major == 3:
-        prefix = "py3"
-    else:
-        prefix = "py2"
 
-    network_pickle_filename = "tests/data/{}_test_network_USB_{}.pkl".format(prefix, distance)
+    network_pickle_filename = "tests/data/test_network_USB_{}.pkl".format(distance)
 
     if os.path.exists(network_pickle_filename):
         network = nx.read_gpickle(path = network_pickle_filename)
@@ -271,20 +267,42 @@ def test_nodes_and_edges_in_range():
     assert len(edges[1]) >= len(nn_ids[1])
 
 
-def test_get_local_coordinate_system(caplog):
-    caplog.set_level(logging.DEBUG, logger="anprx")
-
+def test_filter_by_address_and_get_local_coordinate_system():
     network = get_network(distance = 1000)
+    address = "Pitt Street, Newcastle Upon Tyne, UK"
+    point = anprx.Point(lat = 54.974537, lng = -1.625644)
 
+    nn_ids, nn_distances = anprx.get_nodes_in_range(network, [point], 100)
+    nn_edges = anprx.get_edges_in_range(network, nn_ids)[0]
+
+    all_nodes = { edge[0] for edge in nn_edges } | \
+                { edge[1] for edge in nn_edges }
+
+    assert len(all_nodes) > len(nn_ids[0])
+
+    candidate_edges = anprx.filter_by_address(network, nn_edges, address)
+
+    assert len(candidate_edges) < len(nn_edges)
+
+    candidate_nodes = { edge[0] for edge in candidate_edges } | \
+                      { edge[1] for edge in candidate_edges }
+
+    nodes_lvectors, edges_lvectors = \
+        anprx.local_coordinate_system(
+            network = network,
+            origin = point,
+            nodes = candidate_nodes,
+            edges = candidate_edges)
+
+    assert len(nodes_lvectors) == len(candidate_nodes)
+    assert len(edges_lvectors) == len(candidate_edges)
+
+
+def test_camera_gen_local_coord_system():
+    network = get_network(distance = 1000)
     camera = anprx.Camera(
         id = "fake_camera",
         point = anprx.Point(lat = 54.974537, lng = -1.625644),
         address = "Pitt Street, Newcastle Upon Tyne, UK")
 
-    nodes_lvectors, edges_lvectors = \
-        anprx.local_coordinate_system(
-            network = network,
-            origin = camera.point,
-            radius = camera.radius,
-            filter_by = anprx.Filter.address,
-            address = camera.address)
+    camera.gen_local_coord_system(network)
