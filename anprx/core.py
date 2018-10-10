@@ -600,10 +600,12 @@ class Camera(object):
         camera orientation
     """
     def __init__(self,
+                 network,
                  id,
                  point,
                  address = None,
-                 radius = 50):
+                 radius = 50,
+                 filter_edges_by = Filter.address):
         """
         Parameters
         ---------
@@ -613,18 +615,22 @@ class Camera(object):
         address : str
             address of the street observed by the camera as labelled by a human
         """
+        self.network = network
+        # @TODO - Check if network contains the camera?
+
         self.id = id
         self.point = point
         self.address = address
         self.radius = radius
 
+        self.gen_local_coord_system(filter_edges_by)
+
     def gen_local_coord_system(self,
-                               network,
                                filter_by = Filter.address):
         start_time = time.time()
 
         near_nodes, _ = \
-            get_nodes_in_range(network = network,
+            get_nodes_in_range(network = self.network,
                                points = np.array([self.point]),
                                radius = self.radius)
 
@@ -632,7 +638,7 @@ class Camera(object):
                 .format(near_nodes),
             level = lg.DEBUG)
 
-        near_edges = get_edges_in_range(network, near_nodes)[0]
+        near_edges = get_edges_in_range(self.network, near_nodes)[0]
 
         log("Near nodes: {}"\
                 .format(near_edges),
@@ -660,8 +666,12 @@ class Camera(object):
             level = lg.INFO)
 
         if filter_by == Filter.address:
+            if self.address is None:
+                log("Camera {} has no address defined.".format(self.id))
+                raise ValueError("Given camera has no address defined")
+
             candidate_edges = \
-                filter_by_address(network,
+                filter_by_address(self.network,
                                   near_edges,
                                   self.address)
         else:
@@ -672,7 +682,7 @@ class Camera(object):
             level = lg.DEBUG)
 
         nodes_lvectors, edges_lvectors = \
-            local_coordinate_system(network,
+            local_coordinate_system(self.network,
                                     origin = self.point,
                                     nodes = all_nodes,
                                     edges = candidate_edges)
@@ -680,28 +690,82 @@ class Camera(object):
         log("Generated local coordinate system for camera",
             level = lg.INFO)
 
-        self.nnodes = all_nodes
-        self.nedges = near_edges
-        self.cedges = candidate_edges
+        self.nnodes = list(all_nodes)
+        self.nedges = list(near_edges)
+        self.cedges = list(candidate_edges)
         self.lnodes = nodes_lvectors
         self.ledges = edges_lvectors
 
-#
-# def sample_orientation_vectors(camera,
-#                                minimum_range = 10,
-#                                maximum_range = 35,
-#                                sample_rate = 1):
-#     """
-#     Get
-#
-#     Parameters
-#     ---------
-#     camera : Camera
-#         traffic camera
-#
-#     Returns
-#     -------
-#     sample orientation vectors
-#
-#     """
-#     vectors = [ as_vector(camera.point, ) for degree in range(0, 360-sample_rate, sample_rate) ]
+
+    def plot(self,
+             bbox_side = 200,
+             camera_color = "#EB8258",
+             camera_markersize = 10,
+             camera_label_color = "white",
+             #
+             bgcolor='k',
+             node_color='#999999',
+             node_edgecolor='none',
+             node_zorder=2,
+             node_size=50,
+             edge_color='#555555',
+             edge_linewidth=1.5,
+             edge_alpha=1,
+             #
+             nn_color = '#009DDC',
+             nn_labels = None,
+             nn_labels_color = 'white',
+             nedge_color = '#D0CE7C',
+             nedge_labels = None,
+             nedge_labels_color = 'white'
+             ):
+        """
+        A
+        a
+        A
+        a
+        """
+        bbox = ox.bbox_from_point(point = self.point,
+                                  distance = bbox_side)
+
+
+        nodes_colors = [node_color] * len(self.network.nodes())
+
+        # Set color of near nodes by index
+        i = 0
+        for node in self.network.nodes(data = False):
+            if node in self.nnodes:
+                nodes_colors[i] = nn_color
+            i = i + 1
+
+        fig, axis = \
+            ox.plot_graph(
+                self.network,
+                bbox = bbox,
+                margin = 0,
+                bgcolor = bgcolor,
+                node_color = nodes_colors,
+                node_edgecolor = node_edgecolor,
+                node_zorder = node_zorder,
+                edge_color = edge_color,
+                edge_linewidth = edge_linewidth,
+                edge_alpha = edge_alpha,
+                node_size = node_size,
+                show = False,
+                close = False)
+
+        axis.plot(self.point.lng,
+                  self.point.lat,
+                  marker = 'o',
+                  color = camera_color,
+                  markersize = camera_markersize)
+
+        axis.annotate(str(self.id),
+                      xy = (self.point.lng, self.point.lat),
+                      color = camera_label_color)
+
+        return fig, axis
+
+
+    def lplot(self):
+        pass

@@ -1,5 +1,6 @@
 import os
 import sys
+import math
 import anprx
 import pytest
 import logging
@@ -297,12 +298,28 @@ def test_filter_by_address_and_get_local_coordinate_system():
     assert len(nodes_lvectors) == len(candidate_nodes)
     assert len(edges_lvectors) == len(candidate_edges)
 
+    for id in candidate_nodes:
+        ox_distance = ox.great_circle_vec(
+            lat1 = network.node[id]['y'],
+            lng1 = network.node[id]['x'],
+            lat2 = point.lat,
+            lng2 = point.lng)
 
-def test_camera_gen_local_coord_system():
-    network = get_network(distance = 1000)
+        lvector = nodes_lvectors[id]
+        lvector_distance = math.sqrt(lvector[0] ** 2 + lvector[1] ** 2)
+
+        np.testing.assert_almost_equal(
+            ox_distance,
+            lvector_distance,
+            decimal = 6)
+
+
+def test_camera():
     camera = anprx.Camera(
+        network = get_network(distance = 1000),
         id = "fake_camera",
         point = anprx.Point(lat = 54.974537, lng = -1.625644),
         address = "Pitt Street, Newcastle Upon Tyne, UK")
 
-    camera.gen_local_coord_system(network)
+    camera.plot()
+    camera.lplot()
