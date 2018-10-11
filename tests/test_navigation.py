@@ -8,9 +8,14 @@ import numpy as np
 import osmnx as ox
 import networkx as nx
 
-def get_points():
+def get_lat_lng():
     latitudes = [54.97092396,54.97080711]
     longitudes = [-1.622966153, -1.622935367]
+
+    return latitudes, longitudes
+
+def get_points():
+    latitudes, longitudes = get_lat_lng()
 
     point1 = anprx.Point(lat = latitudes[0],
                          lng = longitudes[0])
@@ -58,6 +63,31 @@ def get_network(distance = 1000, center = (54.97351, -1.62545)):
         nx.write_gpickle(G = network, path = network_pickle_filename)
 
     return network
+
+def test_points_from_lists():
+    latitudes, longitudes = get_lat_lng()
+    point1, point2 = get_points()
+
+    assert anprx.points_from_lists(latitudes, longitudes) == [ point1, point2 ]
+
+def test_points_from_tuples():
+    latitudes, longitudes = get_lat_lng()
+    point1, point2 = get_points()
+
+    points = [(latitudes[0], longitudes[0]), (latitudes[1], longitudes[1])]
+    assert anprx.points_from_tuples(points) == [ point1, point2 ]
+
+def test_latitudes_from_points():
+    latitudes, longitudes = get_lat_lng()
+    point1, point2 = get_points()
+
+    assert anprx.latitudes_from_points([point1,point2]) == latitudes
+
+def test_longitudes_from_points():
+    latitudes, longitudes = get_lat_lng()
+    point1, point2 = get_points()
+    
+    assert anprx.longitudes_from_points([point1,point2]) == longitudes
 
 
 def test_bbox_area_small():
@@ -312,18 +342,3 @@ def test_filter_by_address_and_get_local_coordinate_system():
             ox_distance,
             lvector_distance,
             decimal = 6)
-
-
-def test_camera_plot():
-    camera = anprx.Camera(
-        network = get_network(distance = 1000),
-        id = "fake_camera",
-        point = anprx.Point(lat = 54.974537, lng = -1.625644),
-        address = "Pitt Street, Newcastle Upon Tyne, UK")
-
-    camera.plot(annotate_camera = False,
-                draw_radius = True,
-                adjust_text = False)
-    camera.plot(annotate_nn_id = False,
-                annotate_nn_distance = True)
-    camera.plot()
