@@ -8,12 +8,14 @@
 
 import math
 import time
+import adjustText
 import numpy as np
 import osmnx as ox
 import pandas as pd
 import logging as lg
 import networkx as nx
 from statistics import mean
+import matplotlib.pyplot as plt
 from collections import namedtuple
 
 from .helpers import *
@@ -698,10 +700,11 @@ class Camera(object):
 
 
     def plot(self,
-             bbox_side = 200,
+             bbox_side = 100,
              camera_color = "#EB8258",
              camera_markersize = 10,
-             camera_label_color = "white",
+             annotate_camera = True,
+             draw_radius = False,
              #
              bgcolor='k',
              node_color='#999999',
@@ -713,31 +716,110 @@ class Camera(object):
              edge_alpha=1,
              #
              nn_color = '#009DDC',
-             nn_labels = None,
-             nn_labels_color = 'white',
              nedge_color = '#D0CE7C',
-             nedge_labels = None,
-             nedge_labels_color = 'white'
+             labels_color = "white",
+             annotate_nn_id = True,
+             annotate_nn_distance = True,
+             nn_id_arrow_color = 'r',
+             adjust_text = True,
              ):
         """
-        A
-        a
-        A
-        a
+        Plot a networkx spatial graph.
+
+        Parameters
+        ----------
+        bbox_side : int
+            half the length of one side of the bbox (a square) in which to plot the camera. This value should usually be kept within small scales  (hundreds of meters), otherwise near nodes and candidate edges become imperceptible.
+
+        camera_color : string
+            the color of the point representing the location of the camera
+
+        camera_markersize: int
+            the size of the marker representing the camera
+
+        annotate_camera : True
+            whether to annotate the camera or not using its id
+
+        draw_radius : bool
+            whether to draw (kind of) a circle representing the range of the camera
+
+        bgcolor : string
+            the background color of the figure and axis - passed to osmnx's plot_graph
+
+        node_color : string
+            the color of the nodes - passed to osmnx's plot_graph
+
+        node_size : int
+            the size of the nodes - passed to osmnx's plot_graph
+
+        node_alpha : float
+            the opacity of the nodes - passed to osmnx's plot_graph
+
+        node_edgecolor : string
+            the color of the node's marker's border - passed to osmnx's plot_graph
+
+        node_zorder : int
+            zorder to plot nodes, edges are always 2, so make node_zorder 1 to plot nodes beneath them or 3 to plot nodes atop them - passed to osmnx's plot_graph
+
+        edge_color : string
+            the color of the edges' lines - passed to osmnx's plot_graph
+
+        edge_linewidth : float
+            the width of the edges' lines - passed to osmnx's plot_graph
+
+        edge_alpha : float
+            the opacity of the edges' lines - passed to osmnx's plot_graph
+
+        nn_color : string
+            the color of near nodes - these are not necessarily in range of the camera, but they are part of edges that do
+
+        nedge_color : string
+            the color of candidate edges - nearby edges filtered by address or other condition
+
+        labels_color : string
+            the color of labels used to annotate nearby nodes
+
+        annotate_nn_id : bool
+            whether the text annotating near nodes should include their id
+
+        annotate_nn_distance : bool
+            whether the text annotating near nodes should include their distance from the camera
+
+        nn_id_arrow_color : string
+            the color of the arrow linking the point and annotation of each near node
+
+        adjust_text : bool
+            whether to optimise the location of the annotations, using adjustText.adjust_text, so that overlaps are avoided. Notice that this incurs considerable computational cost. Turning this feature off will result in much faster plotting.
+
+        Returns
+        -------
+        fig, ax : tuple
         """
+
         bbox = ox.bbox_from_point(point = self.point,
                                   distance = bbox_side)
 
 
+        # Set color of near nodes by index
         nodes_colors = [node_color] * len(self.network.nodes())
 
-        # Set color of near nodes by index
         i = 0
         for node in self.network.nodes(data = False):
             if node in self.nnodes:
                 nodes_colors[i] = nn_color
             i = i + 1
 
+        # Color near edges
+        edges_colors = [edge_color] * len(self.network.edges())
+
+        j = 0
+        for u,v,k in self.network.edges(keys = True, data = False):
+            edge = Edge(u,v,k)
+            if edge in self.cedges:
+                edges_colors[j] = nedge_color
+            j = j + 1
+
+        # Plot it
         fig, axis = \
             ox.plot_graph(
                 self.network,
@@ -747,22 +829,79 @@ class Camera(object):
                 node_color = nodes_colors,
                 node_edgecolor = node_edgecolor,
                 node_zorder = node_zorder,
-                edge_color = edge_color,
+                edge_color = edges_colors,
                 edge_linewidth = edge_linewidth,
                 edge_alpha = edge_alpha,
                 node_size = node_size,
                 show = False,
                 close = False)
 
-        axis.plot(self.point.lng,
-                  self.point.lat,
-                  marker = 'o',
-                  color = camera_color,
-                  markersize = camera_markersize)
+        # Plot Camera
+        camera_point = axis.plot(
+                self.point.lng,
+                self.point.lat,
+                marker = 'o',
+                color = camera_color,
+                markersize = camera_markersize)
 
-        axis.annotate(str(self.id),
-                      xy = (self.point.lng, self.point.lat),
-                      color = camera_label_color)
+
+        if draw_radius:
+            radius_circle = \
+                plt.Circle((self.point.lng, self.point.lat),
+                           radius = self.radius/deg2distance(unit = Units.m),
+                           color=camera_color,
+                           fill=False)
+
+            axis.add_artist(radius_circle)
+
+        if annotate_camera:
+            camera_text = axis.annotate(
+                            str(self.id),
+                            xy = (self.point.lng, self.point.lat),
+                            color = camera_color)
+
+        if annotate_nn_id or annotate_nn_distance:
+            # Annotate nearest_neighbors
+            texts = []
+            for id in self.nnodes:
+                distance_x = self.lnodes[id][0]
+                distance_y = self.lnodes[id][1]
+                distance = math.sqrt(distance_x ** 2 + distance_y ** 2)
+
+                s1 = ""
+                s2 = ""
+                if annotate_nn_id:
+                    s1 = "{}: ".format(self.nnodes.index(id))
+                if annotate_nn_distance and distance < bbox_side:
+                    s2 = "{:,.1f}m".format(distance)
+
+                text = axis.text(self.network.node[id]['x'],
+                                 self.network.node[id]['y'],
+                                 s = s1 + s2,
+                                 color = labels_color)
+                texts.append(text)
+
+            if annotate_camera:
+                texts.append(camera_text)
+
+            if adjust_text:
+                additional_obj = []
+
+                if draw_radius:
+                    additional_obj.append(radius_circle)
+                if annotate_camera:
+                    additional_obj.append(camera_text)
+
+                adjustText.adjust_text(
+                    texts,
+                    x = [ self.network.node[id]['x'] for id in self.nnodes ],
+                    y = [ self.network.node[id]['y'] for id in self.nnodes ],
+                    ax = axis,
+                    add_objects = camera_point + additional_obj,
+                    force_points = (0.5, 0.6),
+                    expand_text = (1.2, 1.4),
+                    expand_points = (1.4, 1.4),
+                    arrowprops=dict(arrowstyle="->", color=nn_id_arrow_color, lw=0.5))
 
         return fig, axis
 

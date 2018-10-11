@@ -314,12 +314,16 @@ def test_filter_by_address_and_get_local_coordinate_system():
             decimal = 6)
 
 
-def test_camera():
+def test_camera_plot():
     camera = anprx.Camera(
         network = get_network(distance = 1000),
         id = "fake_camera",
         point = anprx.Point(lat = 54.974537, lng = -1.625644),
         address = "Pitt Street, Newcastle Upon Tyne, UK")
 
+    camera.plot(annotate_camera = False,
+                draw_radius = True,
+                adjust_text = False)
+    camera.plot(annotate_nn_id = False,
+                annotate_nn_distance = True)
     camera.plot()
-    camera.lplot()
