@@ -308,18 +308,19 @@ class Camera(object):
                 distance_y = self.lnodes[id][1]
                 distance = math.sqrt(distance_x ** 2 + distance_y ** 2)
 
-                s1 = ""
-                s2 = ""
-                if annotate_nn_id:
-                    s1 = "{}: ".format(self.nnodes.index(id))
-                if annotate_nn_distance and distance < bbox_side:
-                    s2 = "{:,.1f}m".format(distance)
+                if distance < bbox_side:
+                    s1 = ""
+                    s2 = ""
+                    if annotate_nn_id:
+                        s1 = "{}: ".format(self.nnodes.index(id))
+                    if annotate_nn_distance:
+                        s2 = "{:,.1f}m".format(distance)
 
-                text = axis.text(self.network.node[id]['x'],
-                                 self.network.node[id]['y'],
-                                 s = s1 + s2,
-                                 color = labels_color)
-                texts.append(text)
+                    text = axis.text(self.network.node[id]['x'],
+                                     self.network.node[id]['y'],
+                                     s = s1 + s2,
+                                     color = labels_color)
+                    texts.append(text)
 
             if annotate_camera:
                 texts.append(camera_text)
