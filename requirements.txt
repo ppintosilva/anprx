@@ -6,3 +6,4 @@ typing >= 3.6.6
 enum34 >= 1.1.6
 scikit-learn >= 0.20.0
 osmnx >= 0.8.1
+adjustText >= 0.7.3
