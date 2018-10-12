@@ -9,14 +9,20 @@
 import osmnx as ox
 from collections import OrderedDict
 
-def lookup_ways(address):
+from .constants import OsmEntity
+
+def search_address(address,
+                   email = None):
     """
     Find the OpenStreetMap ways that match a given address.
 
     Parameters
     ----------
-    address:
-        Address for reverse geocoding
+    address :
+        Address to search for
+
+    email :
+        Valid email address in case you are making large number of
 
     Returns
     -------
@@ -27,8 +33,15 @@ def lookup_ways(address):
     params = OrderedDict()
     params['format'] = "json"
     params['address_details'] = 0
+
+    if email:
+        params['email'] = email
+
     params['q'] = address
 
     response_json = ox.nominatim_request(params = params)
 
-    return list(map(lambda x: int(x["osm_id"]), filter(lambda x: x['osm_type'] == "way", response_json)))
+    ways = filter(lambda x: x['osm_type'] == "way", response_json)
+    osmids = map(lambda x: int(x["osm_id"]), ways)
+
+    return list(osmids)

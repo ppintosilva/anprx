@@ -18,7 +18,7 @@ from collections import namedtuple
 
 from .helpers import *
 from .constants import *
-from .nominatim import lookup_ways
+from .nominatim import search_address
 from .utils import settings, config, log
 
 ###
@@ -825,7 +825,7 @@ def filter_by_address(network,
     log("Filtering edges by address.",
         level = lg.INFO)
 
-    osmway_ids = lookup_ways(address)
+    osmway_ids = search_address(address)
     address_edges = set(edges_from_osmid(
                             network = network,
                             osmids  = osmway_ids))

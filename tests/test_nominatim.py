@@ -1,7 +1,7 @@
 import anprx
 import pytest
 
-def test_nominatim_lookup_ways():
+def test_nominatim_search_address():
     expected = \
         [37899441,
          461119586,
@@ -11,11 +11,11 @@ def test_nominatim_lookup_ways():
          2544439,
          31992849]
 
-    result = anprx.lookup_ways("Newcastle A186 Westgate Rd")
+    result = anprx.search_address("Newcastle A186 Westgate Rd")
 
     assert expected == result
 
-def test_nominatim_lookup_ways_fail():
-    result = anprx.lookup_ways("AAAAAAAAAAA")
+def test_nominatim_search_address_fail():
+    result = anprx.search_address("AAAAAAAAAAA")
 
     assert result == []
