@@ -154,3 +154,20 @@ def edges_with_properties(G, properties, match_by = PropertiesFilter.all):
 
     else:
         raise ValueError("Invalid 'match_by' value. Pick one of PropertiesFilter.{{{}}}.".format(PropertiesFilter.__order__))
+
+def unit_vector(v):
+    """
+    Calculate the unit vector of an array or bunch of arrays.
+
+    Parameters
+    ---------
+    v : np.ndarray
+        vector(s)
+
+    Returns
+    -------
+    v_u
+        unit vector(s) of v
+    """
+    norm = np.linalg.norm(v, axis = 1)
+    return v / np.reshape(norm, (len(v), 1))

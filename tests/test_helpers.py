@@ -1,5 +1,6 @@
 import anprx
 import pytest
+import numpy as np
 import networkx as nx
 
 def test_is_in():
@@ -105,3 +106,12 @@ def test_flatten():
     assert list(anprx.flatten(l2)) == l2
     assert list(anprx.flatten(l1 + [l2])) == l1 + l2
     assert list(anprx.flatten(l3)) == l1 + l2
+
+def test_unit_vector():
+    v = np.array([1,2,1,1,0,1])
+    v = np.reshape(v, (3,2))
+    vunit = anprx.unit_vector(v)
+
+    assert np.shape(vunit) == np.shape(v)
+    for i in range(0, len(vunit)):
+        np.testing.assert_almost_equal(sum(vunit[i] ** 2), 1.0)
