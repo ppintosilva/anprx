@@ -127,3 +127,18 @@ def test_dot2d():
 
     with pytest.raises(ValueError):
         anprx.dot2d(v1,v2, method = "geronimo")
+
+
+def test_angle_between():
+    v1 = np.reshape(np.array([1,2,1,1,0,1,2,2,1,2]), (5,2))
+    v2 = np.reshape(np.array([2,1,3,2,1,0,1,1,-2,-1]), (5,2))
+
+    angles = anprx.angle_between(v1,v2)
+
+    np.testing.assert_array_almost_equal(
+        np.array([36.8698976,
+                  11.3099325,
+                  90,
+                  0,
+                  36.8698976]),
+        angles)
