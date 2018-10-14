@@ -202,3 +202,35 @@ def dot2d(v1, v2, method = "einsum"):
                          for i,j in zip(v1,v2)])
     else:
         raise ValueError("No such method for computing the dot product.")
+
+def angle_between(v1, v2):
+    """
+    Calculate the acute angle, in degrees, between two vectors. Vectorised for an array of vectors.
+
+    Parameters
+    ---------
+    v1 : np.ndarray
+        first vectors of each pair of vectors
+
+    v2 : np.ndarray
+        second vectors of each pair of vectors
+
+    Returns
+    -------
+    angles : np.array
+        acute angles between each pair of vectors
+    """
+    if np.shape(v1) != np.shape(v2):
+        raise ValueError("Input vectors don't have the same shape.")
+
+    v1_u = unit_vector(v1)
+    v2_u = unit_vector(v2)
+
+    vdots = dot2d(v1_u, v2_u)
+    clipped = np.clip(vdots, -1.0, 1.0)
+    angles = np.rad2deg(np.arccos(clipped))
+
+    reduce_angles = np.vectorize(
+        lambda x: 180 - x if x > 90 else x)
+
+    return reduce_angles(angles)
