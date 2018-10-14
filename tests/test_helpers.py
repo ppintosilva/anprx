@@ -115,3 +115,15 @@ def test_unit_vector():
     assert np.shape(vunit) == np.shape(v)
     for i in range(0, len(vunit)):
         np.testing.assert_almost_equal(sum(vunit[i] ** 2), 1.0)
+
+def test_dot2d():
+    v1 = np.reshape(np.array([1,2,1,1,0,1]), (3,2))
+    v2 = np.reshape(np.array([2,1,3,2,1,0]), (3,2))
+
+    np.testing.assert_array_equal(
+        anprx.dot2d(v1,v2, method = "einsum"),
+        anprx.dot2d(v1,v2, method = "loop")
+    )
+
+    with pytest.raises(ValueError):
+        anprx.dot2d(v1,v2, method = "geronimo")

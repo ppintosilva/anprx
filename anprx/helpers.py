@@ -171,3 +171,34 @@ def unit_vector(v):
     """
     norm = np.linalg.norm(v, axis = 1)
     return v / np.reshape(norm, (len(v), 1))
+
+def dot2d(v1, v2, method = "einsum"):
+    """
+    Vectorised dot product for 2d vectors.
+
+    Parameters
+    ---------
+    v1 : np.ndarray
+        vectors on the left side of the dot product
+
+    v2 : np.ndarray
+        vectors on the right side of the dot product
+
+    method: string
+        method used to compute the dot product between each pair of members in v1,v2. One of {'einsum', 'loop'}
+
+    Returns
+    -------
+    v
+        result of the dot products
+    """
+    if np.shape(v1) != np.shape(v2):
+        raise ValueError("Input vectors don't have the same shape.")
+
+    if method == "einsum":
+        return np.einsum("ij, ij -> i", v1, v2)
+    elif method == "loop":
+        return np.array([i.dot(j)
+                         for i,j in zip(v1,v2)])
+    else:
+        raise ValueError("No such method for computing the dot product.")
