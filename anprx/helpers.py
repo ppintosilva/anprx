@@ -193,7 +193,7 @@ def dot2d(v1, v2, method = "einsum"):
         result of the dot products
     """
     if np.shape(v1) != np.shape(v2):
-        raise ValueError("Input vectors don't have the same shape.")
+        raise ValueError("Input vectors don't have the same shape: {}, {}".format(np.shape(v1), np.shape(v2)))
 
     if method == "einsum":
         return np.einsum("ij, ij -> i", v1, v2)
@@ -221,7 +221,7 @@ def angle_between(v1, v2):
         acute angles between each pair of vectors
     """
     if np.shape(v1) != np.shape(v2):
-        raise ValueError("Input vectors don't have the same shape.")
+        raise ValueError("Input vectors don't have the same shape: {}, {}".format(np.shape(v1), np.shape(v2)))
 
     v1_u = unit_vector(v1)
     v2_u = unit_vector(v2)
