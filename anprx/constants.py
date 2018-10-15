@@ -6,7 +6,7 @@
 # Web: https://github.com/pedroswits/anprx
 ################################################################################
 
-from enum import Enum
+from enum import Enum, auto
 
 class Units(Enum):
     __order__ = 'm km'
@@ -61,22 +61,32 @@ def deg2sq_distance(unit = Units.m):
 
 class BBoxAreaMethod(Enum):
     __order__ = 'simple sins'
-    simple = 1
-    sins = 2
+    simple = auto()
+    sins = auto()
 
 class PropertiesFilter(Enum):
     __order__ = 'all at_least_one'
-    all = 1
-    at_least_one = 2
+    all = auto()
+    at_least_one = auto()
 
 class EdgeDistanceMethod(Enum):
     __order__ = "sum_of_distances, mean_of_distances, closest_node, farthest_node"
-    sum_of_distances = 1
-    mean_of_distances = 2
-    closest_node = 3
-    farthest_node = 4
+    sum_of_distances = auto()
+    mean_of_distances = auto()
+    closest_node = auto()
+    farthest_node = auto()
 
 class Filter(Enum):
     __order__ = "none, address"
-    none = 1
-    address = 2
+    none = auto()
+    address = auto()
+
+class OsmEntity(Enum):
+    __order__ = "N, W, R"
+
+    N = auto()  # Node
+    W = auto()  # Way
+    R = auto()  # Relation
+
+    def __str__(self):
+        return str(self.name)
