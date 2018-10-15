@@ -13,9 +13,12 @@ import numpy as np
 import osmnx as ox
 import logging as lg
 import networkx as nx
+import matplotlib.colorbar as colorbar
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 
 from .constants import *
+from .helpers import angle_between
 from .utils import settings, config, log
 from .navigation import Point, Edge, get_nodes_in_range, get_edges_in_range, local_coordinate_system, filter_by_address
 
@@ -46,8 +49,10 @@ class Camera(object):
                  id,
                  point,
                  address = None,
-                 radius = 50,
-                 filter_edges_by = Filter.address):
+                 radius = 40,
+                 max_angle = 40,
+                 nsamples = 100,
+                 edges_filter = Filter.address):
         """
         Parameters
         ---------
@@ -64,11 +69,14 @@ class Camera(object):
         self.point = point
         self.address = address
         self.radius = radius
+        self.max_angle = max_angle
+        self.nsamples = nsamples
+        self.edges_filter = edges_filter
 
-        self.gen_local_coord_system(filter_edges_by)
+        self.gen_local_coord_system()
+        self.estimate_orientation()
 
-    def gen_local_coord_system(self,
-                               filter_by = Filter.address):
+    def gen_local_coord_system(self):
         start_time = time.time()
 
         near_nodes, _ = \
@@ -101,13 +109,12 @@ class Camera(object):
                 .format(all_nodes),
             level = lg.DEBUG)
 
-        log("Added {} out of range nodes that are part of nearest edges." +
-            "Total nodes: {}."\
-                .format(len(set(near_nodes[0]) & all_nodes),
+        log("Added {} out of range nodes that are part of nearest edges. Total nodes: {}."\
+                .format(len(all_nodes - set(near_nodes[0])),
                         len(all_nodes)),
             level = lg.INFO)
 
-        if filter_by == Filter.address:
+        if self.edges_filter == Filter.address:
             if self.address is None:
                 log("Camera {} has no address defined.".format(self.id))
                 raise ValueError("Given camera has no address defined")
@@ -129,7 +136,7 @@ class Camera(object):
                                     nodes = all_nodes,
                                     edges = candidate_edges)
 
-        log("Generated local coordinate system for camera",
+        log("Generated local coordinate system for camera in {:,.3f} seconds".format(time.time()-start_time),
             level = lg.INFO)
 
         self.nnodes = list(all_nodes)
@@ -139,9 +146,73 @@ class Camera(object):
         self.ledges = edges_lvectors
 
 
+    def estimate_orientation(self):
+        """
+        Algorithm:
+
+            1. Sample points from each candidate edge, representing the points in the road that are potentially being observed by the camera.
+
+            2. Filter all sampled points:
+                - Whose distance to the camera is:
+                    - greater than radius
+                    - lower than 10 meters
+                - Whose angle with the edge vector is greater than 30
+                - Are intercepted by a nearby edge representing traffic moving in a different direction
+
+            3. The probability that an edge is the 'correct' edge is equal to the proportion of unfiltered sampled points over the total of sampled points.
+
+            4. Pick the candidate edge with highest probability.
+        """
+        start_time = time.time()
+        p_cedges = dict()
+
+        for candidate in self.cedges:
+            start_point = self.lnodes[candidate.u]
+            finish_point = self.lnodes[candidate.v]
+            line = self.ledges[candidate]
+            step = -line/self.nsamples
+
+            points = np.array([
+                        start_point + step*i
+                        for i in range(0, self.nsamples + 1)
+                    ])
+
+            distances = np.linalg.norm(points, ord = 2, axis = 1)
+
+            line_rep = np.repeat(np.reshape(line, (1,2)), self.nsamples + 1, axis = 0)
+            angles = angle_between(points, line_rep)
+
+            filter_point = np.vectorize(
+                lambda d, a: True if d < self.radius and a < self.max_angle else False)
+
+            filtered_points = filter_point(distances, angles)
+
+            p_cedge = 1 - (sum(filtered_points)/len(filtered_points))
+            p_cedges[candidate] = p_cedge
+
+            log("Probability of candidate {} : {:,.4f}"\
+                    .format(candidate, p_cedge),
+                level = lg.INFO)
+
+            log("start = {} ".format(start_point) +
+                "finish = {} ".format(finish_point) +
+                "step = {}".format(step),
+                # "points = {}\n".format(points) +
+                # "distances = {}\n".format(distances) +
+                # "angles = {}".format(angles),
+                level = lg.DEBUG)
+
+        self.p_cedges = p_cedges
+        self.edge = max(p_cedges.keys(),
+                        key=(lambda key: p_cedges[key]))
+
+        log("Estimated the edge observed by camera {}, using {} nsamples for each candidate, in {:,.3f} seconds".format(self.id, self.nsamples, time.time()-start_time),
+            level = lg.INFO)
+
+
     def plot(self,
              bbox_side = 100,
-             camera_color = "#EB8258",
+             camera_color = "#9DC183",
              camera_markersize = 10,
              annotate_camera = True,
              draw_radius = False,
@@ -160,11 +231,11 @@ class Camera(object):
              labels_color = "white",
              annotate_nn_id = True,
              annotate_nn_distance = True,
-             nn_id_arrow_color = 'r',
+             nn_id_arrow_color = 'white',
              adjust_text = True,
              ):
         """
-        Plot a networkx spatial graph.
+        Plot a camera on a networkx spatial graph.
 
         Parameters
         ----------
@@ -252,11 +323,16 @@ class Camera(object):
         # Color near edges
         edges_colors = [edge_color] * len(self.network.edges())
 
+        norm = colors.Normalize(vmin=0, vmax=1)
+        cmap = plt.cm.ScalarMappable(norm=norm, cmap=plt.cm.plasma)
+        pcolor = { edge : cmap.to_rgba(p)
+                   for edge, p in self.p_cedges.items() }
+
         j = 0
         for u,v,k in self.network.edges(keys = True, data = False):
             edge = Edge(u,v,k)
             if edge in self.cedges:
-                edges_colors[j] = nedge_color
+                edges_colors[j] = pcolor[edge]
             j = j + 1
 
         # Plot it
@@ -345,7 +421,3 @@ class Camera(object):
                     arrowprops=dict(arrowstyle="->", color=nn_id_arrow_color, lw=0.5))
 
         return fig, axis
-
-
-    def lplot(self):
-        pass
