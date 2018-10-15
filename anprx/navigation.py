@@ -707,8 +707,12 @@ def get_nodes_in_range(network,
     """
     start_time = time.time()
 
-    log("{} input points: {}".format(len(points), points),
+    log("Finding nodes in range for {} input points."\
+            .format(len(points)),
         level = lg.INFO)
+
+    log("Points: {}".format(points),
+        level = lg.DEBUG)
 
     if tree is None:
         tree, nodes = get_balltree(network)
@@ -727,7 +731,12 @@ def get_nodes_in_range(network,
 
     node_ids = np.array([ np.array(nodes.iloc[point_nn].index).astype(np.int64) for point_nn in nn_node_idx ])
 
-    log("Found osmids: {}".format(node_ids))
+    log("Found {} osmids, respectively."\
+            .format([len(ids) for ids in node_ids]),
+        level = lg.INFO)
+
+    log("Osmids: {}".format(node_ids),
+        level = lg.DEBUG)
 
     # nn = [ (ids, distances ) for ids, distances in zip(nn_ids, nn_node_distances) ]
     nn_node_distances = nn_node_distances * rad2distance(Units.m)
