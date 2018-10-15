@@ -103,27 +103,6 @@ west : float
 ###
 ###
 
-Orientation = namedtuple(
-    'Orientation',
-    [
-        'bearing',
-        'osm_way'
-    ])
-"""
-Orientation of a traffic camera.
-
-Attributes
-----------
-bearing : float
-    Mean bearing of camera
-
-osm_way : int
-    OpenStreetMap Id of the way (road segment) that is observed by the camera.
-"""
-
-###
-###
-
 Edge = namedtuple(
     'Edge',
     [
@@ -681,12 +660,18 @@ def get_balltree(network):
     tree
         instance of sklearn.neighbors.BallTree
     """
+    start_time = time.time()
+
     nodes = pd.DataFrame({'x': nx.get_node_attributes(network, 'x'),
                           'y': nx.get_node_attributes(network, 'y')})
 
     nodes_rad = np.deg2rad(nodes[['y', 'x']].astype(np.float))
 
     tree = BallTree(nodes_rad, metric='haversine')
+
+    log("Generated BallTree in {:,.3f} seconds"\
+            .format(time.time()-start_time),
+        level = lg.INFO)
 
     return tree, nodes
 
