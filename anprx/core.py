@@ -185,9 +185,9 @@ class Camera(object):
             filter_point = np.vectorize(
                 lambda d, a: True if d < self.radius and a < self.max_angle else False)
 
-            filtered_points = filter_point(distances, angles)
+            unfiltered_points = filter_point(distances, angles)
 
-            p_cedge = 1 - (sum(filtered_points)/len(filtered_points))
+            p_cedge = sum(unfiltered_points)/len(unfiltered_points)
             p_cedges[candidate] = p_cedge
 
             log("Probability of candidate {} : {:,.4f}"\
@@ -196,10 +196,10 @@ class Camera(object):
 
             log("start = {} ".format(start_point) +
                 "finish = {} ".format(finish_point) +
-                "step = {}".format(step),
-                # "points = {}\n".format(points) +
-                # "distances = {}\n".format(distances) +
-                # "angles = {}".format(angles),
+                "step = {}\n".format(step) +
+                "points = {}\n".format(points) +
+                "distances = {}\n".format(distances) +
+                "angles = {}".format(angles),
                 level = lg.DEBUG)
 
         self.p_cedges = p_cedges
@@ -231,7 +231,6 @@ class Camera(object):
              labels_color = "white",
              annotate_nn_id = True,
              annotate_nn_distance = True,
-             nn_id_arrow_color = 'white',
              adjust_text = True,
              ):
         """
@@ -296,9 +295,6 @@ class Camera(object):
         annotate_nn_distance : bool
             whether the text annotating near nodes should include their distance from the camera
 
-        nn_id_arrow_color : string
-            the color of the arrow linking the point and annotation of each near node
-
         adjust_text : bool
             whether to optimise the location of the annotations, using adjustText.adjust_text, so that overlaps are avoided. Notice that this incurs considerable computational cost. Turning this feature off will result in much faster plotting.
 
@@ -324,7 +320,7 @@ class Camera(object):
         edges_colors = [edge_color] * len(self.network.edges())
 
         norm = colors.Normalize(vmin=0, vmax=1)
-        cmap = plt.cm.ScalarMappable(norm=norm, cmap=plt.cm.plasma)
+        cmap = plt.cm.ScalarMappable(norm=norm, cmap=plt.cm.Oranges)
         pcolor = { edge : cmap.to_rgba(p)
                    for edge, p in self.p_cedges.items() }
 
@@ -351,6 +347,19 @@ class Camera(object):
                 node_size = node_size,
                 show = False,
                 close = False)
+
+        axis2 = fig.add_axes([0.3, 0.15, 0.15, 0.02])
+
+        cb = colorbar.ColorbarBase(
+                axis2,
+                cmap=plt.cm.Oranges,
+                norm=norm,
+                orientation='horizontal')
+        cb.set_ticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
+        cb.ax.xaxis.set_tick_params(pad=0,
+                                    color = labels_color,
+                                    labelcolor = labels_color,
+                                    labelsize = 8)
 
         # Plot Camera
         camera_point = axis.plot(
@@ -417,7 +426,6 @@ class Camera(object):
                     add_objects = camera_point + additional_obj,
                     force_points = (0.5, 0.6),
                     expand_text = (1.2, 1.4),
-                    expand_points = (1.4, 1.4),
-                    arrowprops=dict(arrowstyle="->", color=nn_id_arrow_color, lw=0.5))
+                    expand_points = (1.4, 1.4))
 
         return fig, axis
