@@ -52,4 +52,4 @@ def test_plot():
                 adjust_text = False)
     camera.plot(annotate_nn_id = False,
                 annotate_nn_distance = True)
-    camera.plot()
+    camera.plot(save = True, filename = "TEST_CAMERA")
