@@ -228,7 +228,7 @@ class Camera(object):
              edge_alpha=1,
              #
              probability_cmap = plt.cm.Oranges,
-             colorbar = True,
+             draw_colorbar = True,
              #
              nn_color = '#009DDC',
              nedge_color = '#D0CE7C',
@@ -287,7 +287,7 @@ class Camera(object):
         probability_cmap : matplotlib colormap
             Colormap used to color candidate edges by probability of observation.
 
-        colorbar : bool
+        draw_colorbar : bool
             whether to plot a colorbar as a legend for probability_cmap
 
         nn_color : string
@@ -359,7 +359,7 @@ class Camera(object):
                 show = False,
                 close = False)
 
-        if colorbar:
+        if draw_colorbar:
             axis2 = fig.add_axes([0.3, 0.15, 0.15, 0.02])
 
             cb = colorbar.ColorbarBase(
