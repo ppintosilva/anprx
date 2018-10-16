@@ -212,7 +212,8 @@ class Camera(object):
 
     def plot(self,
              bbox_side = 100,
-             camera_color = "#367588",
+             camera_color = "#FFFFFF",
+             camera_marker = "*",
              camera_markersize = 10,
              annotate_camera = True,
              draw_radius = False,
@@ -230,7 +231,7 @@ class Camera(object):
              probability_cmap = plt.cm.Oranges,
              draw_colorbar = True,
              #
-             nn_color = '#009DDC',
+             nn_color = '#66B3BA',
              nedge_color = '#D0CE7C',
              labels_color = "white",
              annotate_nn_id = False,
@@ -247,6 +248,9 @@ class Camera(object):
 
         camera_color : string
             the color of the point representing the location of the camera
+
+        camera_marker : string
+            marker used to represent the camera
 
         camera_markersize: int
             the size of the marker representing the camera
@@ -377,7 +381,7 @@ class Camera(object):
         camera_point = axis.plot(
                 self.point.lng,
                 self.point.lat,
-                marker = 'o',
+                marker = camera_marker,
                 color = camera_color,
                 markersize = camera_markersize)
 
@@ -395,7 +399,7 @@ class Camera(object):
             camera_text = axis.annotate(
                             str(self.id),
                             xy = (self.point.lng, self.point.lat),
-                            color = camera_color)
+                            color = labels_color)
 
         if annotate_nn_id or annotate_nn_distance:
             # Annotate nearest_neighbors
