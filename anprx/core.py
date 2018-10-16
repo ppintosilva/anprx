@@ -212,7 +212,7 @@ class Camera(object):
 
     def plot(self,
              bbox_side = 100,
-             camera_color = "#9DC183",
+             camera_color = "#367588",
              camera_markersize = 10,
              annotate_camera = True,
              draw_radius = False,
@@ -222,19 +222,23 @@ class Camera(object):
              node_edgecolor='none',
              node_zorder=2,
              node_size=50,
+             node_alpha = 1,
              edge_color='#555555',
              edge_linewidth=1.5,
              edge_alpha=1,
              #
+             probability_cmap = plt.cm.Oranges,
+             colorbar = True,
+             #
              nn_color = '#009DDC',
              nedge_color = '#D0CE7C',
              labels_color = "white",
-             annotate_nn_id = True,
+             annotate_nn_id = False,
              annotate_nn_distance = True,
              adjust_text = True,
              ):
         """
-        Plot a camera on a networkx spatial graph.
+        Plot the camera on a networkx spatial graph.
 
         Parameters
         ----------
@@ -259,17 +263,17 @@ class Camera(object):
         node_color : string
             the color of the nodes - passed to osmnx's plot_graph
 
-        node_size : int
-            the size of the nodes - passed to osmnx's plot_graph
-
-        node_alpha : float
-            the opacity of the nodes - passed to osmnx's plot_graph
-
         node_edgecolor : string
             the color of the node's marker's border - passed to osmnx's plot_graph
 
         node_zorder : int
             zorder to plot nodes, edges are always 2, so make node_zorder 1 to plot nodes beneath them or 3 to plot nodes atop them - passed to osmnx's plot_graph
+
+        node_size : int
+            the size of the nodes - passed to osmnx's plot_graph
+
+        node_alpha : float
+            the opacity of the nodes - passed to osmnx's plot_graph
 
         edge_color : string
             the color of the edges' lines - passed to osmnx's plot_graph
@@ -279,6 +283,12 @@ class Camera(object):
 
         edge_alpha : float
             the opacity of the edges' lines - passed to osmnx's plot_graph
+
+        probability_cmap : matplotlib colormap
+            Colormap used to color candidate edges by probability of observation.
+
+        colorbar : bool
+            whether to plot a colorbar as a legend for probability_cmap
 
         nn_color : string
             the color of near nodes - these are not necessarily in range of the camera, but they are part of edges that do
@@ -320,7 +330,7 @@ class Camera(object):
         edges_colors = [edge_color] * len(self.network.edges())
 
         norm = colors.Normalize(vmin=0, vmax=1)
-        cmap = plt.cm.ScalarMappable(norm=norm, cmap=plt.cm.Oranges)
+        cmap = plt.cm.ScalarMappable(norm=norm, cmap=probability_cmap)
         pcolor = { edge : cmap.to_rgba(p)
                    for edge, p in self.p_cedges.items() }
 
@@ -342,24 +352,26 @@ class Camera(object):
                 node_edgecolor = node_edgecolor,
                 node_zorder = node_zorder,
                 edge_color = edges_colors,
+                node_alpha = node_alpha,
                 edge_linewidth = edge_linewidth,
                 edge_alpha = edge_alpha,
                 node_size = node_size,
                 show = False,
                 close = False)
 
-        axis2 = fig.add_axes([0.3, 0.15, 0.15, 0.02])
+        if colorbar:
+            axis2 = fig.add_axes([0.3, 0.15, 0.15, 0.02])
 
-        cb = colorbar.ColorbarBase(
-                axis2,
-                cmap=plt.cm.Oranges,
-                norm=norm,
-                orientation='horizontal')
-        cb.set_ticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
-        cb.ax.xaxis.set_tick_params(pad=0,
-                                    color = labels_color,
-                                    labelcolor = labels_color,
-                                    labelsize = 8)
+            cb = colorbar.ColorbarBase(
+                    axis2,
+                    cmap=probability_cmap,
+                    norm=norm,
+                    orientation='horizontal')
+            cb.set_ticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
+            cb.ax.xaxis.set_tick_params(pad=0,
+                                        color = labels_color,
+                                        labelcolor = labels_color,
+                                        labelsize = 8)
 
         # Plot Camera
         camera_point = axis.plot(
@@ -397,7 +409,7 @@ class Camera(object):
                     s1 = ""
                     s2 = ""
                     if annotate_nn_id:
-                        s1 = "{}: ".format(self.nnodes.index(id))
+                        s1 = "{}: ".format(id)
                     if annotate_nn_distance:
                         s2 = "{:,.1f}m".format(distance)
 
