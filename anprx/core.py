@@ -27,11 +27,9 @@ from .navigation import Point, Edge, get_nodes_in_range, get_edges_in_range, loc
 
 class Camera(object):
     """
-    Represents a traffic camera located on the roadside, observing the street.
-    This may represent any type of camera recording a road segment with a given
-    orientation in respect to the true North (bearing). The orientation of the camera
-    may be estimated by providing the address of the street it observes, in the case
-    of labelled data, or solely based on it's location, in the case of unlabelled data.
+    A ANPR traffic camera.
+
+    Represents a traffic camera located on the roadside, observing the street. This may be any type of camera recording a road segment with a given orientation in respect to the true North (bearing). The orientation of the camera may be estimated by providing the address of the street it observes, in the case of labelled data, or solely based on it's location, in the case of unlabelled data.
 
     Attributes
     ----------
@@ -64,13 +62,13 @@ class Camera(object):
 
         Filter.address - exclude edges whose address is different than the one manually annotated by traffic engineers.
 
-    nnodes : list[int]
+    nnodes : list of int
         nodes near the camera. These are composed of the nodes that are within the range the camera and nodes whose edges have a node that is within the range of the camera.
 
-    nedges : list[Edge]
+    nedges : list of Edge
         edges near the camera. Edges which have at least 1 node within the range of the camera.
 
-    cedges : list[Edge]
+    cedges : list of Edge
         candidate edges for
 
     lnodes : dict( int : np.array() )
@@ -117,9 +115,7 @@ class Camera(object):
             number of road points to sample when estimating camera orientation
 
         edges_filter : Filter
-            filter nearby edges according to a criteria:
-
-            Filter.address - exclude edges whose address is different than the one manually annotated by traffic engineers.
+            filter nearby edges according to a criteria. For instance, using Filter.address exclude edges whose address is different than the one manually annotated by traffic engineers.
         """
         self.network = network
         # @TODO - Check if network contains the camera?
@@ -137,7 +133,7 @@ class Camera(object):
 
     def gen_local_coord_system(self):
         """
-        Find nearest nodes and edges, and encode them in a cartesian system whose origin is the camera.
+        Find nearest nodes and edges, and encode them in a cartesian system whose origin is the camera. Executed by __init__.
         """
         start_time = time.time()
 
@@ -210,8 +206,11 @@ class Camera(object):
 
     def estimate_orientation(self):
         """
-        Estimate the edge of the road network that the camera is observing.
+        Estimate the edge of the road network that the camera is observing. Executed by __init__.
 
+        Points are sampled from each candidate edge, are filtered based on whether the distance and angle to the camera is below the maximum. The probability, that a candidate edge is the true edge, is then just the proportion of sampled points that fit this criteria.
+        """
+        """
         Algorithm steps:
 
             1. Sample points from each candidate edge, representing the points in the road that are potentially being observed by the camera.

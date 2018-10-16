@@ -128,88 +128,13 @@ k : int
 ###
 ###
 
-def points_from_lists(latitudes, longitudes):
-    """
-    Merge two lists, containing latitudes and longitudes,
-    to a list of Points
-
-    Parameters
-    ---------
-    latitudes : List[float]
-        list of latitudes
-
-    longitudes : List[float]
-        list of longitudes
-
-    Returns
-    -------
-    List[Point]
-    """
-    return [ Point(lat, lng) for lat, lng in zip(latitudes, longitudes) ]
-
-###
-###
-
-def points_from_tuples(points):
-    """
-    Transform a list of tuples to a list of points (named tuples).
-
-    Parameters
-    ---------
-    points : List[Tuple]
-        list of points
-
-    Returns
-    -------
-    List[Point]
-    """
-    return [ Point(x[0], x[1]) for x in points ]
-
-###
-###
-
-def latitudes_from_points(points):
-    """
-    Return the latitudes of a list of points.
-
-    Parameters
-    ---------
-    points : List[Point]
-        list of points
-
-    Returns
-    -------
-    latitudes
-        List[float]
-    """
-    return [ point.lat for point in points ]
-
-###
-###
-
-def longitudes_from_points(points):
-    """
-    Return the longitudes of a list of points.
-
-    Parameters
-    ---------
-    points : List[Point]
-        list of points
-
-    Returns
-    -------
-    longitudes
-        List[float]
-    """
-    return [ point.lng for point in points ]
-
 def to_point(nvector):
     """
     Converts a point represented by an n-vector to latitude and longitude.
 
     Parameters
     ----------
-    nvector : np.ndarray (3,)
+    nvector : np.ndarray
         the n-vector of a point given by latitude and longitude
 
     Returns
@@ -232,7 +157,7 @@ def to_nvector(point):
     Returns
     -------
     np.ndarray
-        A numpy nd.array with shape (3,), representing the same point as an n-vector (vector in 3D space).
+        A numpy.ndarray with shape (3,), representing the same point as an n-vector (vector in 3D space).
 
     """
 
@@ -250,15 +175,15 @@ def great_circle_distance(origin, destination):
 
     Parameters
     ----------
-    origin : numpy nd.array with shape (3,)
+    origin : np.ndarray
         origin point nvector
 
-    destination : numpy nd.array with shape (3,)
+    destination : np.ndarray
         destination point nvector
 
     Returns
     -------
-    float64
+    float
         great circle distance ("as the crow flies")
 
     """
@@ -277,15 +202,15 @@ def true_bearing(origin, destination):
 
     Parameters
     ----------
-    origin : numpy nd.array with shape (3,)
+    origin : np.ndarray
         origin point nvector
 
-    destination : numpy nd.array with shape (3,)
+    destination : np.ndarray
         destination point nvector
 
     Returns
     -------
-    float64
+    float
         bearing (angle) between the two points, in degrees
 
     """
@@ -317,7 +242,7 @@ def as_lvector(origin, point):
 
     Returns
     -------
-    np.ndarray (2,)
+    np.ndarray
         vector representing the target Point in the new (local) cartesian coordinate system
 
     """
@@ -362,8 +287,8 @@ def get_bbox_area(bbox,
     bbox : BBox
         bounding box (north, south, east, west)
 
-    unit
-        one of SQUARED_KM or SQUARED_M
+    unit : Unit
+        unit of distance
 
     Returns
     -------
@@ -406,7 +331,7 @@ def get_meanpoint(points):
 
     Parameters
     ---------
-    points : List[Point]
+    points : list of Point
         list of points
 
     Returns
@@ -438,7 +363,7 @@ def bbox_from_points(points,
 
     Parameters
     ---------
-    points : List[Point]
+    points : list of Point
         list of points
 
     unit : Units
@@ -455,14 +380,15 @@ def bbox_from_points(points,
 
     Returns
     -------
-    longitudes
-        List[float]
+    list of float
+        longitudes
+
     """
     if len(points) == 0:
         raise ValueError("List of points is empty.")
 
-    latitudes = latitudes_from_points(points)
-    longitudes = longitudes_from_points(points)
+    latitudes = [ point.lat for point in points ]
+    longitudes = [ point.lng for point in points ]
 
     max_lat = max(latitudes)
     min_lat = min(latitudes)
@@ -508,11 +434,11 @@ def get_surrounding_network(points,
                             max_area = 10, # 10 sq km
                             graph_name = None):
     """
-    Get the drivable network that encompasses a set of points.
+    Get the drivable network that encompasses a set of points. Uses osmnx for this purpose.
 
     Parameters
     ----------
-    points : List[Point]
+    points : list of Point
         list of points
 
     rel_margins : RelativeMargins
@@ -526,8 +452,8 @@ def get_surrounding_network(points,
 
     Returns
     -------
-    street_network :
-        NetworkX MultiDiGraph
+    nx.MultiDiGraph
+        a graph representing the street network
     """
 
     bbox = bbox_from_points(
@@ -561,20 +487,20 @@ def get_surrounding_network(points,
 
 def edges_from_osmid(network, osmids):
     """
-    Get the network edge(s) that match a given osmid.
+    Get the network edges that match a given osmid, for several input osmids.
 
     Parameters
     ---------
     network : nx.MultiDiGraph
         a street network
 
-    osmids : list(int)
+    osmids : list of int
         osmids of network edge = 1+ OSM ways = road segment
 
     Returns
     -------
-    generator
-        generator of Edge(u,v,k)
+    generator of Edge
+        edges that match a osmid, for each input osmid
     """
     properties = {"osmid" : osmids}
     log("Looking for the edges with the osmids: {}".format(set(osmids)))
@@ -603,13 +529,13 @@ def distance_to_edge(network,
     point : point
         point
 
-    method : anprx.constants.EdgeDistanceMethod
+    method : EdgeDistanceMethod
         metric used to compute distance to edge
 
     Returns
     -------
-    distance to road segment
-        float
+    float
+        distance from point to edge according to distance metric
     """
     distance_node_from = ox.great_circle_vec(
                                 lat1 = point.lat,
@@ -648,7 +574,7 @@ def distance_to_edge(network,
 
 def get_balltree(network):
     """
-    G
+    Generate a BallTree for a network that allows for fast generalized N-point problems, namely nearest nodes/edges search.
 
     Parameters
     ---------
@@ -657,8 +583,8 @@ def get_balltree(network):
 
     Returns
     -------
-    tree
-        instance of sklearn.neighbors.BallTree
+    sklearn.neighbors.BallTree
+        a spatial index for the network
     """
     start_time = time.time()
 
@@ -690,7 +616,7 @@ def get_nodes_in_range(network,
     network : nx.MultiDiGraph
         street network
 
-    points : array-like[Point]
+    points : array-like of Point
         array of points
 
     radius : float
@@ -701,9 +627,8 @@ def get_nodes_in_range(network,
 
     Returns
     -------
-    nearest nodes and distances, sorted according to points
-        (np.array[np.array[float]],
-         np.array[np.array[float]])
+    np.ndarray, np.ndarray
+        nearest nodes (ids) and distances, sorted according to points
     """
     start_time = time.time()
 
@@ -738,7 +663,6 @@ def get_nodes_in_range(network,
     log("Osmids: {}".format(node_ids),
         level = lg.DEBUG)
 
-    # nn = [ (ids, distances ) for ids, distances in zip(nn_ids, nn_node_distances) ]
     nn_node_distances = nn_node_distances * rad2distance(Units.m)
 
     log("Found nearest nodes to {} points in {:,.3f} seconds".format(len(points), time.time()-start_time))
@@ -758,13 +682,13 @@ def get_edges_in_range(network,
     network : nx.MultiDiGraph
         street network
 
-    points_nodes_in_range : list[Points]
-        list of points
+    nodes_in_range : np.ndarray
+        ids of nodes in range, for a bunch of points
 
     Returns
     -------
-    nearest nodes and distances, sorted according to points
-        (np.array[np.array[float]] , np.array[np.array[float]] ]
+    list of set of Edge
+        list of set of nearest edges, sorted according to input nodes
     """
     start_time = time.time()
 
@@ -804,15 +728,15 @@ def filter_by_address(network,
     network : nx.MultiDiGraph
         street network
 
-    edges : np.array([(u,v,k)])
+    edges : array-like of Edge
         array of edges
 
     address : str
 
     Returns
     -------
-    edges
-        np.array([(u,v,k)])
+    list of Edge
+        edges or a subset of edges
     """
     start_time = time.time()
 
@@ -861,9 +785,8 @@ def local_coordinate_system(network,
 
     Returns
     -------
-    nodes and edges represented in new coordinate system
-        (np.array([np.array(float)]),
-         np.array([np.array(float)]))
+    np.ndarray, np.ndarray
+        nodes and edges represented in the new cartesian coordinate system
     """
     start_time = time.time()
 

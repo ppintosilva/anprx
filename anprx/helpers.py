@@ -82,8 +82,8 @@ def edges_with_at_least_one_property(G, properties):
 
     Returns
     -------
-    generator
-        generator of edges (u,v,key)
+    generator of (u,v,k)
+        generator of edges
     """
     for u,v,k,d in G.edges(keys = True, data = True):
         for key, values in properties.items():
@@ -107,8 +107,8 @@ def edges_with_all_properties(G, properties):
 
     Returns
     -------
-    generator
-        generator of edges (u,v,key)
+    generator of (u,v,k)
+        generator of edges
     """
 
     for u,v,k,d in G.edges(keys = True, data = True):
@@ -143,8 +143,8 @@ def edges_with_properties(G, properties, match_by = PropertiesFilter.all):
 
     Returns
     -------
-    generator
-        generator of edges (u,v,key)
+    generator of (u,v,k)
+        generator of edges
     """
     if   match_by == PropertiesFilter.at_least_one:
         return edges_with_at_least_one_property(G, properties)
@@ -166,7 +166,7 @@ def unit_vector(v):
 
     Returns
     -------
-    v_u
+    np.ndarray
         unit vector(s) of v
     """
     norm = np.linalg.norm(v, axis = 1)
@@ -189,7 +189,7 @@ def dot2d(v1, v2, method = "einsum"):
 
     Returns
     -------
-    v
+    np.ndarray
         result of the dot products
     """
     if np.shape(v1) != np.shape(v2):
@@ -217,7 +217,7 @@ def angle_between(v1, v2):
 
     Returns
     -------
-    angles : np.array
+    np.ndarray
         acute angles between each pair of vectors
     """
     if np.shape(v1) != np.shape(v2):

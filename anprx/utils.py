@@ -51,6 +51,10 @@ anprx's global settings.
 ###
 
 def init_osmnx():
+    """
+    Configure osmnx's settings to match anprx's settings.
+    """
+
     osmnx_folder = os.path.join(settings["app_folder"], "osmnx")
     if not os.path.exists(osmnx_folder):
         os.makedirs(osmnx_folder)
@@ -62,9 +66,7 @@ def init_osmnx():
         cache_folder = os.path.join(osmnx_folder, "cache"),
         use_cache = True,
         log_file = True,
-        log_console = False)
-
-    return True
+        log_console = False)    
 
 ###
 ###
@@ -408,7 +410,8 @@ def get_from_cache(url):
 
     Returns
     -------
-    response_json : dict
+    dict
+        response_json
     """
     # if the tool is configured to use the cache
     if settings["cache_http"]:
@@ -444,7 +447,8 @@ def get_http_headers(user_agent=None, referer=None, accept_language=None):
 
     Returns
     -------
-    headers : dict
+    dict
+        headers
     """
 
     if user_agent is None:
@@ -481,6 +485,10 @@ def save_fig(fig,
 
     dpi : int
         resolution of the image file
+
+    Returns
+    -------
+    None
     """
     start_time = time.time()
 
