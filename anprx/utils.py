@@ -12,6 +12,7 @@
 import io
 import os
 import sys
+import time
 import json
 import hashlib
 import inspect
@@ -462,8 +463,7 @@ def save_fig(fig,
              axis,
              filename,
              file_format = 'png',
-             dpi = 300,
-             axis_off = True):
+             dpi = 300):
     """
     Save a figure to disk.
 
@@ -481,11 +481,11 @@ def save_fig(fig,
 
     dpi : int
         resolution of the image file
-
-    axis_off : bool
-        if True, constrain the saved figure's extent to the interior of the axis
     """
     start_time = time.time()
+
+    if not filename:
+        raise ValueError("Please define a filename")
 
     path_filename = os.path.join(
         settings["app_folder"],
@@ -501,12 +501,7 @@ def save_fig(fig,
         fig.savefig(path_filename, bbox_inches=0, format=file_format, facecolor=fig.get_facecolor(), transparent=True)
 
     else:
-        if axis_off:
-            # if axis is turned off, constrain the saved figure's extent to
-            # the interior of the axis
-            extent = axis.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-        else:
-            extent = 'tight'
+        extent = 'tight'
 
         fig.savefig(path_filename,
                     dpi=dpi,
