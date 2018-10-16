@@ -19,7 +19,7 @@ import matplotlib.colors as colors
 
 from .constants import *
 from .helpers import angle_between
-from .utils import settings, config, log
+from .utils import settings, config, log, save_fig
 from .navigation import Point, Edge, get_nodes_in_range, get_edges_in_range, local_coordinate_system, filter_by_address
 
 ###
@@ -218,6 +218,9 @@ class Camera(object):
              annotate_camera = True,
              draw_radius = False,
              #
+             fig_height = 6,
+             fig_width = None,
+             margin = 0.02,
              bgcolor='k',
              node_color='#999999',
              node_edgecolor='none',
@@ -229,6 +232,7 @@ class Camera(object):
              edge_alpha=1,
              #
              probability_cmap = plt.cm.Oranges,
+             show_colorbar_label = True,
              draw_colorbar = True,
              #
              nn_color = '#66B3BA',
@@ -237,6 +241,11 @@ class Camera(object):
              annotate_nn_id = False,
              annotate_nn_distance = True,
              adjust_text = True,
+             #
+             save = False,
+             file_format = 'png',
+             filename = "camera",
+             dpi = 300
              ):
         """
         Plot the camera on a networkx spatial graph.
@@ -291,6 +300,9 @@ class Camera(object):
         probability_cmap : matplotlib colormap
             Colormap used to color candidate edges by probability of observation.
 
+        show_colorbar_label : bool
+            whether to set the label of the colorbar or not
+
         draw_colorbar : bool
             whether to plot a colorbar as a legend for probability_cmap
 
@@ -311,6 +323,18 @@ class Camera(object):
 
         adjust_text : bool
             whether to optimise the location of the annotations, using adjustText.adjust_text, so that overlaps are avoided. Notice that this incurs considerable computational cost. Turning this feature off will result in much faster plotting.
+
+        save : bool
+            whether to save the figure in the app folder's images directory
+
+        file_format : string
+            format of the image
+
+        filename : string
+            filename of the figure to be saved
+
+        dpi : int
+            resolution of the image
 
         Returns
         -------
@@ -350,7 +374,7 @@ class Camera(object):
             ox.plot_graph(
                 self.network,
                 bbox = bbox,
-                margin = 0,
+                margin = margin,
                 bgcolor = bgcolor,
                 node_color = nodes_colors,
                 node_edgecolor = node_edgecolor,
@@ -360,8 +384,12 @@ class Camera(object):
                 edge_linewidth = edge_linewidth,
                 edge_alpha = edge_alpha,
                 node_size = node_size,
+                save = False,
                 show = False,
-                close = False)
+                close = False,
+                axis_off = True,
+                fig_height = fig_height,
+                fig_width = fig_width)
 
         if draw_colorbar:
             axis2 = fig.add_axes([0.3, 0.15, 0.15, 0.02])
@@ -372,6 +400,8 @@ class Camera(object):
                     norm=norm,
                     orientation='horizontal')
             cb.set_ticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
+            if show_colorbar_label:
+                cb.set_label("Probability of camera orientation", color = labels_color, size = 9)
             cb.ax.xaxis.set_tick_params(pad=0,
                                         color = labels_color,
                                         labelcolor = labels_color,
@@ -443,5 +473,8 @@ class Camera(object):
                     force_points = (0.5, 0.6),
                     expand_text = (1.2, 1.4),
                     expand_points = (1.4, 1.4))
+
+        if save:
+            save_fig(fig, axis, filename, file_format, dpi)
 
         return fig, axis
