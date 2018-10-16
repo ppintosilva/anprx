@@ -64,32 +64,6 @@ def get_network(distance = 1000, center = (54.97351, -1.62545)):
 
     return network
 
-def test_points_from_lists():
-    latitudes, longitudes = get_lat_lng()
-    point1, point2 = get_points()
-
-    assert anprx.points_from_lists(latitudes, longitudes) == [ point1, point2 ]
-
-def test_points_from_tuples():
-    latitudes, longitudes = get_lat_lng()
-    point1, point2 = get_points()
-
-    points = [(latitudes[0], longitudes[0]), (latitudes[1], longitudes[1])]
-    assert anprx.points_from_tuples(points) == [ point1, point2 ]
-
-def test_latitudes_from_points():
-    latitudes, longitudes = get_lat_lng()
-    point1, point2 = get_points()
-
-    assert anprx.latitudes_from_points([point1,point2]) == latitudes
-
-def test_longitudes_from_points():
-    latitudes, longitudes = get_lat_lng()
-    point1, point2 = get_points()
-    
-    assert anprx.longitudes_from_points([point1,point2]) == longitudes
-
-
 def test_bbox_area_small():
     bbox = get_bbox(size = "small")
 
