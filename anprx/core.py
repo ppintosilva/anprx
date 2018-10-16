@@ -35,14 +35,52 @@ class Camera(object):
 
     Attributes
     ----------
+    network : nx.MultiDiGraph
+        a street network
+
+    id : string
+        a camera identifier
+
     point : Point
         location of the camera
+
+    edge : Edge
+        edge observed by the camera
 
     address : str
         address of the street observed by the camera as labelled by a human
 
-    orientation : dict of str : Orientation
-        camera orientation
+    radius : int
+        range of the camera, in meters. Usually limited to 50 meters.
+
+    max_angle : int
+        max angle between the camera and the cars (plate number) travelling on the road, at which the ANPR camera can reliably operate.
+
+    nsamples : int
+        number of road points to sample when estimating camera orientation
+
+    edges_filter : Filter
+        filter nearby edges according to a criteria:
+
+        Filter.address - exclude edges whose address is different than the one manually annotated by traffic engineers.
+
+    nnodes : list[int]
+        nodes near the camera. These are composed of the nodes that are within the range the camera and nodes whose edges have a node that is within the range of the camera.
+
+    nedges : list[Edge]
+        edges near the camera. Edges which have at least 1 node within the range of the camera.
+
+    cedges : list[Edge]
+        candidate edges for
+
+    lnodes : dict( int : np.array() )
+        nnodes represented in a cartesian coordinate system, whose origin is the camera.
+
+    ledges : dict( Edge : np.array() )
+        cedges represented in a cartesian coordinate system, whose origin is the camera.
+
+    p_cedges : dict(Edge : float)
+        probability that a candidate edge is the edge that the camera is pointing at (observing)
     """
     def __init__(self,
                  network,
@@ -54,13 +92,34 @@ class Camera(object):
                  nsamples = 100,
                  edges_filter = Filter.address):
         """
+
         Parameters
         ---------
+        network : nx.MultiDiGraph
+            a street network
+
+        id : string
+            a camera identifier
+
         point : Point
             location of the camera
 
         address : str
             address of the street observed by the camera as labelled by a human
+
+        radius : int
+            range of the camera, in meters. Usually limited to 50 meters.
+
+        max_angle : int
+            max angle between the camera and the cars (plate number) travelling on the road, at which the ANPR camera can reliably operate.
+
+        nsamples : int
+            number of road points to sample when estimating camera orientation
+
+        edges_filter : Filter
+            filter nearby edges according to a criteria:
+
+            Filter.address - exclude edges whose address is different than the one manually annotated by traffic engineers.
         """
         self.network = network
         # @TODO - Check if network contains the camera?
@@ -77,6 +136,9 @@ class Camera(object):
         self.estimate_orientation()
 
     def gen_local_coord_system(self):
+        """
+        Find nearest nodes and edges, and encode them in a cartesian system whose origin is the camera.
+        """
         start_time = time.time()
 
         near_nodes, _ = \
@@ -148,16 +210,18 @@ class Camera(object):
 
     def estimate_orientation(self):
         """
-        Algorithm:
+        Estimate the edge of the road network that the camera is observing.
+
+        Algorithm steps:
 
             1. Sample points from each candidate edge, representing the points in the road that are potentially being observed by the camera.
 
-            2. Filter all sampled points:
+            2. Count all sampled points:
                 - Whose distance to the camera is:
-                    - greater than radius
-                    - lower than 10 meters
-                - Whose angle with the edge vector is greater than 30
-                - Are intercepted by a nearby edge representing traffic moving in a different direction
+                    - lower than radius
+                    - greater than min_radius (TODO)
+                - Whose angle with the edge vector is lower than max_angle
+                - Are intercepted by a nearby edge representing traffic moving in a different direction (TODO)
 
             3. The probability that an edge is the 'correct' edge is equal to the proportion of unfiltered sampled points over the total of sampled points.
 
