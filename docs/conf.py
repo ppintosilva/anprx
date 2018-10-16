@@ -181,8 +181,15 @@ def no_namedtuple_attrib_docstring(app, what, name,
         # We don't return, so we need to purge in-place
         del lines[:]
 
+def skip(app, what, name, obj, skip, options):
+    if name == "__init__":
+        return False
+    return skip
+
+
 def setup(app):
     app.connect(
         'autodoc-process-docstring',
         no_namedtuple_attrib_docstring,
     )
+    app.connect("autodoc-skip-member", skip)

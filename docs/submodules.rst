@@ -1,37 +1,22 @@
 Submodules
 ==========
 
-anprx.network
-----------------------
-
-.. autoclass:: anprx.network.Point
-   :show-inheritance:
-
-.. autoclass:: anprx.network.BBox
-   :show-inheritance:
-
-.. autoclass:: anprx.network.RelativeMargins
-   :show-inheritance:
-
-.. autoclass:: anprx.network.Orientation
-   :show-inheritance:
-
-.. autoclass:: anprx.network.Camera
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
 anprx.core
 ----------------------
 
 .. automodule:: anprx.core
    :members:
+   :show-inheritance:
+
+anprx.navigation
+----------------------
+
+.. automodule:: anprx.navigation
+   :members:
    :undoc-members:
    :show-inheritance:
 
-
-anprx.nominatum
+anprx.nominatim
 ------------------------
 
 .. automodule:: anprx.nominatim
@@ -48,6 +33,14 @@ anprx.helpers
    :undoc-members:
    :show-inheritance:
 
+
+anprx.constants
+----------------------
+
+.. automodule:: anprx.constants
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 anprx.utils
 ----------------------
