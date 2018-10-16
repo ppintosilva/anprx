@@ -30,6 +30,7 @@ settings = {
     "data_folder_name" : "data",
     "logs_folder_name" : "logs",
     "cache_folder_name" : "cache",
+    "images_folder_name" : "images",
 
     "log_to_file" : True,
     "log_to_console" : False,
@@ -122,7 +123,8 @@ def config(**kwargs):
 def create_folders(app_folder = None,
                    logs_folder_name = None,
                    data_folder_name = None,
-                   cache_folder_name = None):
+                   cache_folder_name = None,
+                   images_folder_name = None):
     """
     Creates app folders: parent, data, logs and cache
 
@@ -130,12 +132,18 @@ def create_folders(app_folder = None,
     ----------
     app_folder : string
         location of main app directory
+
     logs_folder_name : string
         name of folder containing logs
+
     data_folder_name : string
         name of folder containing data
+
     cache_folder_name : string
         name of folder containing cached http responses
+
+    images_folder_name : string
+        name of folder containing saved images
 
     Returns
     -------
@@ -149,6 +157,8 @@ def create_folders(app_folder = None,
         data_folder_name = settings["data_folder_name"]
     if cache_folder_name is None:
         cache_folder_name = settings["cache_folder_name"]
+    if images_folder_name is None:
+        images_folder_name = settings["images_folder_name"]
 
     if not os.path.exists(app_folder):
         os.makedirs(app_folder)
@@ -169,6 +179,11 @@ def create_folders(app_folder = None,
 
     if not os.path.exists(cache_folder):
         os.mkdir(cache_folder)
+
+    images_folder = os.path.join(app_folder, images_folder_name)
+
+    if not os.path.exists(images_folder):
+        os.mkdir(images_folder)
 
 ###
 ###
@@ -207,10 +222,13 @@ def log(message,
     ----------
     message : string
         the content of the message to log
+
     level : int
         one of the logger.level constants
+
     name : string
         name of the logger
+
     filename : string
         name of the log file
 
@@ -273,8 +291,10 @@ def get_logger(level = None,
     ----------
     level : int
         one of the logger.level constants
+
     name : string
         name of the logger
+
     filename : string
         name of the log file
 
@@ -339,19 +359,17 @@ def clean_logger(name = settings["app_name"]):
 def save_to_cache(url, response_json):
     """
     Save an HTTP response json object to the cache.
-    If the request was sent to server via POST instead of GET, then URL should
-    be a GET-style representation of request. Users should always pass
-    OrderedDicts instead of dicts of parameters into request functions, so that
-    the parameters stay in the same order each time, producing the same URL
-    string, and thus the same hash. Otherwise the cache will eventually contain
-    multiple saved responses for the same request because the URL's parameters
-    appeared in a different order each time.
+
+    If the request was sent to server via POST instead of GET, then URL should be a GET-style representation of request. Users should always pass OrderedDicts instead of dicts of parameters into request functions, so that the parameters stay in the same order each time, producing the same URL string, and thus the same hash. Otherwise the cache will eventually contain multiple saved responses for the same request because the URL's parameters appeared in a different order each time.
+
     Parameters
     ----------
     url : string
         the url of the request
+
     response_json : dict
         the json response
+
     Returns
     -------
     None
@@ -381,10 +399,12 @@ def save_to_cache(url, response_json):
 def get_from_cache(url):
     """
     Retrieve a HTTP response json object from the cache.
+
     Parameters
     ----------
     url : string
         the url of the request
+
     Returns
     -------
     response_json : dict
@@ -409,14 +429,18 @@ def get_from_cache(url):
 def get_http_headers(user_agent=None, referer=None, accept_language=None):
     """
     Update the default requests HTTP headers with OSMnx info.
+
     Parameters
     ----------
     user_agent : str
         the user agent string, if None will set with OSMnx default
+
     referer : str
         the referer string, if None will set with OSMnx default
+
     accept_language : str
         make accept-language explicit e.g. for consistent nominatim result sorting
+
     Returns
     -------
     headers : dict
@@ -432,3 +456,65 @@ def get_http_headers(user_agent=None, referer=None, accept_language=None):
     headers = requests.utils.default_headers()
     headers.update({'User-Agent': user_agent, 'referer': referer, 'Accept-Language': accept_language})
     return headers
+
+
+def save_fig(fig,
+             axis,
+             filename,
+             file_format = 'png',
+             dpi = 300,
+             axis_off = True):
+    """
+    Save a figure to disk.
+
+    Parameters
+    ----------
+    fig : figure
+
+    axis : axis
+
+    filename : str
+        name of the file
+
+    file_format : str
+        format of the file (e.g. 'png', 'jpg', 'svg')
+
+    dpi : int
+        resolution of the image file
+
+    axis_off : bool
+        if True, constrain the saved figure's extent to the interior of the axis
+    """
+    start_time = time.time()
+
+    path_filename = os.path.join(
+        settings["app_folder"],
+        settings["images_folder_name"],
+        os.extsep.join([filename, file_format]))
+
+    if file_format == 'svg':
+        # if the file_format is svg, prep the fig/ax a bit for saving
+        axis.axis('off')
+        axis.set_position([0, 0, 1, 1])
+        axis.patch.set_alpha(0.)
+        fig.patch.set_alpha(0.)
+        fig.savefig(path_filename, bbox_inches=0, format=file_format, facecolor=fig.get_facecolor(), transparent=True)
+
+    else:
+        if axis_off:
+            # if axis is turned off, constrain the saved figure's extent to
+            # the interior of the axis
+            extent = axis.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+        else:
+            extent = 'tight'
+
+        fig.savefig(path_filename,
+                    dpi=dpi,
+                    bbox_inches=extent,
+                    format=file_format,
+                    facecolor=fig.get_facecolor(),
+                    transparent=True)
+
+    log('Saved the figure to disk in {:,.2f} seconds'\
+            .format(time.time()-start_time),
+        level = lg.INFO)

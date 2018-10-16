@@ -29,12 +29,15 @@ def assert_file_structure():
     logs_folder = os.path.join(app_folder, anprx.settings["logs_folder_name"])
     data_folder = os.path.join(app_folder, anprx.settings["data_folder_name"])
     cache_folder = os.path.join(app_folder, anprx.settings["cache_folder_name"])
+    images_folder = os.path.join(app_folder,
+    anprx.settings["images_folder_name"])
     osmnx_folder = os.path.join(app_folder, "osmnx")
 
     assert os.path.exists(app_folder)
     assert os.path.exists(logs_folder)
     assert os.path.exists(data_folder)
     assert os.path.exists(cache_folder)
+    assert os.path.exists(images_folder)
     assert os.path.exists(osmnx_folder)
 
 def assert_log_file():
