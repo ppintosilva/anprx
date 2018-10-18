@@ -669,6 +669,7 @@ def get_nodes_in_range(network,
 
     return node_ids, nn_node_distances
 
+
 ###
 ###
 
@@ -687,7 +688,7 @@ def get_edges_in_range(network,
 
     Returns
     -------
-    list of set of Edge
+    list of list of Edge
         list of set of nearest edges, sorted according to input nodes
     """
     start_time = time.time()
@@ -696,14 +697,14 @@ def get_edges_in_range(network,
 
     for point in nodes_in_range:
 
-        edges = set()
+        edges = list()
         for nn in point:
             nearest_edges = \
                 list(network.in_edges(nn, keys = True)) + \
                 list(network.out_edges(nn, keys = True,))
 
             for edge in nearest_edges:
-                edges.add(Edge(edge[0], edge[1], edge[2]))
+                edges.append(Edge(edge[0], edge[1], edge[2]))
 
         edges_in_range.append(edges)
 
@@ -744,11 +745,11 @@ def filter_by_address(network,
         level = lg.INFO)
 
     osmway_ids = search_address(address)
-    address_edges = set(edges_from_osmid(
-                            network = network,
-                            osmids  = osmway_ids))
+    address_edges = edges_from_osmid(
+                        network = network,
+                        osmids  = osmway_ids)
 
-    candidate_edges = edges & address_edges
+    candidate_edges = set(edges) & set(address_edges)
 
     log("Filtered {} out of {} edges in {:,.3f} seconds, based on address: {}."\
             .format(len(edges) - len(candidate_edges),
@@ -757,7 +758,7 @@ def filter_by_address(network,
                     address),
         level = lg.INFO)
 
-    return candidate_edges
+    return list(candidate_edges)
 
 ###
 ###
@@ -781,7 +782,7 @@ def local_coordinate_system(network,
         ids of nodes
 
     edges : array-like
-        edges (u,v,k) to represent in new cartesian coordinate system
+        edges (u,v) to represent in new cartesian coordinate system
 
     Returns
     -------
@@ -824,3 +825,91 @@ def local_coordinate_system(network,
         level = lg.INFO)
 
     return nodes_lvectors, edges_lvectors
+
+
+###
+###
+
+def as_undirected(edges):
+    """
+    Represent a directed edge as undirected.
+
+    Parameters
+    ---------
+    edges : array-like of Edge
+        array of directed edges (u,v,k)
+
+    Returns
+    -------
+    list of tuples
+    """
+    edge_set = frozenset(
+                  [ frozenset((edge[0], edge[1]))
+                    for edge in edges])
+
+    return [ tuple(edge) for edge in edge_set ]
+
+
+###
+###
+
+def flow_direction(u, v,
+                   left_handed_traffic = True):
+    """
+    Calculates the closest direction of traffic flow in a system where an observer (origin), watches traffic flowing between two points.
+
+    For instance, consider an observer watching traffic in 2 traffic lanes, running in opposite directions, between two points: point one at 45 degrees of bearing and point 2 at 135 degrees of bearing. Then, if the traffic is left-handed, the closest of the two lanes is the one for which traffic flows from point 2 to point 1. If traffic is right-handed, then traffic is flowing from point 1 to point 2 in the closest of the two lanes (in reference to the observer - the origin of the coordinate system).
+
+    Parameters
+    ---------
+    u : np.ndarray (2,)
+        cartesian coordinates of point 1 relative to observer
+
+    v : np.ndarray (2,)
+        cartesian coordinates of point 2 relative to observer
+
+    left_handed_traffic : bool
+        True the traffic keeps to the left side of the road, false otherwise.
+
+    Returns
+    -------
+    tuple
+    """
+    start_time = time.time()
+
+    log("Calculating how traffic flows between {} and {}, in a {} system.".format(u,v,str(traffic_flow)),
+        level = lg.INFO)
+
+    log("{:17} = {}".format("point u", u),
+        level = lg.DEBUG)
+    log("{:17} = {}".format("point v", v),
+        level = lg.DEBUG)
+
+    phi_u = np.rad2deg(math.atan2(u[1], u[0]))
+    phi_v = np.rad2deg(math.atan2(v[1], v[0]))
+
+    log("{:17} = {:.2f}".format("phi_u", phi_u),
+        level = lg.DEBUG)
+    log("{:17} = {:.2f}".format("phi_v", phi_v),
+        level = lg.DEBUG)
+
+    phi_diff = phi_v - phi_u
+    log("{:17} = {:.2f}".format("phi_v - phi_u", phi_diff),
+        level = lg.DEBUG)
+
+    if abs(phi_diff) > 180:
+        phi_diff = phi_diff - np.sign(phi_diff)*360
+
+    log("{:17} = {:.2f}"\
+            .format("new phi_v - phi_u", phi_diff),
+        level = lg.DEBUG)
+
+    if (phi_diff > 0 and left_handed_traffic) or \
+       (phi_diff < 0 and not left_handed_traffic):
+        direction = (u,v)
+    else:
+        direction = (v,u)
+
+    log("Found that flows from {} to {} in {:,.3f} seconds"\
+            .format(direction[0], direction[1], time.time() - start_time),
+        level = lg.INFO)
