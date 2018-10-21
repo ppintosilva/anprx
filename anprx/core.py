@@ -20,7 +20,7 @@ import matplotlib.colors as colors
 from .constants import *
 from .helpers import angle_between
 from .utils import settings, config, log, save_fig
-from .navigation import Point, Edge, get_nodes_in_range, get_edges_in_range, local_coordinate_system, filter_by_address
+from .navigation import Point, Edge, get_nodes_in_range, get_edges_in_range, local_coordinate_system, filter_by_address, flow_of_closest_lane
 
 ###
 ###
@@ -88,6 +88,7 @@ class Camera(object):
                  radius = 40,
                  max_angle = 40,
                  nsamples = 100,
+                 left_handed_traffic = True,
                  edges_filter = Filter.address):
         """
 
@@ -127,9 +128,10 @@ class Camera(object):
         self.max_angle = max_angle
         self.nsamples = nsamples
         self.edges_filter = edges_filter
+        self.left_handed_traffic = left_handed_traffic
 
         self.gen_local_coord_system()
-        self.estimate_orientation()
+        self.estimate_edge()
 
     def gen_local_coord_system(self):
         """
@@ -204,7 +206,7 @@ class Camera(object):
         self.ledges = edges_lvectors
 
 
-    def estimate_orientation(self):
+    def estimate_edge(self):
         """
         Estimate the edge of the road network that the camera is observing. Executed by __init__.
 
@@ -266,8 +268,31 @@ class Camera(object):
                 level = lg.DEBUG)
 
         self.p_cedges = p_cedges
-        self.edge = max(p_cedges.keys(),
+
+        edge_maxp = max(p_cedges.keys(),
                         key=(lambda key: p_cedges[key]))
+
+        # Is the street one way or two ways?
+        reverse_edge = Edge(edge_maxp.v, edge_maxp.u, edge_maxp.k)
+
+        if self.network.has_edge(*reverse_edge):
+            # Two way street - figure out which of the lanes is closer based on left/hand-side traffic system
+            point_u = self.lnodes[edge_maxp.u]
+            point_v = self.lnodes[edge_maxp.v]
+
+            flow = flow_of_closest_lane(point_u, point_v,
+                                        self.left_handed_traffic)
+            flow_from = flow[0]
+
+            if tuple(flow_from) == tuple(point_u):
+                self.edge = edge_maxp
+            else:
+                self.edge = reverse_edge
+        else:
+            # One way street - single edge between nodes
+            self.edge = edge_maxp
+
+        log("The best guess for the edge observed by the camera is: {}".format(self.edge))
 
         log("Estimated the edge observed by camera {}, using {} nsamples for each candidate, in {:,.3f} seconds".format(self.id, self.nsamples, time.time()-start_time),
             level = lg.INFO)
