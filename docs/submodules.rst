@@ -71,9 +71,8 @@ anprx.constants
 anprx.utils
 ----------------------
 
-.. autodata:: anprx.utils.settings
-
 .. automodule:: anprx.utils
    :members:
+   :exclude-members: __init__
    :undoc-members:
    :show-inheritance:
