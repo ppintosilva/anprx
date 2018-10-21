@@ -27,9 +27,7 @@ from .navigation import Point, Edge, get_nodes_in_range, get_edges_in_range, loc
 
 class Camera(object):
     """
-    A ANPR traffic camera.
-
-    Represents a traffic camera located on the roadside, observing the street. This may be any type of camera recording a road segment with a given orientation in respect to the true North (bearing). The orientation of the camera may be estimated by providing the address of the street it observes, in the case of labelled data, or solely based on it's location, in the case of unlabelled data.
+    A traffic camera located on the side of a drivable street.
 
     Attributes
     ----------
@@ -43,24 +41,24 @@ class Camera(object):
         location of the camera
 
     edge : Edge
-        edge observed by the camera
+        edge observed by the camera. Calculated by estimate_edge.
 
     address : str
         address of the street observed by the camera as labelled by a human
 
-    radius : int
-        range of the camera, in meters. Usually limited to 50 meters.
+    radius : float
+        range of the camera, in meters. Usually limited to 50 meters
 
-    max_angle : int
-        max angle between the camera and the cars (plate number) travelling on the road, at which the ANPR camera can reliably operate.
+    max_angle : float
+        max angle, in degrees, between the camera and the vehicle's plate number, at which the ANPR camera can operate reliably. Usually up to 40 degrees
 
     nsamples : int
-        number of road points to sample when estimating camera orientation
+        number of road points to sample when estimating the camera's observed edge.
 
     edges_filter : Filter
-        filter nearby edges according to a criteria:
+        filter nearby edges according to criteria:
 
-        Filter.address - exclude edges whose address is different than the one manually annotated by traffic engineers.
+        **Filter.address** - exclude edges whose address is different than the one manually annotated by traffic engineers
 
     nnodes : list of int
         nodes near the camera. These are composed of the nodes that are within the range the camera and nodes whose edges have a node that is within the range of the camera.
@@ -69,16 +67,16 @@ class Camera(object):
         edges near the camera. Edges which have at least 1 node within the range of the camera.
 
     cedges : list of Edge
-        candidate edges for
+        edges considered as candidates for self.edge - the edge observed by the camera
 
-    lnodes : dict( int : np.array() )
-        nnodes represented in a cartesian coordinate system, whose origin is the camera.
+    lnodes : dict( int : np.ndarray )
+        nnodes represented in a cartesian coordinate system, whose origin is the camera
 
-    ledges : dict( Edge : np.array() )
-        cedges represented in a cartesian coordinate system, whose origin is the camera.
+    ledges : dict( Edge : np.ndarray )
+        cedges represented in a cartesian coordinate system, whose origin is the camera
 
     p_cedges : dict(Edge : float)
-        probability that a candidate edge is the edge that the camera is pointing at (observing)
+        probability of each candidate edge that it is the edge that the camera is observing
     """
     def __init__(self,
                  network,
@@ -113,7 +111,10 @@ class Camera(object):
             max angle between the camera and the cars (plate number) travelling on the road, at which the ANPR camera can reliably operate.
 
         nsamples : int
-            number of road points to sample when estimating camera orientation
+            number of road points to sample when estimating the camera's observed edge.
+
+        left_handed_traffic : bool
+            True if traffic flows on the left-hand side of the road, False otherwise.
 
         edges_filter : Filter
             filter nearby edges according to a criteria. For instance, using Filter.address exclude edges whose address is different than the one manually annotated by traffic engineers.
@@ -213,7 +214,7 @@ class Camera(object):
         Points are sampled from each candidate edge, are filtered based on whether the distance and angle to the camera is below the maximum. The probability, that a candidate edge is the true edge, is then just the proportion of sampled points that fit this criteria.
         """
         """
-        Algorithm steps:
+        Algorithm
 
             1. Sample points from each candidate edge, representing the points in the road that are potentially being observed by the camera.
 
@@ -489,7 +490,7 @@ class Camera(object):
                     orientation='horizontal')
             cb.set_ticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
             if show_colorbar_label:
-                cb.set_label("Probability of camera orientation", color = labels_color, size = 9)
+                cb.set_label("Probability of edge", color = labels_color, size = 9)
             cb.ax.xaxis.set_tick_params(pad=0,
                                         color = labels_color,
                                         labelcolor = labels_color,
