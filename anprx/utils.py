@@ -2,6 +2,7 @@
 # Module: utils.py
 # Description: Global settings, configuration, logging and caching
 # License: MIT, see full license in LICENSE.txt
+# Author: Pedro Pinto da Silva
 # Web: https://github.com/pedroswits/pydummy
 ################################################################################
 # Based on: Geoff Boeing's OSMnx package
@@ -11,9 +12,12 @@
 import io
 import os
 import sys
+import time
 import json
 import hashlib
+import inspect
 import unicodedata
+import osmnx as ox
 import logging as lg
 import datetime as dt
 
@@ -27,6 +31,7 @@ settings = {
     "data_folder_name" : "data",
     "logs_folder_name" : "logs",
     "cache_folder_name" : "cache",
+    "images_folder_name" : "images",
 
     "log_to_file" : True,
     "log_to_console" : False,
@@ -38,6 +43,36 @@ settings = {
     "default_referer" : "Python anprx package (https://github.com/pedroswits/anprx)",
     "default_accept_language" : "en"
 }
+"""
+anprx's global settings.
+"""
+
+###
+###
+
+def init_osmnx():
+    """
+    Configure osmnx's settings to match anprx's settings.
+    """
+
+    osmnx_folder = os.path.join(settings["app_folder"], "osmnx")
+    if not os.path.exists(osmnx_folder):
+        os.makedirs(osmnx_folder)
+
+    ox.config(
+        data_folder = os.path.join(osmnx_folder, "data"),
+        logs_folder = os.path.join(osmnx_folder, "logs"),
+        imgs_folder = os.path.join(osmnx_folder, "images"),
+        cache_folder = os.path.join(osmnx_folder, "cache"),
+        use_cache = True,
+        log_file = True,
+        log_console = False)    
+
+###
+###
+# Run this here globally so that we don't have to run it everytime before we call an osmnx statement.
+
+init_osmnx()
 
 ###
 ###
@@ -91,7 +126,8 @@ def config(**kwargs):
 def create_folders(app_folder = None,
                    logs_folder_name = None,
                    data_folder_name = None,
-                   cache_folder_name = None):
+                   cache_folder_name = None,
+                   images_folder_name = None):
     """
     Creates app folders: parent, data, logs and cache
 
@@ -99,12 +135,18 @@ def create_folders(app_folder = None,
     ----------
     app_folder : string
         location of main app directory
+
     logs_folder_name : string
         name of folder containing logs
+
     data_folder_name : string
         name of folder containing data
+
     cache_folder_name : string
         name of folder containing cached http responses
+
+    images_folder_name : string
+        name of folder containing saved images
 
     Returns
     -------
@@ -118,9 +160,13 @@ def create_folders(app_folder = None,
         data_folder_name = settings["data_folder_name"]
     if cache_folder_name is None:
         cache_folder_name = settings["cache_folder_name"]
+    if images_folder_name is None:
+        images_folder_name = settings["images_folder_name"]
 
     if not os.path.exists(app_folder):
         os.makedirs(app_folder)
+
+    init_osmnx()
 
     logs_folder = os.path.join(app_folder, logs_folder_name)
 
@@ -136,6 +182,11 @@ def create_folders(app_folder = None,
 
     if not os.path.exists(cache_folder):
         os.mkdir(cache_folder)
+
+    images_folder = os.path.join(app_folder, images_folder_name)
+
+    if not os.path.exists(images_folder):
+        os.mkdir(images_folder)
 
 ###
 ###
@@ -174,10 +225,13 @@ def log(message,
     ----------
     message : string
         the content of the message to log
+
     level : int
         one of the logger.level constants
+
     name : string
         name of the logger
+
     filename : string
         name of the log file
 
@@ -188,19 +242,29 @@ def log(message,
     if level is None:
         level = settings["log_default_level"]
 
+    func = inspect.currentframe().f_back.f_code
+
     # if logging to file is turned on
     if settings["log_to_file"]:
         # get the current logger (or create a new one, if none), then log
         # message at requested level
         logger = get_logger(level=level, name=name, filename=filename)
+
+        complete_message = "{:>17} -> {:27} {}"\
+            .format(
+                os.path.basename(func.co_filename) +
+                ':' + str(func.co_firstlineno),
+                func.co_name + '()',
+                message)
+
         if level == lg.DEBUG:
-            logger.debug(message)
+            logger.debug(complete_message)
         elif level == lg.INFO:
-            logger.info(message)
+            logger.info(complete_message)
         elif level == lg.WARNING:
-            logger.warning(message)
+            logger.warning(complete_message)
         elif level == lg.ERROR:
-            logger.error(message)
+            logger.error(complete_message)
 
     # if logging to console is turned on, convert message to ascii and print to
     # the console
@@ -230,8 +294,10 @@ def get_logger(level = None,
     ----------
     level : int
         one of the logger.level constants
+
     name : string
         name of the logger
+
     filename : string
         name of the log file
 
@@ -256,7 +322,7 @@ def get_logger(level = None,
 
         # create file handler and log formatter and set them up
         handler = lg.FileHandler(log_filename, encoding='utf-8')
-        formatter = lg.Formatter('%(asctime)s %(levelname)s %(name)s %(message)s')
+        formatter = lg.Formatter('%(asctime)s %(levelname)10s %(message)s')
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         logger.setLevel(level)
@@ -296,19 +362,17 @@ def clean_logger(name = settings["app_name"]):
 def save_to_cache(url, response_json):
     """
     Save an HTTP response json object to the cache.
-    If the request was sent to server via POST instead of GET, then URL should
-    be a GET-style representation of request. Users should always pass
-    OrderedDicts instead of dicts of parameters into request functions, so that
-    the parameters stay in the same order each time, producing the same URL
-    string, and thus the same hash. Otherwise the cache will eventually contain
-    multiple saved responses for the same request because the URL's parameters
-    appeared in a different order each time.
+
+    If the request was sent to server via POST instead of GET, then URL should be a GET-style representation of request. Users should always pass OrderedDicts instead of dicts of parameters into request functions, so that the parameters stay in the same order each time, producing the same URL string, and thus the same hash. Otherwise the cache will eventually contain multiple saved responses for the same request because the URL's parameters appeared in a different order each time.
+
     Parameters
     ----------
     url : string
         the url of the request
+
     response_json : dict
         the json response
+
     Returns
     -------
     None
@@ -338,13 +402,16 @@ def save_to_cache(url, response_json):
 def get_from_cache(url):
     """
     Retrieve a HTTP response json object from the cache.
+
     Parameters
     ----------
     url : string
         the url of the request
+
     Returns
     -------
-    response_json : dict
+    dict
+        response_json
     """
     # if the tool is configured to use the cache
     if settings["cache_http"]:
@@ -366,17 +433,22 @@ def get_from_cache(url):
 def get_http_headers(user_agent=None, referer=None, accept_language=None):
     """
     Update the default requests HTTP headers with OSMnx info.
+
     Parameters
     ----------
     user_agent : str
         the user agent string, if None will set with OSMnx default
+
     referer : str
         the referer string, if None will set with OSMnx default
+
     accept_language : str
         make accept-language explicit e.g. for consistent nominatim result sorting
+
     Returns
     -------
-    headers : dict
+    dict
+        headers
     """
 
     if user_agent is None:
@@ -389,3 +461,63 @@ def get_http_headers(user_agent=None, referer=None, accept_language=None):
     headers = requests.utils.default_headers()
     headers.update({'User-Agent': user_agent, 'referer': referer, 'Accept-Language': accept_language})
     return headers
+
+
+def save_fig(fig,
+             axis,
+             filename,
+             file_format = 'png',
+             dpi = 300):
+    """
+    Save a figure to disk.
+
+    Parameters
+    ----------
+    fig : figure
+
+    axis : axis
+
+    filename : str
+        name of the file
+
+    file_format : str
+        format of the file (e.g. 'png', 'jpg', 'svg')
+
+    dpi : int
+        resolution of the image file
+
+    Returns
+    -------
+    None
+    """
+    start_time = time.time()
+
+    if not filename:
+        raise ValueError("Please define a filename")
+
+    path_filename = os.path.join(
+        settings["app_folder"],
+        settings["images_folder_name"],
+        os.extsep.join([filename, file_format]))
+
+    if file_format == 'svg':
+        # if the file_format is svg, prep the fig/ax a bit for saving
+        axis.axis('off')
+        axis.set_position([0, 0, 1, 1])
+        axis.patch.set_alpha(0.)
+        fig.patch.set_alpha(0.)
+        fig.savefig(path_filename, bbox_inches=0, format=file_format, facecolor=fig.get_facecolor(), transparent=True)
+
+    else:
+        extent = 'tight'
+
+        fig.savefig(path_filename,
+                    dpi=dpi,
+                    bbox_inches=extent,
+                    format=file_format,
+                    facecolor=fig.get_facecolor(),
+                    transparent=True)
+
+    log('Saved the figure to disk in {:,.2f} seconds'\
+            .format(time.time()-start_time),
+        level = lg.INFO)

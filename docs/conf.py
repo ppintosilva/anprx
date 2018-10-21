@@ -24,9 +24,9 @@ copyright = u'2018, Pedro Pinto da Silva'
 author = u'Pedro Pinto da Silva'
 
 # The short X.Y version
-version = u'0.0'
+version = u'0.1'
 # The full version, including alpha/beta/rc tags
-release = u'0.0.1'
+release = u'0.1.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -52,8 +52,7 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.napoleon',
     'sphinx.ext.todo',
-    'sphinx.ext.viewcode',
-    'numpydoc'
+    'sphinx.ext.viewcode'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -171,3 +170,26 @@ texinfo_documents = [
 
 
 # -- Extension configuration -------------------------------------------------
+
+def no_namedtuple_attrib_docstring(app, what, name,
+                                   obj, options, lines):
+    is_namedtuple_docstring = (
+        len(lines) == 1 and
+        lines[0].startswith('Alias for field number')
+    )
+    if is_namedtuple_docstring:
+        # We don't return, so we need to purge in-place
+        del lines[:]
+
+def skip(app, what, name, obj, skip, options):
+    if name == "__init__":
+        return False
+    return skip
+
+
+def setup(app):
+    app.connect(
+        'autodoc-process-docstring',
+        no_namedtuple_attrib_docstring,
+    )
+    app.connect("autodoc-skip-member", skip)

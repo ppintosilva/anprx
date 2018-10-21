@@ -5,6 +5,7 @@ import json
 import shutil
 import hashlib
 import requests
+import osmnx as ox
 import logging as lg
 import datetime as dt
 
@@ -13,7 +14,6 @@ import pytest
 
 ###
 
-@pytest.fixture
 def destroy_folders():
     app_folder = anprx.settings["app_folder"]
 
@@ -29,11 +29,16 @@ def assert_file_structure():
     logs_folder = os.path.join(app_folder, anprx.settings["logs_folder_name"])
     data_folder = os.path.join(app_folder, anprx.settings["data_folder_name"])
     cache_folder = os.path.join(app_folder, anprx.settings["cache_folder_name"])
+    images_folder = os.path.join(app_folder,
+    anprx.settings["images_folder_name"])
+    osmnx_folder = os.path.join(app_folder, "osmnx")
 
     assert os.path.exists(app_folder)
     assert os.path.exists(logs_folder)
     assert os.path.exists(data_folder)
     assert os.path.exists(cache_folder)
+    assert os.path.exists(images_folder)
+    assert os.path.exists(osmnx_folder)
 
 def assert_log_file():
     log_filename = os.path.join(anprx.settings["app_folder"], anprx.settings["logs_folder_name"], '{}_{}.log'.format(anprx.settings["app_name"], dt.datetime.today().strftime('%Y_%m_%d')))
@@ -42,15 +47,34 @@ def assert_log_file():
 
 ###
 
-def test_get_app_folder():
-    anprx.settings["app_folder"] == os.path.expanduser("~/.pyanprx")
+def test_init_osmnx():
+    app_folder = anprx.settings["app_folder"]
+    osmnx_folder = os.path.join(app_folder, "osmnx")
+
+    assert ox.settings.data_folder == \
+            os.path.join(osmnx_folder, "data")
+    assert ox.settings.logs_folder == \
+            os.path.join(osmnx_folder, "logs")
+    assert ox.settings.imgs_folder == \
+            os.path.join(osmnx_folder, "images")
+    assert ox.settings.cache_folder == \
+            os.path.join(osmnx_folder, "cache")
+    assert ox.settings.use_cache
+    assert ox.settings.log_file
+    assert not ox.settings.log_console
 
 ###
 
-def test_create_folders(destroy_folders):
+def test_get_app_folder():
+    assert anprx.settings["app_folder"] == os.path.expanduser("~/.anprx")
+
+###
+
+def test_create_folders():
+    anprx.config(app_folder = "/tmp/anprx___")
     anprx.create_folders()
     assert_file_structure()
-    destroy_folders
+    destroy_folders()
 
 ###
 
@@ -66,27 +90,23 @@ def test_config_invalid_setting():
 
 ###
 
-def test_config(destroy_folders):
-    anprx.config(log_to_console = True)
+def test_config():
+    # Changing the config generates a log entry and if no log files exist, then
+    anprx.config(app_folder = "/tmp/anprx")
 
-    assert anprx.settings["log_to_console"] == True
+    assert anprx.settings["log_to_console"] == False
     assert anprx.settings["cache_http"] == True
     assert anprx.settings["log_default_level"] == lg.INFO
 
     assert_file_structure()
     assert_log_file()
-    destroy_folders
-
-    anprx.config(app_folder = "/tmp/pyanprx")
-
-    assert_file_structure()
-    assert_log_file()
-    destroy_folders
+    destroy_folders()
 
 ###
 
-def test_cache(destroy_folders):
-    anprx.config(cache_http = True)
+def test_cache():
+    anprx.config(app_folder = "/tmp/anprx",
+                 cache_http = True)
 
     url = requests.Request('GET', "https://nominatim.openstreetmap.org/?format=json&addressdetails=1&q=Newcastle+A186+Westgate+Rd").prepare().url
 
@@ -113,4 +133,4 @@ def test_cache(destroy_folders):
 
     assert cache_content == json_str_from_cache
 
-    destroy_folders
+    destroy_folders()

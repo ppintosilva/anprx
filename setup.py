@@ -1,10 +1,11 @@
 from distutils.core import setup
+import setuptools
 
-short_description = "Create, visualise and levarage networks of ANPR cameras on the road network."
+short_description = "Create, visualise and leverage networks of ANPR cameras on the road network."
 
 long_description = \
 """
-**ANPRx** is a package to do analytics with networks of automatic number plate cameras.
+**ANPRx** is a package for traffic analytics using networks of automatic number plate cameras.
 """
 
 classifiers = ['Development Status :: 1 - Planning',
@@ -30,7 +31,7 @@ install_requires = [r.strip() for r in requirements_lines]
 
 # now call setup
 setup(name='anprx',
-      version='0.0.1',
+      version='0.1.0',
       description=short_description,
       long_description=long_description,
       classifiers=classifiers,
