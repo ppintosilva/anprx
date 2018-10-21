@@ -22,29 +22,29 @@ import anprx
 
 # Using the same dummy location twice
 locations = [ anprx.Point(lat = 54.974537,
-						  lng = -1.625644),
+                          lng = -1.625644),
 
-			  anprx.Point(lat = 54.974537,
-						  lng = -1.625644)
-			 ]
+              anprx.Point(lat = 54.974537,
+                          lng = -1.625644)
+            ]
 
 network = anprx.get_surrounding_network(locations)
 
 # With address filtering
 fake_camera1 = anprx.Camera(
-	network = network,
-	id = "c1",
-	point = locations[0],
-	address = "Pitt Street, Newcastle Upon Tyne, UK",
-	filter_by_address = True)
+  network = network,
+  id = "c1",
+  point = locations[0],
+  address = "Pitt Street, Newcastle Upon Tyne, UK",
+  filter_by_address = True)
 
 fig, axis = fake_camera1.plot()
 
 # Without address filtering
 fake_camera2 = anprx.Camera(
-	network = network,
-	id = "c2",
-	point = locations[1])
+  network = network,
+  id = "c2",
+  point = locations[1])
 
 fig, axis = fake_camera2.plot()
 ```
@@ -71,6 +71,7 @@ Among others:
 - Enrich the road network by adding further attributes to the edges (address details, elevation, bearing).
 - Filter/compress the road network based on edge attributes.
 - Batch analysis of ANPR data: trip identification and inference.
+
 
 ## Documentation
 
