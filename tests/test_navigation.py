@@ -336,49 +336,49 @@ def test_direction_of_flow_q1_q2():
 
     for q1,q2 in q1_q2:
         assert anprx.flow_of_closest_lane(q1,q2,
-                                    left_handed_traffic = True) == (q1,q2)
+                                    left_handed = True) == (q1,q2)
         assert anprx.flow_of_closest_lane(q2,q1,
-                                    left_handed_traffic = True) == (q1,q2)
+                                    left_handed = True) == (q1,q2)
         assert anprx.flow_of_closest_lane(q1,q2,
-                                    left_handed_traffic = False) == (q2,q1)
+                                    left_handed = False) == (q2,q1)
         assert anprx.flow_of_closest_lane(q2,q1,
-                                    left_handed_traffic = False) == (q2,q1)
+                                    left_handed = False) == (q2,q1)
 
 def test_direction_of_flow_q2_q3():
     q2_q3 = np.array(np.meshgrid(points_2q, points_3q, indexing = 'xy')).T.reshape(-1,2)
 
     for q2,q3 in q2_q3:
         assert anprx.flow_of_closest_lane(q2,q3,
-                                    left_handed_traffic = True) == (q2,q3)
+                                    left_handed = True) == (q2,q3)
         assert anprx.flow_of_closest_lane(q3,q2,
-                                    left_handed_traffic = True) == (q2,q3)
+                                    left_handed = True) == (q2,q3)
         assert anprx.flow_of_closest_lane(q2,q3,
-                                    left_handed_traffic = False) == (q3,q2)
+                                    left_handed = False) == (q3,q2)
         assert anprx.flow_of_closest_lane(q3,q2,
-                                    left_handed_traffic = False) == (q3,q2)
+                                    left_handed = False) == (q3,q2)
 
 def test_direction_of_flow_q3_q4():
     q3_q4 = np.array(np.meshgrid(points_3q, points_4q, indexing = 'xy')).T.reshape(-1,2)
 
     for q3,q4 in q3_q4:
         assert anprx.flow_of_closest_lane(q3,q4,
-                                    left_handed_traffic = True) == (q3,q4)
+                                    left_handed = True) == (q3,q4)
         assert anprx.flow_of_closest_lane(q4,q3,
-                                    left_handed_traffic = True) == (q3,q4)
+                                    left_handed = True) == (q3,q4)
         assert anprx.flow_of_closest_lane(q3,q4,
-                                    left_handed_traffic = False) == (q4,q3)
+                                    left_handed = False) == (q4,q3)
         assert anprx.flow_of_closest_lane(q4,q3,
-                                    left_handed_traffic = False) == (q4,q3)
+                                    left_handed = False) == (q4,q3)
 
 def test_direction_of_flow_q4_q1():
     q4_q1 = np.array(np.meshgrid(points_4q, points_1q, indexing = 'xy')).T.reshape(-1,2)
 
     for q4,q1 in q4_q1:
         assert anprx.flow_of_closest_lane(q4,q1,
-                                    left_handed_traffic = True) == (q4,q1)
+                                    left_handed = True) == (q4,q1)
         assert anprx.flow_of_closest_lane(q1,q4,
-                                    left_handed_traffic = True) == (q4,q1)
+                                    left_handed = True) == (q4,q1)
         assert anprx.flow_of_closest_lane(q4,q1,
-                                    left_handed_traffic = False) == (q1,q4)
+                                    left_handed = False) == (q1,q4)
         assert anprx.flow_of_closest_lane(q1,q4,
-                                    left_handed_traffic = False) == (q1,q4)
+                                    left_handed = False) == (q1,q4)
