@@ -73,7 +73,7 @@ Among others:
 
 ## Documentation
 
-All modules and methods are documented in [anprx.readthedocs.io]()
+All modules and methods are documented in [anprx.readthedocs.io](https://anprx.readthedocs.io/en/latest/)
 
 ## License
 [Apache v2.0](LICENSE)
