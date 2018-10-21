@@ -853,10 +853,10 @@ def as_undirected(edges):
 ###
 ###
 
-def flow_direction(u, v,
-                   left_handed_traffic = True):
+def flow_of_closest_lane(u, v,
+                         left_handed_traffic = True):
     """
-    Calculates the closest direction of traffic flow in a system where an observer (origin), watches traffic flowing between two points.
+    Calculates the direction of traffic flow of the nearest lane, on the road represented by the straight line that passes through points {u,v}. This depends on whether traffic is left or righ-handed.
 
     For instance, consider an observer watching traffic in 2 traffic lanes, running in opposite directions, between two points: point one at 45 degrees of bearing and point 2 at 135 degrees of bearing. Then, if the traffic is left-handed, the closest of the two lanes is the one for which traffic flows from point 2 to point 1. If traffic is right-handed, then traffic is flowing from point 1 to point 2 in the closest of the two lanes (in reference to the observer - the origin of the coordinate system).
 
@@ -869,15 +869,16 @@ def flow_direction(u, v,
         cartesian coordinates of point 2 relative to observer
 
     left_handed_traffic : bool
-        True the traffic keeps to the left side of the road, false otherwise.
+        True if the traffic keeps to the left side of the road, false otherwise.
 
     Returns
     -------
     tuple
+        (u,v) if the closest lane corresponds to traffic flowing from u to v, (v,u) otherwise.
     """
     start_time = time.time()
 
-    log("Calculating how traffic flows between {} and {}, in a {} system.".format(u,v,str(traffic_flow)),
+    log("Calculating how traffic flows between {} and {}, in a {} traffic system.".format(u,v,"left-handed" if left_handed_traffic else "right-handed"),
         level = lg.INFO)
 
     log("{:17} = {}".format("point u", u),
@@ -910,6 +911,8 @@ def flow_direction(u, v,
     else:
         direction = (v,u)
 
-    log("Found that flows from {} to {} in {:,.3f} seconds"\
+    log("Found that cars flow from {} to {} in {:,.3f} seconds"\
             .format(direction[0], direction[1], time.time() - start_time),
         level = lg.INFO)
+
+    return direction
