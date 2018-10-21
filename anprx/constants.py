@@ -75,18 +75,3 @@ class EdgeDistanceMethod(Enum):
     mean_of_distances = auto()
     closest_node = auto()
     farthest_node = auto()
-
-class Filter(Enum):
-    __order__ = "none, address"
-    none = auto()
-    address = auto()
-
-class OsmEntity(Enum):
-    __order__ = "N, W, R"
-
-    N = auto()  # Node
-    W = auto()  # Way
-    R = auto()  # Relation
-
-    def __str__(self):
-        return str(self.name)
