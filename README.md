@@ -55,7 +55,7 @@ Fake camera on Pitt Street with address filtering |  Fake camera on Pitt Street 
 
 ## Features
 
-#### Stable
+### Stable
 
 Given the pair of latitude and longitude coordinates of each camera, you can:
 
@@ -63,15 +63,13 @@ Given the pair of latitude and longitude coordinates of each camera, you can:
 - Compute the likelihood of neighbouring edges (road segments) as the true edge observed by the camera. Filter out candidate edges by address.
 - Visualise the camera's placement on the road network, including nearby nodes, and the likelihood of candidate edges.
 
-
-#### Under development
+### Under development
 
 Among others:
 
 - Enrich the road network by adding further attributes to the edges (address details, elevation, bearing).
 - Filter/compress the road network based on edge attributes.
 - Batch analysis of ANPR data: trip identification and inference.
-
 
 ## Documentation
 
