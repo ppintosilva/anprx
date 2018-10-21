@@ -55,10 +55,8 @@ class Camera(object):
     nsamples : int
         number of road points to sample when estimating the camera's observed edge.
 
-    edges_filter : Filter
-        filter nearby edges according to criteria:
-
-        **Filter.address** - exclude edges whose address is different than the one manually annotated by traffic engineers
+    filter_by_address : bool
+        if True, excludes candidate edges whose address is different than the one manually annotated by traffic engineers
 
     nnodes : list of int
         nodes near the camera. These are composed of the nodes that are within the range the camera and nodes whose edges have a node that is within the range of the camera.
@@ -87,7 +85,7 @@ class Camera(object):
                  max_angle = 40,
                  nsamples = 100,
                  left_handed_traffic = True,
-                 edges_filter = Filter.address):
+                 filter_by_address = False):
         """
 
         Parameters
@@ -116,7 +114,7 @@ class Camera(object):
         left_handed_traffic : bool
             True if traffic flows on the left-hand side of the road, False otherwise.
 
-        edges_filter : Filter
+        filter_by_address : Filter
             filter nearby edges according to a criteria. For instance, using Filter.address exclude edges whose address is different than the one manually annotated by traffic engineers.
         """
         self.network = network
@@ -128,7 +126,7 @@ class Camera(object):
         self.radius = radius
         self.max_angle = max_angle
         self.nsamples = nsamples
-        self.edges_filter = edges_filter
+        self.filter_by_address = filter_by_address
         self.left_handed_traffic = left_handed_traffic
 
         self.gen_local_coord_system()
@@ -175,7 +173,7 @@ class Camera(object):
                         len(all_nodes)),
             level = lg.INFO)
 
-        if self.edges_filter == Filter.address:
+        if self.filter_by_address:
             if self.address is None:
                 log("Camera {} has no address defined.".format(self.id))
                 raise ValueError("Given camera has no address defined")

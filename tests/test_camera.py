@@ -26,7 +26,8 @@ test_camera = anprx.Camera(
     network = get_network(distance = 1000),
     id = "fake_camera",
     point = anprx.Point(lat = 54.974537, lng = -1.625644),
-    address = "Pitt Street, Newcastle Upon Tyne, UK")
+    address = "Pitt Street, Newcastle Upon Tyne, UK",
+    filter_by_address = True)
 
 #-----------#
 #-----------#
