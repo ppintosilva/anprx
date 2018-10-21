@@ -18,11 +18,6 @@ classifiers = ['Development Status :: 1 - Planning',
                'Topic :: Scientific/Engineering :: Mathematics',
                'Topic :: Scientific/Engineering :: Information Analysis',
                'Programming Language :: Python',
-               'Programming Language :: Python :: 2',
-               'Programming Language :: Python :: 2.7',
-               'Programming Language :: Python :: 3',
-               'Programming Language :: Python :: 3.4',
-               'Programming Language :: Python :: 3.5',
                'Programming Language :: Python :: 3.6']
 
 with open('requirements.txt') as f:
@@ -38,7 +33,7 @@ setup(name='anprx',
       url='https://github.com/pedroswits/anprx',
       author='Pedro Pinto da Silva',
       author_email='ppintodasilva@gmail.com',
-      license='MIT',
+      license='Apache v2.0',
       platforms='any',
       packages=['anprx'],
       install_requires=install_requires)
