@@ -1,6 +1,8 @@
 [![Build Status](https://travis-ci.org/PedrosWits/anprx.svg?branch=master)](https://travis-ci.org/PedrosWits/anprx)
 
-[![Build Status - master](https://anprx.readthedocs.io/en/latest/?badge=latest)](anprx.readthedocs.io)
+[![Documentation Status](https://readthedocs.org/projects/anprx/badge/?version=latest)](https://anprx.readthedocs.io/en/latest/?badge=latest)
+
+[![PyPI version](https://badge.fury.io/py/anprx.svg)](https://badge.fury.io/py/anprx)
 
 # ANPRx
 
