@@ -854,7 +854,7 @@ def as_undirected(edges):
 ###
 
 def flow_of_closest_lane(u, v,
-                         left_handed_traffic = True):
+                         left_handed = True):
     """
     Calculates the direction of traffic flow of the nearest lane, on the road represented by the straight line that passes through points {u,v}. This depends on whether traffic is left or righ-handed.
 
@@ -868,7 +868,7 @@ def flow_of_closest_lane(u, v,
     v : np.ndarray (2,)
         cartesian coordinates of point 2 relative to observer
 
-    left_handed_traffic : bool
+    left_handed : bool
         True if the traffic keeps to the left side of the road, false otherwise.
 
     Returns
@@ -878,7 +878,9 @@ def flow_of_closest_lane(u, v,
     """
     start_time = time.time()
 
-    log("Calculating how traffic flows between {} and {}, in a {} traffic system.".format(u,v,"left-handed" if left_handed_traffic else "right-handed"),
+    log("Calculating how traffic flows between u = {} and v = {}, in a {} traffic system."\
+            .format(u,v,
+                    "left-handed" if left_handed else "right-handed"),
         level = lg.INFO)
 
     log("{:17} = {}".format("point u", u),
@@ -905,14 +907,16 @@ def flow_of_closest_lane(u, v,
             .format("new phi_v - phi_u", phi_diff),
         level = lg.DEBUG)
 
-    if (phi_diff > 0 and left_handed_traffic) or \
-       (phi_diff < 0 and not left_handed_traffic):
+    if (phi_diff > 0 and left_handed) or \
+       (phi_diff < 0 and not left_handed):
         direction = (u,v)
     else:
         direction = (v,u)
 
     log("Found that cars flow from {} to {} in {:,.3f} seconds"\
-            .format(direction[0], direction[1], time.time() - start_time),
+            .format("u" if tuple(direction[0]) == tuple(u) else "v",
+                    "v" if tuple(direction[1]) == tuple(v) else "u",
+                    time.time() - start_time),
         level = lg.INFO)
 
     return direction
