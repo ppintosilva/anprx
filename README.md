@@ -38,7 +38,7 @@ fake_camera1 = anprx.Camera(
   address = "Pitt Street, Newcastle Upon Tyne, UK",
   filter_by_address = True)
 
-fig, axis = fake_camera1.plot()
+fake_camera1.plot()
 
 # Without address filtering
 fake_camera2 = anprx.Camera(
@@ -46,7 +46,7 @@ fake_camera2 = anprx.Camera(
   id = "c2",
   point = locations[1])
 
-fig, axis = fake_camera2.plot()
+fake_camera2.plot()
 ```
 
 Fake camera on Pitt Street with address filtering |  Fake camera on Pitt Street without address filtering
@@ -71,7 +71,7 @@ Among others:
 - Filter/compress the road network based on edge attributes.
 - Batch analysis of ANPR data: trip identification and inference.
 
-## Documentation
+## Documentation
 
 All modules and methods are documented in [anprx.readthedocs.io]()
 
