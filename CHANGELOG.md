@@ -4,7 +4,7 @@
 
 Patch that implements fixes/improvements to docs, CI and packaging.
 
-### Added
+### Added
 - Added changelog.
 - Added mention of important C-library requirement for OSMnx to readme.
 
