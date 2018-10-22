@@ -15,6 +15,9 @@ pip install anprx
 
 See `requirements.txt` for a complete list of dependencies.
 
+**Important:**
+[OSMnx](https://github.com/gboeing/osmnx) requires the [Rtree](http://toblerity.org/rtree/) package which is a python wrapper for [libspatialindex](https://libspatialindex.github.io/). To get osmnx to work properly, which this package heavily relies on,  [download and install](.travis.yml) [libspatialindex](https://libspatialindex.github.io/) first.
+
 ## Usage Example
 
 ```python
