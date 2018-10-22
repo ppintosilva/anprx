@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.1]
+## [0.1.1] - 22/10/2018
 
 Patch that implements fixes/improvements to docs, CI and packaging.
 
@@ -24,7 +24,7 @@ Patch that implements fixes/improvements to docs, CI and packaging.
 	- no support for python 2
 	- added extra_requires field
 
-## [0.1.0]
+## [0.1.0] - 21/10/2018
 
 First minor release.
 
@@ -44,7 +44,7 @@ First minor release.
 ### Removed
 - Removed support for python 2.
 
-## [0.0.0]
+## [0.0.0] - 5/09/2018
 
 Bare bones project skeleton.
 
