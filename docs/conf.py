@@ -16,26 +16,6 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
-autodoc_mock_imports = [
-  'descartes',
-  'geopandas',
-  'matplotlib',
-  'matplotlib.cm',
-  'matplotlib.collections',
-  'matplotlib.pyplot',
-  'networkx',
-  'numpy',
-  'pandas',
-  'requests',
-  'rtree',
-  'rtree.index',
-  'shapely',
-  'shapely.geometry',
-  'shapely.ops',
-  'adjustText',
-  'osmnx',
-  'scikit-learn'
-]
 
 # -- Project information -----------------------------------------------------
 
@@ -60,13 +40,6 @@ release = u'0.1.0'
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.autosectionlabel',
-    'sphinx.ext.autosummary',
-    'sphinx.ext.coverage',
-    'sphinx.ext.doctest',
-    'sphinx.ext.extlinks',
-    'sphinx.ext.githubpages',
-    'sphinx.ext.mathjax',
     'sphinx.ext.napoleon'
 ]
 
