@@ -1,6 +1,8 @@
 from distutils.core import setup
 import setuptools
 
+import anprx
+
 short_description = "Create, visualise and leverage networks of ANPR cameras on the road network."
 
 long_description = \
@@ -25,15 +27,24 @@ with open('requirements.txt') as f:
 install_requires = [r.strip() for r in requirements_lines]
 
 # now call setup
-setup(name='anprx',
-      version='0.1.0',
-      description=short_description,
-      long_description=long_description,
-      classifiers=classifiers,
-      url='https://github.com/pedroswits/anprx',
-      author='Pedro Pinto da Silva',
-      author_email='ppintodasilva@gmail.com',
-      license='Apache v2.0',
-      platforms='any',
-      packages=['anprx'],
-      install_requires=install_requires)
+setup(name = 'anprx',
+      version = anprx.__version__,
+      description = short_description,
+      long_description = long_description,
+      classifiers = classifiers,
+      url = 'https://github.com/pedroswits/anprx',
+      author = 'Pedro Pinto da Silva',
+      author_email = 'ppintodasilva@gmail.com',
+      license = 'Apache v2.0',
+      platforms = 'any',
+      packages = ['anprx'],
+      install_requires = install_requires,
+      extra_require = {
+        'tests': [
+            'tox >= 3.2.1',
+            'pytest >= 3.8.2'],
+        'docs': [
+            'sphinx >= 1.4',
+            'sphinx_rtd_theme'],
+        'examples': [
+            'ipykernel']})
