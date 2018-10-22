@@ -15,21 +15,27 @@
 # import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
-import os
-on_rtd = os.environ.get('READTHEDOCS') == 'True'
 
-if on_rtd:
-    import sys
-    from unittest.mock import MagicMock
-
-    class Mock(MagicMock):
-        @classmethod
-        def __getattr__(cls, name):
-            return MagicMock()
-
-    MOCK_MODULES = ['Rtree']
-
-    sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+autodoc_mock_imports = [
+  'descartes',
+  'geopandas',
+  'matplotlib',
+  'matplotlib.cm',
+  'matplotlib.collections',
+  'matplotlib.pyplot',
+  'networkx',
+  'numpy',
+  'pandas',
+  'requests',
+  'rtree',
+  'rtree.index',
+  'shapely',
+  'shapely.geometry',
+  'scipy',
+  'sklearn',
+  'shapely.ops',
+  'adjustText'
+]
 
 # -- Project information -----------------------------------------------------
 
@@ -166,8 +172,8 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'anprx', u'anprx Documentation',
-     author, 'anprx', 'One line description of project.',
-     'Miscellaneous'),
+     author, 'anprx', 'Traffic analysis using networks of Automatic Number Plate Recognition cameras.',
+     'GIS'),
 ]
 
 
