@@ -66,13 +66,8 @@ extensions = [
     'sphinx.ext.doctest',
     'sphinx.ext.extlinks',
     'sphinx.ext.githubpages',
-    'sphinx.ext.graphviz',
-    'sphinx.ext.ifconfig',
-    'sphinx.ext.inheritance_diagram',
     'sphinx.ext.mathjax',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.todo',
-    'sphinx.ext.viewcode'
+    'sphinx.ext.napoleon'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
