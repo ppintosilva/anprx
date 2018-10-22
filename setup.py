@@ -33,11 +33,11 @@ setup(name = 'anprx',
       url = 'https://github.com/pedroswits/anprx',
       author = 'Pedro Pinto da Silva',
       author_email = 'ppintodasilva@gmail.com',
-      license = 'Apache v2.0',
+      license = 'Apache License 2.0',
       platforms = 'any',
       packages = ['anprx'],
       install_requires = install_requires,
-      extra_require = {
+      extras_require = {
         'tests': [
             'tox >= 3.2.1',
             'pytest >= 3.8.2'],
