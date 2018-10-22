@@ -5,4 +5,4 @@ from .helpers import *
 from .constants import *
 from .navigation import *
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
