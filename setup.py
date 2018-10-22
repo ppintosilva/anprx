@@ -8,8 +8,8 @@ long_description = \
 **ANPRx** is a package for traffic analytics using networks of automatic number plate cameras.
 """
 
-classifiers = ['Development Status :: 1 - Planning',
-               'License :: OSI Approved :: MIT License',
+classifiers = ['Development Status :: 3 - Alpha',
+               'License :: OSI Approved :: Apache Software License',
                'Operating System :: OS Independent',
                'Intended Audience :: Science/Research',
                'Topic :: Scientific/Engineering :: GIS',
