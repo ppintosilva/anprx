@@ -31,25 +31,25 @@ locations = [ anprx.Point(lat = 54.974537,
 network = anprx.get_surrounding_network(locations)
 
 # With address filtering
-fake_camera1 = anprx.Camera(
+mock_camera1 = anprx.Camera(
   network = network,
   id = "c1",
   point = locations[0],
   address = "Pitt Street, Newcastle Upon Tyne, UK",
   filter_by_address = True)
 
-fake_camera1.plot()
+mock_camera1.plot()
 
 # Without address filtering
-fake_camera2 = anprx.Camera(
+mock_camera2 = anprx.Camera(
   network = network,
   id = "c2",
   point = locations[1])
 
-fake_camera2.plot()
+mock_camera2.plot()
 ```
 
-Fake camera on Pitt Street with address filtering |  Fake camera on Pitt Street without address filtering
+Mock camera on Pitt Street with address filtering |  Mock camera on Pitt Street without address filtering
 :-------------------------:|:-------------------------:
 ![not a real camera, sorry :()](docs/_static/fake_camera_1.png)  |  ![not a real camera, sorry :(](docs/_static/fake_camera_2.png)
 
