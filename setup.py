@@ -1,8 +1,6 @@
 from distutils.core import setup
 import setuptools
 
-import anprx
-
 short_description = "Create, visualise and leverage networks of ANPR cameras on the road network."
 
 long_description = \
@@ -28,7 +26,7 @@ install_requires = [r.strip() for r in requirements_lines]
 
 # now call setup
 setup(name = 'anprx',
-      version = anprx.__version__,
+      version = '0.1.0',
       description = short_description,
       long_description = long_description,
       classifiers = classifiers,
