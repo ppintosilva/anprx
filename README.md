@@ -51,7 +51,7 @@ mock_camera2.plot()
 
 Mock camera on Pitt Street with address filtering |  Mock camera on Pitt Street without address filtering
 :-------------------------:|:-------------------------:
-![not a real camera, sorry :()](docs/_static/fake_camera_1.png)  |  ![not a real camera, sorry :(](docs/_static/fake_camera_2.png)
+![not a real camera, sorry :()](docs/_static/mock_camera_1.png)  |  ![not a real camera, sorry :(](docs/_static/mock_camera_2.png)
 
 ## Features
 
