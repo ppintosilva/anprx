@@ -104,7 +104,8 @@ venv.bak/
 .mypy_cache/
 
 # tests' cache
-tests/data
+tests/data/*
+!tests/data/.gitkeep
 # cowboy experiments and testing
 tests/assorted.py
 
