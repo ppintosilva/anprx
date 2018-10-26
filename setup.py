@@ -20,9 +20,28 @@ classifiers = ['Development Status :: 3 - Alpha',
                'Programming Language :: Python',
                'Programming Language :: Python :: 3.6']
 
-with open('requirements.txt') as f:
-    requirements_lines = f.readlines()
-install_requires = [r.strip() for r in requirements_lines]
+install_requires = [
+    'numpy >= 1.15.1',
+    'statistics >= 1.0.3',
+    'requests >= 2.19.1',
+    'Shapely >= 1.6',
+    'pandas >= 0.23',
+    'geopandas >= 0.4',
+    'matplotlib >= 2.2',
+    'networkx >= 2.2',
+    'osmnx >= 0.8.1',
+    'scikit-learn >= 0.20.0',
+    'adjustText >= 0.7.3']
+
+extras_require = {
+    'tests': [
+       'tox >= 3.2.1',
+       'pytest >= 3.8.2'],
+    'docs': [
+       'sphinx >= 1.4',
+       'sphinx_rtd_theme'],
+    'examples': [
+       'ipykernel']}
 
 # now call setup
 setup(name = 'anprx',
@@ -37,12 +56,4 @@ setup(name = 'anprx',
       platforms = 'any',
       packages = ['anprx'],
       install_requires = install_requires,
-      extras_require = {
-        'tests': [
-            'tox >= 3.2.1',
-            'pytest >= 3.8.2'],
-        'docs': [
-            'sphinx >= 1.4',
-            'sphinx_rtd_theme'],
-        'examples': [
-            'ipykernel']})
+      extras_require = extras_require)
