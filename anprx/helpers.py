@@ -155,6 +155,9 @@ def edges_with_properties(G, properties, match_by = PropertiesFilter.all):
     else:
         raise ValueError("Invalid 'match_by' value. Pick one of PropertiesFilter.{{{}}}.".format(PropertiesFilter.__order__))
 
+###
+###
+
 def unit_vector(v):
     """
     Calculate the unit vector of an array or bunch of arrays.
@@ -171,6 +174,9 @@ def unit_vector(v):
     """
     norm = np.linalg.norm(v, axis = 1)
     return v / np.reshape(norm, (len(v), 1))
+
+###
+###
 
 def dot2d(v1, v2, method = "einsum"):
     """
@@ -203,6 +209,9 @@ def dot2d(v1, v2, method = "einsum"):
     else:
         raise ValueError("No such method for computing the dot product.")
 
+###
+###
+
 def angle_between(v1, v2):
     """
     Calculate the acute angle, in degrees, between two vectors. Vectorised for an array of vectors.
@@ -234,3 +243,34 @@ def angle_between(v1, v2):
         lambda x: 180 - x if x > 90 else x)
 
     return reduce_angles(angles)
+
+
+###
+###
+
+def flatten_dict(dict_, parent_key='', sep='_', inherit_parent_key = True):
+    """
+    Flatten a dict of objects which may contain other dicts as elements.
+
+    Parameters
+    ---------
+    dict_ : object
+        dict
+        Borrowed from https://stackoverflow.com/a/6027615
+
+    Returns
+    -------
+    generator
+    """
+    items = []
+    for k, v in dict_.items():
+        new_key = parent_key + sep + k if parent_key and inherit_parent_key else k
+        if isinstance(v, collections.MutableMapping):
+            items.extend(flatten_dict(v,
+                                      parent_key = new_key,
+                                      sep = sep,
+                                      inherit_parent_key = inherit_parent_key)\
+                         .items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
