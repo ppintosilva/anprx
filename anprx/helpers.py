@@ -274,3 +274,24 @@ def flatten_dict(dict_, parent_key='', sep='_', inherit_parent_key = True):
         else:
             items.append((new_key, v))
     return dict(items)
+
+###
+###
+
+def chunks(l, n):
+    """
+    Yield successive n-sized chunks from l.
+
+    Parameters
+    ----------
+
+    l : list
+
+    n : size of chunk
+
+    Returns
+    -------
+    generator
+    """
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
