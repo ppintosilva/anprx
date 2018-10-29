@@ -393,3 +393,28 @@ def test_get_dead_end_nodes():
 
     for node in dead_end_nodes:
         assert not network.has_node(node)
+
+
+def test_add_address_details(monkeypatch):
+    dummy_address_details = {
+        'road' : 'Spring Street',
+        'suburb' : 'Arthur\'s Hill',
+        'place_rank' : 26,
+        'class' : 'highway',
+        'type' : 'residential',
+        'importance' : '0.1',
+        'postcode' : 'NE4 5TB'
+    }
+    
+    network = get_network(distance = 1000)
+
+    subnetwork = network.subgraph([4519161284, 4519161278])
+
+    monkeypatch.setattr('anprx.nominatim.lookup_address',
+                        lambda osmids,entity,drop_keys,email:
+                        [dummy_address_details] * len(osmids))
+
+    subnetwork = anprx.add_address_details(subnetwork)
+
+    for (u,v,k,d) in subnetwork.edges(keys = True, data = True):
+        assert all(item in d.items() for item in dummy_address_details.items())
