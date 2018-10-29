@@ -1,15 +1,19 @@
 ################################################################################
 # Module: nominatim.py
-# Description: Core functions
-# License: MIT
+# Description: Calls to external APIs
+# License: Apache v2.0
 # Author: Pedro Pinto da Silva
 # Web: https://github.com/pedroswits/anprx
 ################################################################################
 
+import time
 import numpy as np
 import osmnx as ox
-from .helpers import flatten_dict
+import logging as lg
 from collections import OrderedDict
+
+from .helpers import flatten_dict
+from .utils import settings, config, log
 
 def search_address(address,
                    email = None):
@@ -67,6 +71,9 @@ def lookup_address(osmids,
     osmids : array-like
         OSMids for address lookup. Hard limit of 50 ids as indicated in
         wiki.openstreetmap.org/wiki/Nominatim
+
+    drop_keys : list
+        keys to ignore from the nominatim response containing address details
 
     entity : string
         OSM entity of osmids. Valid values are
