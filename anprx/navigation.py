@@ -8,23 +8,23 @@
 
 import math
 import time
+import statistics
+import collections
 import numpy as np
 import osmnx as ox
 import pandas as pd
 import logging as lg
 import networkx as nx
-from statistics import mean
-from collections import namedtuple
 
 from .helpers import *
 from .constants import *
-from .nominatim import search_address
+import anprx.nominatim as nominatim
 from .utils import settings, config, log
 
 ###
 ###
 
-Point = namedtuple(
+Point = collections.namedtuple(
     'Point',
     [
         'lat',
@@ -45,7 +45,7 @@ lng : float
 ###
 ###
 
-BBox = namedtuple(
+BBox = collections.namedtuple(
     'BBox',
     [
         'north',
@@ -74,7 +74,7 @@ west : float
 ###
 ###
 
-RelativeMargins = namedtuple(
+RelativeMargins = collections.namedtuple(
     'RelativeMargins',
     [
         'north',
@@ -103,7 +103,7 @@ west : float
 ###
 ###
 
-Edge = namedtuple(
+Edge = collections.namedtuple(
     'Edge',
     [
         'u',
@@ -343,9 +343,9 @@ def get_meanpoint(points):
     y = [ math.cos(np.deg2rad(point.lat)) * math.sin(np.deg2rad(point.lng)) for point in points ]
     z = [ math.sin(np.deg2rad(point.lat)) for point in points ]
 
-    mean_x = mean(x)
-    mean_y = mean(y)
-    mean_z = mean(z)
+    mean_x = statistics.mean(x)
+    mean_y = statistics.mean(y)
+    mean_z = statistics.mean(z)
 
     return Point(lng = np.rad2deg(math.atan2(mean_y, mean_x)),
                  lat = np.rad2deg(math.atan2(mean_z, math.sqrt(mean_x * mean_x + mean_y * mean_y))))
@@ -565,7 +565,7 @@ def distance_to_edge(network,
         return sum(distances)
 
     elif method == EdgeDistanceMethod.mean_of_distances:
-        return mean(distances)
+        return statistics.mean(distances)
 
     else:
         raise ValueError("Invalid method for computing edge distance")
@@ -746,7 +746,7 @@ def filter_by_address(network,
     log("Filtering edges by address.",
         level = lg.INFO)
 
-    osmway_ids = search_address(address)
+    osmway_ids = nominatim.search_address(address)
     address_edges = edges_from_osmid(
                         network = network,
                         osmids  = osmway_ids)
@@ -1022,7 +1022,7 @@ def simplify_intersections(network, tolerance):
 
 def add_address_details(network,
                         drop_keys = ['place_id', 'license', 'osm_type',
-                                     'osmid', ' lat', 'lon', 'display_name',
+                                     'osm_id', ' lat', 'lon', 'display_name',
                                      'country', 'country_code', 'state',
                                      'state_district', 'county', 'city'],
                         email = None):
@@ -1053,18 +1053,36 @@ def add_address_details(network,
     """
     start_time_local = time.time()
 
-    # Make groups of 50 edges
-    edge_data = dict()
+    unetwork = network.to_undirected(reciprocal = False)
 
-    # for (u,v,k) in network.edges(data = ''):
-    #
-    # lookup_address(osmids = ,
-    #                entity = 'W',
-    #                drop_keys = drop_keys,
-    #                email = email)
+    # Generator of groups of 50 edges
+    edge_groups = chunks(l = list(unetwork.edges(keys = True, data = "osmid")),
+                         n = 50)
 
-    log("Added address details to elements of the network in {:,.3f} seconds"\
-        .format(time.time() - start_time_local),
+    for group in edge_groups:
+        # For edges with multiple osmids, pick the first osmid
+        # Is there a better approach or is this a good enough approximation?
+        osmids = [ osmid[0] if isinstance(osmid, collections.Iterable)
+                   else osmid for osmid in map(lambda x: x[3], group) ]
+
+        address_details = nominatim.lookup_address(
+                                osmids = osmids,
+                                entity = 'W',
+                                drop_keys = drop_keys,
+                                email = email)
+
+        for edge, details  in zip(group, address_details):
+            edge_uv = edge[:3]
+            if network.has_edge(*edge_uv):
+                network[edge_uv[0]][edge_uv[1]][edge_uv[2]].update(details)
+
+            edge_vu = (edge[1], edge[0], edge[2])
+            if network.has_edge(*edge_vu):
+                network[edge_vu[0]][edge_vu[1]][edge_vu[2]].update(details)
+
+
+    log("Added address details to {} groups of 50 edges in {:,.3f} seconds"\
+        .format(len(list(edge_groups)), time.time() - start_time_local),
     level = lg.INFO)
 
     return network
