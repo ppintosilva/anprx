@@ -382,3 +382,14 @@ def test_direction_of_flow_q4_q1():
                                     left_handed = False) == (q1,q4)
         assert anprx.flow_of_closest_lane(q1,q4,
                                     left_handed = False) == (q1,q4)
+
+def test_get_dead_end_nodes():
+    network = get_network(distance = 1000)
+    dead_end_nodes = anprx.get_dead_end_nodes(network)
+
+    assert len(dead_end_nodes) > 0
+
+    anprx.remove_dead_end_nodes(network)
+
+    for node in dead_end_nodes:
+        assert not network.has_node(node)
