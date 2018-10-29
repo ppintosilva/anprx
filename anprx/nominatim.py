@@ -59,7 +59,7 @@ def search_address(address,
 def lookup_address(osmids,
                    entity,
                    drop_keys = ['place_id', 'license', 'osm_type',
-                                'osmid', ' lat', 'lon', 'display_name',
+                                'osm_id', ' lat', 'lon', 'display_name',
                                 'country', 'country_code', 'state',
                                 'state_district', 'county', 'city'],
                    email = None):
