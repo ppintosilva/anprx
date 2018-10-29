@@ -1,7 +1,7 @@
 ################################################################################
 # Module: core.py
-# Description: Core functions
-# License: MIT
+# Description: Helper functions
+# License: Apache v2.0
 # Author: Pedro Pinto da Silva
 # Web: https://github.com/pedroswits/anprx
 ################################################################################
