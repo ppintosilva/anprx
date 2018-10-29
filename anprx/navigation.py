@@ -1,7 +1,7 @@
 ################################################################################
 # Module: navigation.py
 # Description: Computing nvectors, great circle distances, bearings and the like
-# License: MIT
+# License: Apache v2.0
 # Author: Pedro Pinto da Silva
 # Web: https://github.com/pedroswits/anprx
 ################################################################################
@@ -430,8 +430,9 @@ def bbox_from_points(points,
 
 def get_surrounding_network(points,
                             rel_margins = RelativeMargins(0.025,0.025,0.025,0.025),
-                            min_area = 0.01, # 0.01 sq km (100m x 100m)
+                            min_area = 0.03, # 0.01 sq km (173m x 173m)
                             max_area = 10, # 10 sq km
+                            unit = Units.km,
                             graph_name = None):
     """
     Get the drivable network that encompasses a set of points. Uses osmnx for this purpose.
@@ -460,7 +461,8 @@ def get_surrounding_network(points,
         points = points,
         rel_margins = rel_margins,
         min_area = min_area,
-        max_area = max_area)
+        max_area = max_area,
+        unit = unit)
 
 
     street_network = \
@@ -920,3 +922,210 @@ def flow_of_closest_lane(u, v,
         level = lg.INFO)
 
     return direction
+
+###
+###
+###
+
+def get_dead_end_nodes(network):
+    """
+    Get nodes representing dead ends in the street network.
+
+    These are not necessarily nodes with degree of 1, in the undirected representation of the street network,
+
+    Parameters
+    ----------
+    network : nx.MultiDiGraph
+        A street network
+
+    Returns
+    -------
+    network : nx.MultiDiGraph
+        The same network, but without dead end nodes and edges
+    """
+    if not 'streets_per_node' in network.graph:
+        network.graph['streets_per_node'] = ox.count_streets_per_node(network)
+
+    streets_per_node = network.graph['streets_per_node']
+
+    return [node for node, count in streets_per_node.items() if count <= 1]
+
+
+def remove_dead_end_nodes(network):
+    """
+    Remove nodes, and corresponding edges, representing dead ends in the street network.
+
+    Parameters
+    ----------
+    network : nx.MultiDiGraph
+        A street network
+
+    Returns
+    -------
+    network : nx.MultiDiGraph
+        The same network, but without dead end nodes and edges
+    """
+    start_time_local = time.time()
+
+    dead_end_nodes = get_dead_end_nodes(network)
+    network.remove_nodes_from(dead_end_nodes)
+
+    log("Removed {} dead ends (nodes) in {:,.3f} seconds"\
+            .format(len(dead_end_nodes), time.time() - start_time_local),
+        level = lg.INFO)
+
+###
+###
+###
+
+def simplify_intersections(network, tolerance):
+    """
+    Simplify intersections composed by clusters of nodes.
+
+    This method tries to apply the result of
+    osmnx.simplify.clean_intersections the graph, in a sensible way.
+
+    Parameters
+    ----------
+    network : nx.MultiDiGraph
+        A street network
+
+    tolerance : float
+        nodes within this distance will be transformed into a single node,
+        and the corresponding edges merged
+
+    Returns
+    -------
+    network : nx.MultiDiGraph
+        The same network, but without dead end nodes and edges
+    """
+    start_time_local = time.time()
+    # network_proj = ox.project_graph(network)
+    # gdf_nodes = ox.graph_to_gdfs(G_proj, edges=False)
+    # buffered_nodes = gdf_nodes.buffer(intersections_tolerance).unary_union
+    #
+    # if isinstance(buffered_nodes, Polygon):
+    #     buffered_nodes = [buffered_nodes]
+    #
+    # # get the centroids of the merged intersection polygons
+    # unified_intersections = gpd.GeoSeries(list(buffered_nodes))
+    # intersection_centroids = unified_intersections.centroid
+    log("Cleaned {} intersections in {:,.3f} seconds"\
+            .format(len(), time.time() - start_time_local),
+        level = lg.INFO)
+
+    return network
+
+###
+###
+###
+
+def add_address_details(network,
+                        drop_keys = ['place_id', 'license', 'osm_type',
+                                     'osmid', ' lat', 'lon', 'display_name',
+                                     'country', 'country_code', 'state',
+                                     'state_district', 'county', 'city'],
+                        email = None):
+    """
+    Lookup and the address details of every edge in the network and
+    add them as attributes.
+
+    Depending on the size of the network, this method may incur a large number
+    of requests and time to run. If anprx.settings['cache'] is set to True, as
+    is by default, responses will be cached and subsequent calls to this method,
+    for the same or intersecting networks, should be faster.
+
+    Parameters
+    ----------
+    network : nx.MultiDiGraph
+        A street network
+
+    drop_keys : list
+        keys to ignore from the nominatim response containing address details
+
+    email : string
+        Valid email address in case you are making a large number of requests.
+
+    Returns
+    -------
+    network : nx.MultiDiGraph
+        The same network, but with additional edge attributes
+    """
+    start_time_local = time.time()
+
+    # Make groups of 50 edges
+    edge_data = dict()
+
+    # for (u,v,k) in network.edges(data = ''):
+    #
+    # lookup_address(osmids = ,
+    #                entity = 'W',
+    #                drop_keys = drop_keys,
+    #                email = email)
+
+    log("Added address details to elements of the network in {:,.3f} seconds"\
+        .format(time.time() - start_time_local),
+    level = lg.INFO)
+
+    return network
+
+###
+###
+###
+
+def enrich_network(network,
+                   clean_dead_ends = True,
+                   clean_intersections = True,
+                   tolerance = 15,
+                   elevation_api_key = None,
+                   drop_keys = ['place_id', 'license', 'osm_type',
+                                'osmid', ' lat', 'lon', 'display_name',
+                                'country', 'country_code', 'state',
+                                'state_district', 'county', 'city'],
+                   email = None):
+    """
+    AAA
+
+    Parameters
+    ----------
+    o : a
+        A
+
+    Returns
+    -------
+    a : a
+        A
+    """
+    start_time = time.time()
+
+    log("Enriching network with {} nodes and {} edges. This may take a while.."\
+            .format(len(network), network.number_of_edges()),
+        level = lg.INFO)
+
+    if clean_dead_ends:
+        network = remove_dead_ends(network)
+
+    if clean_intersections:
+        network = simplify_intersections(network, tolerance)
+
+    # Add bearings
+    network = ox.add_edge_bearings(network)
+
+    # Elevation
+    if api_key:
+        start_time_local = time.time()
+        # add elevation to each of the nodes, using the google elevation API, then calculate edge grades
+        network = ox.add_node_elevations(network, api_key = elevation_api_key)
+        network = ox.add_edge_grades(network)
+        log("Added node elevations and edge gradesin {:,.3f} seconds"\
+                .format(time.time() - start_time_local),
+            level = lg.INFO)
+
+    # lookup addresses
+    network = add_address_details(network, drop_keys, email)
+
+    log("Enriched network in {:,.3f} seconds"\
+        .format(time.time() - start_time),
+    level = lg.INFO)
+
+    return network
