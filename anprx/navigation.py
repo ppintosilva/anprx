@@ -1018,7 +1018,7 @@ def simplify_intersections(network, tolerance):
     #         .format(time.time() - start_time_local),
     #     level = lg.INFO)
     # return network
-    raise NotImplementedError("Not implemented yet").
+    raise NotImplementedError("Not implemented yet")
 
 ###
 ###
