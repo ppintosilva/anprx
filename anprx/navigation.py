@@ -1000,7 +1000,7 @@ def simplify_intersections(network, tolerance):
     network : nx.MultiDiGraph
         The same network, but without dead end nodes and edges
     """
-    start_time_local = time.time()
+    # start_time_local = time.time()
     # network_proj = ox.project_graph(network)
     # gdf_nodes = ox.graph_to_gdfs(G_proj, edges=False)
     # buffered_nodes = gdf_nodes.buffer(intersections_tolerance).unary_union
@@ -1011,11 +1011,14 @@ def simplify_intersections(network, tolerance):
     # # get the centroids of the merged intersection polygons
     # unified_intersections = gpd.GeoSeries(list(buffered_nodes))
     # intersection_centroids = unified_intersections.centroid
-    log("Cleaned intersections in {:,.3f} seconds"\
-            .format(time.time() - start_time_local),
-        level = lg.INFO)
-
-    return network
+    #
+    # # Replace
+    #
+    # log("Cleaned intersections in {:,.3f} seconds"\
+    #         .format(time.time() - start_time_local),
+    #     level = lg.INFO)
+    # return network
+    raise NotImplementedError("Not implemented yet").
 
 ###
 ###
@@ -1094,7 +1097,7 @@ def add_address_details(network,
 
 def enrich_network(network,
                    clean_dead_ends = True,
-                   clean_intersections = True,
+                   clean_intersections = False,
                    tolerance = 15,
                    elevation_api_key = None,
                    drop_keys = ['place_id', 'license', 'osm_type',
