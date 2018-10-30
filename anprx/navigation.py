@@ -303,7 +303,8 @@ def get_bbox_area(bbox,
         # Intuitively, the width of the bounding box should be the same and be calculated using the longitude degree difference. However, distance per degree of longitude varies with latitude. Hence, using the north and south latitudes will yield different results. This effect is negligible for short distances and small bounding boxes (which is often the case when dealing with city-wide data). We therefore use the mid longitude (between north and south longitudes) to approximate width. However, a more accurate model might be needed for large bounding boxes.
 
         # Longitude width in degrees
-        deg_width = math.cos(np.deg2rad(bbox.south + deg_length/2)) * (bbox.west - bbox.east) #
+        deg_width = math.cos(
+            np.deg2rad(bbox.south + deg_length/2)) * (bbox.west - bbox.east)
 
         # 1 degree = 111110 meters
         # 1 degree squared = 111119 meters * 111119 meters = 12347432161
@@ -1010,8 +1011,8 @@ def simplify_intersections(network, tolerance):
     # # get the centroids of the merged intersection polygons
     # unified_intersections = gpd.GeoSeries(list(buffered_nodes))
     # intersection_centroids = unified_intersections.centroid
-    log("Cleaned {} intersections in {:,.3f} seconds"\
-            .format(len(), time.time() - start_time_local),
+    log("Cleaned intersections in {:,.3f} seconds"\
+            .format(time.time() - start_time_local),
         level = lg.INFO)
 
     return network
@@ -1044,7 +1045,7 @@ def add_address_details(network,
         keys to ignore from the nominatim response containing address details
 
     email : string
-        Valid email address in case you are making a large number of requests.
+        Valid email address in case you are making a large number of requests
 
     Returns
     -------
@@ -1102,17 +1103,43 @@ def enrich_network(network,
                                 'state_district', 'county', 'city'],
                    email = None):
     """
-    AAA
+    Enrich a street network by adding further attributes to the edges in the
+    network. These can then be used in clustering, compression, graph
+    embeddings, shortest paths, etc.
+
+    Depending on the size of the network, this method may incur a large number
+    of requests and time to run. If anprx.settings['cache'] is set to True, as
+    is by default, responses will be cached and subsequent calls to this method,
+    for the same or intersecting networks, should be faster.
 
     Parameters
     ----------
-    o : a
-        A
+    network : nx.MultiDiGraph
+        a street network
+
+    clean_dead_ends : bool
+        true if dead end nodes should be removed from the graph
+
+    clean_intersections : bool
+        true if clusters of intersection nodes should be simplified into a
+        single node
+
+    tolerance : float
+        nodes within this distance will be transformed into a single node,
+        and the corresponding edges merged
+
+    elevation_api_key : string
+        Google API key necessary to access the Elevation API
+
+    keys to ignore from the nominatim response containing address details
+
+    email : string
+        Valid email address in case you are making a large number of requests.
 
     Returns
     -------
-    a : a
-        A
+    network :  nx.MultiDiGraph
+        The same network, but with additional edge attributes
     """
     start_time = time.time()
 
@@ -1121,7 +1148,7 @@ def enrich_network(network,
         level = lg.INFO)
 
     if clean_dead_ends:
-        network = remove_dead_ends(network)
+        remove_dead_end_nodes(network)
 
     if clean_intersections:
         network = simplify_intersections(network, tolerance)
@@ -1130,17 +1157,29 @@ def enrich_network(network,
     network = ox.add_edge_bearings(network)
 
     # Elevation
-    if api_key:
+    if elevation_api_key:
         start_time_local = time.time()
-        # add elevation to each of the nodes, using the google elevation API, then calculate edge grades
+        # add elevation to each of the  nodes,using the google elevation API
         network = ox.add_node_elevations(network, api_key = elevation_api_key)
+        # then calculate edge grades
         network = ox.add_edge_grades(network)
-        log("Added node elevations and edge gradesin {:,.3f} seconds"\
+        log("Added node elevations and edge grades in {:,.3f} seconds"\
                 .format(time.time() - start_time_local),
             level = lg.INFO)
 
     # lookup addresses
     network = add_address_details(network, drop_keys, email)
+
+    # Split post code into outward and inward
+    # assume that there is a space that can be used for string split
+    for (u,v,k,postcode) in network.edges(keys = True, data = 'postcode'):
+        postcode_l = postcode.split(' ')
+        if len(postcode_l) != 2:
+            log("Could not split postcode {}".format(postcode),
+                level = lg.WARNING)
+        else:
+            network[u][v][k]['out_postcode'] = postcode_l[0]
+            network[u][v][k]['in_postcode'] = postcode_l[1]
 
     log("Enriched network in {:,.3f} seconds"\
         .format(time.time() - start_time),

@@ -405,7 +405,7 @@ def test_add_address_details(monkeypatch):
         'importance' : '0.1',
         'postcode' : 'NE4 5TB'
     }
-    
+
     network = get_network(distance = 1000)
 
     subnetwork = network.subgraph([4519161284, 4519161278])
@@ -418,3 +418,40 @@ def test_add_address_details(monkeypatch):
 
     for (u,v,k,d) in subnetwork.edges(keys = True, data = True):
         assert all(item in d.items() for item in dummy_address_details.items())
+
+
+def test_enrich_network(monkeypatch):
+    def mock_osmnx_elevation(G, api_key, max_locations_per_batch=350,
+    pause_duration=0.02):
+        nx.set_node_attributes(G, 100, 'elevation')
+        return G
+
+    dummy_address_details = {
+        'road' : 'Spring Street',
+        'suburb' : 'Arthur\'s Hill',
+        'place_rank' : 26,
+        'class' : 'highway',
+        'type' : 'residential',
+        'importance' : '0.1',
+        'postcode' : 'NE4 5TB'
+    }
+
+    network = get_network(distance = 1000)    
+
+    monkeypatch.setattr('anprx.nominatim.lookup_address',
+                        lambda osmids,entity,drop_keys,email:
+                        [dummy_address_details] * len(osmids))
+
+    monkeypatch.setattr('osmnx.add_node_elevations',
+                        mock_osmnx_elevation)
+
+
+    new_network = anprx.enrich_network(network, elevation_api_key = "dummy")
+
+    for (u,v,k,d) in network.edges(keys = True, data = True):
+        # dummy_address_details are contained in edge data
+        assert all(item in d.items() for item in dummy_address_details.items())
+        # edge data now contains bearing
+        assert 'bearing' in d.keys()
+        # edge data now contains grade
+        assert d['grade'] == 0
