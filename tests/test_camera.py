@@ -25,8 +25,12 @@ test_camera = core.Camera(
     network = get_network(distance = 1000),
     id = "fake_camera",
     point = core.Point(lat = 54.974537, lng = -1.625644),
-    address = "Pitt Street, Newcastle Upon Tyne, UK",
-    filter_by_address = True)
+    address = "Pitt Street, Newcastle Upon Tyne, UK")
+
+test_camera_addressless = core.Camera(
+    network = get_network(distance = 1000),
+    id = "fake_camera",
+    point = core.Point(lat = 54.974537, lng = -1.625644))
 
 #-----------#
 #-----------#
@@ -41,7 +45,15 @@ def test_camera_p_cedges():
     assert (p_cedges_values >= 0  ).all() and \
            (p_cedges_values <= 1.0).all()
 
-    assert len(p_cedges) == len(camera.cedges)
+    assert len(p_cedges) == len(camera.lsystem['cedges'])
+
+
+def test_camera_edge():
+    assert test_camera.edge == \
+        core.Edge(u=3709385867, v=827266956, k=0)
+
+    assert test_camera_addressless.edge == \
+        core.Edge(u=3709385867, v=827266956, k=0)
 
 
 def test_plot():

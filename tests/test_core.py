@@ -323,6 +323,36 @@ def test_filter_by_address_and_get_local_coordinate_system():
             decimal = 6)
 
 
+def test_estimate_camera_edge():
+    network = get_network(distance = 1000)
+    point = core.Point(lat = 54.974537, lng = -1.625644)
+
+    lsystem = core.gen_lsystem(network, point, 40)
+
+    assert 'nnodes' in lsystem
+    assert 'nedges' in lsystem
+    assert 'cedges' in lsystem
+    assert 'lnodes' in lsystem
+    assert 'ledges' in lsystem
+
+    camera_edge, p_cedges, samples = \
+        core.estimate_camera_edge(network,
+                                  lsystem,
+                                  nsamples = 100,
+                                  return_samples = True)
+
+    assert camera_edge is not None
+    assert p_cedges is not None
+    assert samples is not None
+
+    assert set(p_cedges.keys()) == set(lsystem['cedges'])
+    assert set(samples.keys()) == set(lsystem['cedges'])
+    for element in samples.values():
+        assert len(element) == 2
+        assert len(element[0]) == 100 + 1
+        assert len(element[1]) == 100 + 1
+
+
 ##
 ##
 ##

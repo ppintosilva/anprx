@@ -1132,6 +1132,240 @@ def enrich_network(network,
 ###
 ###
 
+def gen_lsystem(network,
+                origin,
+                radius,
+                address = None):
+    """
+    Generate a local cartesian coordinate system from a street network, centered around origin, whose nodes and edges within radius are represented as points and vectors in the new coordinate system.
+
+    Parameters
+    ----------
+    network : nx.MultiDiGraph
+        a street network
+
+    origin : Point
+        point representing the origin of the new coordinate system (e.g. a traffic camera).
+
+    radius : float
+        range of the local coordinate system, in meters.
+
+    address: string
+        only include 'candidate' edges that match the given address
+
+    Returns
+    -------
+    lsystem : dict
+        local coordinate system with the following key-values
+
+        :nnodes: list of int
+            nodes near the camera. These are composed of the nodes that are within the range the camera and nodes whose edges have a node that is within the range of the camera.
+
+        :nedges: list of Edge
+            edges near the camera. Edges which have at least 1 node within the range of the camera.
+
+        :cedges: list of Edge
+            edges considered as candidates for self.edge - the edge observed by the camera
+
+        :lnodes: dict( int : np.ndarray )
+            nnodes represented in a cartesian coordinate system, whose origin is the camera
+
+        :ledges: dict( Edge : np.ndarray )
+            cedges represented in a cartesian coordinate system, whose origin is the camera
+    """
+    start_time = time.time()
+
+    near_nodes, _ = \
+        get_nodes_in_range(network = network,
+                           points = np.array([origin]),
+                           radius = radius)
+
+    log("Near nodes: {}"\
+            .format(near_nodes),
+        level = lg.DEBUG)
+
+    near_edges = get_edges_in_range(network, near_nodes)[0]
+
+    log("Near nodes: {}"\
+            .format(near_edges),
+        level = lg.DEBUG)
+
+    log("Found {} nodes and {} edges within {} meters of camera {}."\
+            .format(len(near_nodes),
+                    len(near_edges),
+                    radius,
+                    origin),
+        level = lg.INFO)
+
+    # Add nodes that where not initially detected as neighbors, but that are included in near_edges
+    all_nodes = { edge[0] for edge in near_edges } | \
+                { edge[1] for edge in near_edges }
+
+    log("All nodes: {}"\
+            .format(all_nodes),
+        level = lg.DEBUG)
+
+    log("Added {} out of range nodes that are part of nearest edges. Total nodes: {}."\
+            .format(len(all_nodes - set(near_nodes[0])),
+                    len(all_nodes)),
+        level = lg.INFO)
+
+    if address:
+        candidate_edges = \
+            filter_by_address(network,
+                              near_edges,
+                              address)
+    else:
+        candidate_edges = near_edges
+
+    log("Candidate edges: {}"\
+            .format(candidate_edges),
+        level = lg.DEBUG)
+
+    nodes_lvectors, edges_lvectors = \
+        local_coordinate_system(network,
+                                origin = origin,
+                                nodes = all_nodes,
+                                edges = candidate_edges)
+
+    log("Generated local coordinate system for camera in {:,.3f} seconds".format(time.time()-start_time),
+        level = lg.INFO)
+
+    lsystem = dict()
+    lsystem['nnodes'] = list(all_nodes)
+    lsystem['nedges'] = list(near_edges)
+    lsystem['cedges'] = list(candidate_edges)
+    lsystem['lnodes'] = nodes_lvectors
+    lsystem['ledges'] = edges_lvectors
+
+    return lsystem
+
+###
+###
+###
+
+def estimate_camera_edge(network,
+                         lsystem,
+                         nsamples = 100,
+                         radius = 40,
+                         max_angle = 40,
+                         left_handed_traffic = True,
+                         return_samples = False):
+    """
+    Estimate the edge of the road network that the camera is observing.
+
+    Points are sampled from each candidate edge and filtered based on whether the distance and angle to the camera is below the allowed maximum or not. With this, we can calculate the proportion of sampled points that fit this criteria and pick the edge(s) that maximises this proportion.
+
+    Parameters
+    ----------
+    network : nx.MultiDiGraph
+        a street network
+
+    lsystem : dict
+        local coordinate system obtained using `gen_lsystem`
+
+    nsamples : int
+        number of road points to sample when estimating the camera's observed edge.
+
+    radius : int
+        range of the camera, in meters. Usually limited to 50 meters.
+
+    max_angle : int
+        max angle between the camera and the cars (plate number) travelling on the road, at which the ANPR camera can reliably operate.
+
+    left_handed_traffic : bool
+        True if traffic flows on the left-hand side of the road, False otherwise.
+
+    return_samples : bool
+        True if you want the sampled points to be returned together with the estimated edge and calculated proportions
+
+    Returns
+    -------
+    camera_edge, p_cedges, samples : Edge, dict, dict
+        the estimated camera edge, the calculated proportions for each of the candidate edges and, if return_samples, a dict with the sampled point for each candidate edge
+    """
+    start_time = time.time()
+    p_cedges = dict()
+    samples = dict()
+
+    for candidate in lsystem['cedges']:
+        start_point = lsystem['lnodes'][candidate.u]
+        finish_point = lsystem['lnodes'][candidate.v]
+        line = lsystem['ledges'][candidate]
+        step = -line/nsamples
+
+        points = np.array([
+                    start_point + step*i
+                    for i in range(0, nsamples + 1)
+                ])
+
+        distances = np.linalg.norm(points, ord = 2, axis = 1)
+
+        line_rep = np.repeat(np.reshape(line, (1,2)), nsamples + 1, axis = 0)
+        angles = angle_between(points, line_rep)
+
+        filter_point = np.vectorize(
+            lambda d, a: True if d < radius and a < max_angle else False)
+
+        unfiltered_points = filter_point(distances, angles)
+
+        p_cedge = sum(unfiltered_points)/len(unfiltered_points)
+        p_cedges[candidate] = p_cedge
+
+        if return_samples:
+            samples[candidate] = (points, unfiltered_points)
+
+        log("Proportion for candidate {} : {:,.4f}"\
+                .format(candidate, p_cedge),
+            level = lg.INFO)
+
+        log("start = {} ".format(start_point) +
+            "finish = {} ".format(finish_point) +
+            "step = {}\n".format(step) +
+            "points = {}\n".format(points) +
+            "distances = {}\n".format(distances) +
+            "angles = {}".format(angles),
+            level = lg.DEBUG)
+
+    edge_maxp = max(p_cedges.keys(),
+                    key=(lambda key: p_cedges[key]))
+
+    # Is the street one way or two ways?
+    reverse_edge = Edge(edge_maxp.v, edge_maxp.u, edge_maxp.k)
+
+    if network.has_edge(*reverse_edge):
+        # Two way street - figure out which of the lanes is closer based on left/right-handed traffic system
+        point_u = lsystem['lnodes'][edge_maxp.u]
+        point_v = lsystem['lnodes'][edge_maxp.v]
+
+        flow = flow_of_closest_lane(point_u, point_v,
+                                    left_handed_traffic)
+        flow_from = flow[0]
+
+        if tuple(flow_from) == tuple(point_u):
+            camera_edge = edge_maxp
+        else:
+            camera_edge = reverse_edge
+    else:
+        # One way street - single edge between nodes
+        camera_edge = edge_maxp
+
+    log("The best guess for the edge observed by the camera is: {}"\
+            .format(camera_edge))
+
+    log("Estimated the edge observed by camera, using {} nsamples for each candidate, in {:,.3f} seconds"\
+            .format(nsamples, time.time()-start_time),
+        level = lg.INFO)
+
+    if return_samples:
+        return camera_edge, p_cedges, samples
+    else:
+        return camera_edge, p_cedges
+
+###
+###
+###
+
 class Camera(object):
     """
     A traffic camera located on the side of a drivable street.
@@ -1161,26 +1395,22 @@ class Camera(object):
     max_angle : float
         max angle, in degrees, between the camera and the vehicle's plate number, at which the ANPR camera can operate reliably. Usually up to 40 degrees
 
-    nsamples : int
-        number of road points to sample when estimating the camera's observed edge.
+    lsystem : dict
 
-    filter_by_address : bool
-        if True, excludes candidate edges whose address is different than the one manually annotated by traffic engineers
+        :nnodes: list of int
+            nodes near the camera. These are composed of the nodes that are within the range the camera and nodes whose edges have a node that is within the range of the camera.
 
-    nnodes : list of int
-        nodes near the camera. These are composed of the nodes that are within the range the camera and nodes whose edges have a node that is within the range of the camera.
+        :nedges: list of Edge
+            edges near the camera. Edges which have at least 1 node within the range of the camera.
 
-    nedges : list of Edge
-        edges near the camera. Edges which have at least 1 node within the range of the camera.
+        :cedges: list of Edge
+            edges considered as candidates for self.edge - the edge observed by the camera
 
-    cedges : list of Edge
-        edges considered as candidates for self.edge - the edge observed by the camera
+        :lnodes: dict( int : np.ndarray )
+            nnodes represented in a cartesian coordinate system, whose origin is the camera
 
-    lnodes : dict( int : np.ndarray )
-        nnodes represented in a cartesian coordinate system, whose origin is the camera
-
-    ledges : dict( Edge : np.ndarray )
-        cedges represented in a cartesian coordinate system, whose origin is the camera
+        :ledges: dict( Edge : np.ndarray )
+            cedges represented in a cartesian coordinate system, whose origin is the camera
 
     p_cedges : dict(Edge : float)
         proportion of sampled points from each candidate edge that meet the criteria (< radius and < max_angle)
@@ -1193,8 +1423,7 @@ class Camera(object):
                  radius = 40,
                  max_angle = 40,
                  nsamples = 100,
-                 left_handed_traffic = True,
-                 filter_by_address = False):
+                 left_handed_traffic = True):
         """
 
         Parameters
@@ -1209,7 +1438,7 @@ class Camera(object):
             location of the camera
 
         address : str
-            address of the street observed by the camera as labelled by a human
+            address of the street observed by the camera as labelled by a human. Used to excludes candidate edges whose address is different than this.
 
         radius : int
             range of the camera, in meters. Usually limited to 50 meters.
@@ -1222,189 +1451,32 @@ class Camera(object):
 
         left_handed_traffic : bool
             True if traffic flows on the left-hand side of the road, False otherwise.
-
-        filter_by_address : Filter
-            filter nearby edges according to a criteria. For instance, using Filter.address exclude edges whose address is different than the one manually annotated by traffic engineers.
         """
         self.network = network
-        # @TODO - Check if network contains the camera?
+        # @TODO - Check if the camera location is encompassed by the network's bounding box?
 
         self.id = id
         self.point = point
         self.address = address
         self.radius = radius
         self.max_angle = max_angle
-        self.nsamples = nsamples
-        self.filter_by_address = filter_by_address
         self.left_handed_traffic = left_handed_traffic
 
-        self.gen_local_coord_system()
-        self.estimate_edge()
+        lsystem = gen_lsystem(network, point, radius, address)
+        edge, p_cedges = \
+            estimate_camera_edge(network,
+                                 lsystem,
+                                 nsamples,
+                                 radius,
+                                 max_angle,
+                                 left_handed_traffic)
 
-    def gen_local_coord_system(self):
-        """
-        Find nearest nodes and edges, and encode them in a cartesian system whose origin is the camera. Executed by __init__.
-        """
-        start_time = time.time()
-
-        near_nodes, _ = \
-            get_nodes_in_range(network = self.network,
-                               points = np.array([self.point]),
-                               radius = self.radius)
-
-        log("Near nodes: {}"\
-                .format(near_nodes),
-            level = lg.DEBUG)
-
-        near_edges = get_edges_in_range(self.network, near_nodes)[0]
-
-        log("Near nodes: {}"\
-                .format(near_edges),
-            level = lg.DEBUG)
-
-        log("Found {} nodes and {} edges within {} meters of camera {}."\
-                .format(len(near_nodes),
-                        len(near_edges),
-                        self.radius,
-                        self.point),
-            level = lg.INFO)
-
-        # Add nodes that where not initially detected as neighbors, but that are included in near_edges
-        all_nodes = { edge[0] for edge in near_edges } | \
-                    { edge[1] for edge in near_edges }
-
-        log("All nodes: {}"\
-                .format(all_nodes),
-            level = lg.DEBUG)
-
-        log("Added {} out of range nodes that are part of nearest edges. Total nodes: {}."\
-                .format(len(all_nodes - set(near_nodes[0])),
-                        len(all_nodes)),
-            level = lg.INFO)
-
-        if self.filter_by_address:
-            if self.address is None:
-                log("Camera {} has no address defined.".format(self.id))
-                raise ValueError("Given camera has no address defined")
-
-            candidate_edges = \
-                filter_by_address(self.network,
-                                  near_edges,
-                                  self.address)
-        else:
-            candidate_edges = near_edges
-
-        log("Candidate edges: {}"\
-                .format(candidate_edges),
-            level = lg.DEBUG)
-
-        nodes_lvectors, edges_lvectors = \
-            local_coordinate_system(self.network,
-                                    origin = self.point,
-                                    nodes = all_nodes,
-                                    edges = candidate_edges)
-
-        log("Generated local coordinate system for camera in {:,.3f} seconds".format(time.time()-start_time),
-            level = lg.INFO)
-
-        self.nnodes = list(all_nodes)
-        self.nedges = list(near_edges)
-        self.cedges = list(candidate_edges)
-        self.lnodes = nodes_lvectors
-        self.ledges = edges_lvectors
-
-
-    def estimate_edge(self):
-        """
-        Estimate the edge of the road network that the camera is observing. Executed by __init__.
-
-        Points are sampled from each candidate edge, are filtered based on whether the distance and angle to the camera is below the maximum. The probability, that a candidate edge is the true edge, is then just the proportion of sampled points that fit this criteria.
-        """
-        """
-        Algorithm
-
-            1. Sample points from each candidate edge, representing the points in the road that are potentially being observed by the camera.
-
-            2. Count all sampled points:
-                - Whose distance to the camera is:
-                    - lower than radius
-                    - greater than min_radius (TODO)
-                - Whose angle with the edge vector is lower than max_angle
-                - Are intercepted by a nearby edge representing traffic moving in a different direction (TODO)
-
-            3. The probability that an edge is the 'correct' edge is equal to the proportion of unfiltered sampled points over the total of sampled points.
-
-            4. Pick the candidate edge with highest probability.
-        """
-        start_time = time.time()
-        p_cedges = dict()
-
-        for candidate in self.cedges:
-            start_point = self.lnodes[candidate.u]
-            finish_point = self.lnodes[candidate.v]
-            line = self.ledges[candidate]
-            step = -line/self.nsamples
-
-            points = np.array([
-                        start_point + step*i
-                        for i in range(0, self.nsamples + 1)
-                    ])
-
-            distances = np.linalg.norm(points, ord = 2, axis = 1)
-
-            line_rep = np.repeat(np.reshape(line, (1,2)), self.nsamples + 1, axis = 0)
-            angles = angle_between(points, line_rep)
-
-            filter_point = np.vectorize(
-                lambda d, a: True if d < self.radius and a < self.max_angle else False)
-
-            unfiltered_points = filter_point(distances, angles)
-
-            p_cedge = sum(unfiltered_points)/len(unfiltered_points)
-            p_cedges[candidate] = p_cedge
-
-            log("Probability of candidate {} : {:,.4f}"\
-                    .format(candidate, p_cedge),
-                level = lg.INFO)
-
-            log("start = {} ".format(start_point) +
-                "finish = {} ".format(finish_point) +
-                "step = {}\n".format(step) +
-                "points = {}\n".format(points) +
-                "distances = {}\n".format(distances) +
-                "angles = {}".format(angles),
-                level = lg.DEBUG)
-
+        self.lsystem = lsystem
+        self.edge = edge
         self.p_cedges = p_cedges
 
-        edge_maxp = max(p_cedges.keys(),
-                        key=(lambda key: p_cedges[key]))
-
-        # Is the street one way or two ways?
-        reverse_edge = Edge(edge_maxp.v, edge_maxp.u, edge_maxp.k)
-
-        if self.network.has_edge(*reverse_edge):
-            # Two way street - figure out which of the lanes is closer based on left/right-handed traffic system
-            point_u = self.lnodes[edge_maxp.u]
-            point_v = self.lnodes[edge_maxp.v]
-
-            flow = flow_of_closest_lane(point_u, point_v,
-                                        self.left_handed_traffic)
-            flow_from = flow[0]
-
-            if tuple(flow_from) == tuple(point_u):
-                self.edge = edge_maxp
-            else:
-                self.edge = reverse_edge
-        else:
-            # One way street - single edge between nodes
-            self.edge = edge_maxp
-
-        log("The best guess for the edge observed by the camera is: {}".format(self.edge))
-
-        log("Estimated the edge observed by camera {}, using {} nsamples for each candidate, in {:,.3f} seconds".format(self.id, self.nsamples, time.time()-start_time),
-            level = lg.INFO)
-
+###
+###
 
     def plot(self,
              bbox_side = 100,
@@ -1440,7 +1512,7 @@ class Camera(object):
              #
              save = False,
              file_format = 'png',
-             filename = "camera",
+             filename = None,
              dpi = 300
              ):
         """
@@ -1527,7 +1599,7 @@ class Camera(object):
             format of the image
 
         filename : string
-            filename of the figure to be saved
+            filename of the figure to be saved. The default value is the camera's id.
 
         dpi : int
             resolution of the image
@@ -1536,6 +1608,8 @@ class Camera(object):
         -------
         fig, ax : tuple
         """
+        if filename is None:
+            filename = self.id
 
         bbox = ox.bbox_from_point(point = self.point,
                                   distance = bbox_side)
@@ -1546,7 +1620,7 @@ class Camera(object):
 
         i = 0
         for node in self.network.nodes(data = False):
-            if node in self.nnodes:
+            if node in self.lsystem['nnodes']:
                 nodes_colors[i] = nn_color
             i = i + 1
 
@@ -1561,7 +1635,7 @@ class Camera(object):
         j = 0
         for u,v,k in self.network.edges(keys = True, data = False):
             edge = Edge(u,v,k)
-            if edge in self.cedges:
+            if edge in self.lsystem['cedges']:
                 edges_colors[j] = pcolor[edge]
             j = j + 1
 
@@ -1630,9 +1704,9 @@ class Camera(object):
         if annotate_nn_id or annotate_nn_distance:
             # Annotate nearest_neighbors
             texts = []
-            for id in self.nnodes:
-                distance_x = self.lnodes[id][0]
-                distance_y = self.lnodes[id][1]
+            for id in self.lsystem['nnodes']:
+                distance_x = self.lsystem['lnodes'][id][0]
+                distance_y = self.lsystem['lnodes'][id][1]
                 distance = math.sqrt(distance_x ** 2 + distance_y ** 2)
 
                 if distance < bbox_side:
@@ -1662,8 +1736,8 @@ class Camera(object):
 
                 adjustText.adjust_text(
                     texts,
-                    x = [ self.network.node[id]['x'] for id in self.nnodes ],
-                    y = [ self.network.node[id]['y'] for id in self.nnodes ],
+                    x = [ self.network.node[id]['x'] for id in self.lsystem['nnodes'] ],
+                    y = [ self.network.node[id]['y'] for id in self.lsystem['nnodes'] ],
                     ax = axis,
                     add_objects = camera_point + additional_obj,
                     force_points = (0.5, 0.6),
