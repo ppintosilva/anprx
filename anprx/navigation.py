@@ -979,51 +979,6 @@ def remove_dead_end_nodes(network):
 ###
 ###
 
-def simplify_intersections(network, tolerance):
-    """
-    Simplify intersections composed by clusters of nodes.
-
-    This method tries to apply the result of
-    osmnx.simplify.clean_intersections the graph, in a sensible way.
-
-    Parameters
-    ----------
-    network : nx.MultiDiGraph
-        A street network
-
-    tolerance : float
-        nodes within this distance will be transformed into a single node,
-        and the corresponding edges merged
-
-    Returns
-    -------
-    network : nx.MultiDiGraph
-        The same network, but without dead end nodes and edges
-    """
-    # start_time_local = time.time()
-    # network_proj = ox.project_graph(network)
-    # gdf_nodes = ox.graph_to_gdfs(G_proj, edges=False)
-    # buffered_nodes = gdf_nodes.buffer(intersections_tolerance).unary_union
-    #
-    # if isinstance(buffered_nodes, Polygon):
-    #     buffered_nodes = [buffered_nodes]
-    #
-    # # get the centroids of the merged intersection polygons
-    # unified_intersections = gpd.GeoSeries(list(buffered_nodes))
-    # intersection_centroids = unified_intersections.centroid
-    #
-    # # Replace
-    #
-    # log("Cleaned intersections in {:,.3f} seconds"\
-    #         .format(time.time() - start_time_local),
-    #     level = lg.INFO)
-    # return network
-    raise NotImplementedError("Not implemented yet")
-
-###
-###
-###
-
 def add_address_details(network,
                         drop_keys = ['place_id', 'license', 'osm_type',
                                      'osm_id', ' lat', 'lon', 'display_name',
@@ -1097,8 +1052,6 @@ def add_address_details(network,
 
 def enrich_network(network,
                    clean_dead_ends = True,
-                   clean_intersections = False,
-                   tolerance = 15,
                    elevation_api_key = None,
                    drop_keys = ['place_id', 'license', 'osm_type',
                                 'osmid', ' lat', 'lon', 'display_name',
@@ -1132,7 +1085,7 @@ def enrich_network(network,
         and the corresponding edges merged
 
     elevation_api_key : string
-        Google API key necessary to access the Elevation API
+        Google API key necessary to access the Elevation API. If None, elevation.
 
     keys to ignore from the nominatim response containing address details
 
@@ -1152,9 +1105,6 @@ def enrich_network(network,
 
     if clean_dead_ends:
         remove_dead_end_nodes(network)
-
-    if clean_intersections:
-        network = simplify_intersections(network, tolerance)
 
     # Add bearings
     network = ox.add_edge_bearings(network)
