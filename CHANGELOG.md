@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.1.2] - 31/10/2018
+
+Patch with major refactoring changes. Also implements helper methods for experimenting with network clustering/compression algorithms.
+
+### Added
+- Method that combines Edges in the network can now be 'enriched' with additional attributes: bearing, grade (calculated from node elevation), address details (road, suburb, postcode - outer and inner, OSM importance metric, type)
+- Address details can be added as attributes to every edge in the network
+- Address details, of up to 50 osmids, can be retrived from Nominatim
+- Dead end nodes can be retrieved and removed from the network graph.
+
+### Changed
+- Increased default value for 'mean_area' to 0.3 km^2 in `anprx.navigation.get_surrounding_network`
+- Adjusted log indentation
+
+### Removed
+- Removed submodules imports from `__init__.py`
+
+### Refactored
+- navigation.py source file - moved to core.py
+- anprx imports in test files
+
+### Fixed
+- docs errors and typos
+
 ## [0.1.1] - 22/10/2018
 
 Patch that implements fixes/improvements to docs, CI and packaging.
