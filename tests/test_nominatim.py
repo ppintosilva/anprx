@@ -1,13 +1,13 @@
-import anprx
 import pytest
+import anprx.nominatim as nominatim
 
 def test_nominatim_search_address():
-    result = anprx.search_address("Newcastle A186 Westgate Rd")
+    result = nominatim.search_address("Newcastle A186 Westgate Rd")
 
     assert len(result) > 0
 
 def test_nominatim_search_address_fail():
-    result = anprx.search_address("AAAAAAAAAAA")
+    result = nominatim.search_address("AAAAAAAAAAA")
 
     assert result == []
 
@@ -21,14 +21,14 @@ osmids = [37899441,
 
 def test_lookup_address_exceeds_limit():
     with pytest.raises(ValueError):
-        anprx.lookup_address(osmids * 10, entity = 'W')
+        nominatim.lookup_address(osmids * 10, entity = 'W')
 
 def test_lookup_address_invalid_osm_entity():
     with pytest.raises(ValueError):
-        anprx.lookup_address(osmids, entity = 'A')
+        nominatim.lookup_address(osmids, entity = 'A')
 
 def test_lookup_address():
-    details = anprx.lookup_address(osmids, entity = 'W')
+    details = nominatim.lookup_address(osmids, entity = 'W')
 
     assert len(details) == len(osmids)
 

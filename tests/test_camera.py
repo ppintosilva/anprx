@@ -1,10 +1,9 @@
 import os
-import anprx
 import numpy as np
 import osmnx as ox
 import logging as lg
 import networkx as nx
-
+import anprx.core as core
 
 def get_network(distance = 1000, center = (54.97351, -1.62545)):
 
@@ -22,10 +21,10 @@ def get_network(distance = 1000, center = (54.97351, -1.62545)):
 
     return network
 
-test_camera = anprx.Camera(
+test_camera = core.Camera(
     network = get_network(distance = 1000),
     id = "fake_camera",
-    point = anprx.Point(lat = 54.974537, lng = -1.625644),
+    point = core.Point(lat = 54.974537, lng = -1.625644),
     address = "Pitt Street, Newcastle Upon Tyne, UK",
     filter_by_address = True)
 

@@ -1,12 +1,17 @@
 import os
 import sys
 import math
-import anprx
 import pytest
 import numpy as np
 import osmnx as ox
 import logging as lg
 import networkx as nx
+import anprx.core as core
+import anprx.helpers as helpers
+from anprx.constants import Units
+
+###
+###
 
 def get_lat_lng():
     latitudes = [54.97092396,54.97080711]
@@ -17,9 +22,9 @@ def get_lat_lng():
 def get_points():
     latitudes, longitudes = get_lat_lng()
 
-    point1 = anprx.Point(lat = latitudes[0],
+    point1 = core.Point(lat = latitudes[0],
                          lng = longitudes[0])
-    point2 = anprx.Point(lat = latitudes[1],
+    point2 = core.Point(lat = latitudes[1],
                          lng = longitudes[1])
 
     return (point1, point2)
@@ -27,16 +32,16 @@ def get_points():
 def get_bbox(size):
 
     if size == "small":
-        return anprx.BBox(54.97092396, 54.97080711,
+        return core.BBox(54.97092396, 54.97080711,
                          -1.622966153, -1.622935367)
 
     elif size == "medium":
-        return anprx.BBox(*ox.bbox_from_point(
+        return core.BBox(*ox.bbox_from_point(
                                 point= (54.97351405, -1.62545930208892),
                                 distance = 500))
 
     elif size == "uk":
-        return anprx.BBox(59.478568831926395, 49.82380908513249,
+        return core.BBox(59.478568831926395, 49.82380908513249,
                           -10.8544921875, 2.021484375)
 
     else:
@@ -68,23 +73,23 @@ def test_bbox_area_small():
     bbox = get_bbox(size = "small")
 
     expected_area_km2 = 2.55e-05
-    observed_area_km2_simple = anprx.get_bbox_area(
+    observed_area_km2_simple = core.get_bbox_area(
                             bbox = bbox,
-                            unit = anprx.Units.km,
+                            unit = Units.km,
                             method = "simple")
-    observed_area_km2_sins = anprx.get_bbox_area(
+    observed_area_km2_sins = core.get_bbox_area(
                             bbox = bbox,
-                            unit = anprx.Units.km,
+                            unit = Units.km,
                             method = "sins")
 
     expected_area_m2 = 2.55e-05 * 1e6
-    observed_area_m2_simple = anprx.get_bbox_area(
+    observed_area_m2_simple = core.get_bbox_area(
                             bbox = bbox,
-                            unit = anprx.Units.m,
+                            unit = Units.m,
                             method = "simple")
-    observed_area_m2_sins = anprx.get_bbox_area(
+    observed_area_m2_sins = core.get_bbox_area(
                             bbox = bbox,
-                            unit = anprx.Units.m,
+                            unit = Units.m,
                             method = "sins")
 
     np.testing.assert_almost_equal(expected_area_km2, observed_area_km2_simple, decimal = 6)
@@ -97,23 +102,23 @@ def test_bbox_area_large():
     bbox = get_bbox(size = "uk")
 
     expected_area_km2 = 888000
-    observed_area_km2_simple = anprx.get_bbox_area(
+    observed_area_km2_simple = core.get_bbox_area(
                             bbox = bbox,
-                            unit = anprx.Units.km,
+                            unit = Units.km,
                             method = "simple")
-    observed_area_km2_sins = anprx.get_bbox_area(
+    observed_area_km2_sins = core.get_bbox_area(
                             bbox = bbox,
-                            unit = anprx.Units.km,
+                            unit = Units.km,
                             method = "sins")
 
     expected_area_m2 = 888000 * 1e6
-    observed_area_m2_simple = anprx.get_bbox_area(
+    observed_area_m2_simple = core.get_bbox_area(
                             bbox = bbox,
-                            unit = anprx.Units.m,
+                            unit = Units.m,
                             method = "simple")
-    observed_area_m2_sins = anprx.get_bbox_area(
+    observed_area_m2_sins = core.get_bbox_area(
                             bbox = bbox,
-                            unit = anprx.Units.m,
+                            unit = Units.m,
                             method = "sins")
 
     np.testing.assert_almost_equal(expected_area_km2, observed_area_km2_simple, decimal = -5)
@@ -124,29 +129,29 @@ def test_bbox_area_large():
 def test_meanpoint():
     point1, point2 = get_points()
 
-    meanpoint = anprx.get_meanpoint([point1, point2])
+    meanpoint = core.get_meanpoint([point1, point2])
 
     np.testing.assert_almost_equal(54.97086, meanpoint.lat, decimal=5)
     np.testing.assert_almost_equal(-1.622945, meanpoint.lng, decimal=5)
 
 def test_empty_bbox_from_points():
     with pytest.raises(ValueError):
-        anprx.bbox_from_points([])
+        core.bbox_from_points([])
 
 def test_small_bbox_from_points():
     point1, point2 = get_points()
     bbox = get_bbox(size = "small")
 
-    nw = anprx.Point(bbox.north, bbox.west)
-    sw = anprx.Point(bbox.south, bbox.west)
-    ne = anprx.Point(bbox.north, bbox.east)
-    se = anprx.Point(bbox.south, bbox.east)
+    nw = core.Point(bbox.north, bbox.west)
+    sw = core.Point(bbox.south, bbox.west)
+    ne = core.Point(bbox.north, bbox.east)
+    se = core.Point(bbox.south, bbox.east)
 
     points = [nw, sw, ne, se]
 
-    bbox = anprx.bbox_from_points(points)
-    expected_bbox = anprx.BBox(*ox.bbox_from_point(
-                            point= anprx.get_meanpoint([point1, point2]),
+    bbox = core.bbox_from_points(points)
+    expected_bbox = core.BBox(*ox.bbox_from_point(
+                            point= core.get_meanpoint([point1, point2]),
                             distance = 100))
 
     assert_bbox_almost_equal(bbox, expected_bbox)
@@ -155,28 +160,28 @@ def test_small_bbox_from_points():
 def test_large_bbox_from_points():
     bbox = get_bbox(size = "uk")
 
-    nw = anprx.Point(bbox.north, bbox.west)
-    sw = anprx.Point(bbox.south, bbox.west)
-    ne = anprx.Point(bbox.north, bbox.east)
-    se = anprx.Point(bbox.south, bbox.east)
+    nw = core.Point(bbox.north, bbox.west)
+    sw = core.Point(bbox.south, bbox.west)
+    ne = core.Point(bbox.north, bbox.east)
+    se = core.Point(bbox.south, bbox.east)
 
     points = [nw, sw, ne, se]
 
-    with pytest.raises(anprx.GiantBBox):
-        anprx.bbox_from_points(points)
+    with pytest.raises(core.GiantBBox):
+        core.bbox_from_points(points)
 
 def test_bbox_from_points_no_margins():
     bbox = get_bbox(size = "medium")
 
-    nw = anprx.Point(bbox.north, bbox.west)
-    sw = anprx.Point(bbox.south, bbox.west)
-    ne = anprx.Point(bbox.north, bbox.east)
-    se = anprx.Point(bbox.south, bbox.east)
+    nw = core.Point(bbox.north, bbox.west)
+    sw = core.Point(bbox.south, bbox.west)
+    ne = core.Point(bbox.north, bbox.east)
+    se = core.Point(bbox.south, bbox.east)
 
     points = [nw, sw, ne, se]
 
-    bbox = anprx.bbox_from_points(points, rel_margins = anprx.RelativeMargins(0,0,0,0))
-    expected_bbox = anprx.BBox(*ox.bbox_from_point(
+    bbox = core.bbox_from_points(points, rel_margins = core.RelativeMargins(0,0,0,0))
+    expected_bbox = core.BBox(*ox.bbox_from_point(
                             point= (54.97351405, -1.62545930208892),
                             distance = 500))
 
@@ -185,15 +190,15 @@ def test_bbox_from_points_no_margins():
 def test_bbox_from_points_with_margins():
     bbox = get_bbox(size = "medium")
 
-    nw = anprx.Point(bbox.north, bbox.west)
-    sw = anprx.Point(bbox.south, bbox.west)
-    ne = anprx.Point(bbox.north, bbox.east)
-    se = anprx.Point(bbox.south, bbox.east)
+    nw = core.Point(bbox.north, bbox.west)
+    sw = core.Point(bbox.south, bbox.west)
+    ne = core.Point(bbox.north, bbox.east)
+    se = core.Point(bbox.south, bbox.east)
 
     points = [nw, sw, ne, se]
 
-    bbox = anprx.bbox_from_points(points)
-    expected_bbox = anprx.BBox(*ox.bbox_from_point(
+    bbox = core.bbox_from_points(points)
+    expected_bbox = core.BBox(*ox.bbox_from_point(
                             point= (54.97351405, -1.62545930208892),
                             distance = 500))
 
@@ -212,13 +217,13 @@ def test_edges_from_osmid():
 
     network = get_network(distance = 1000)
 
-    all_osmids = list(anprx.flatten(network.edges(data = "osmid")))
+    all_osmids = list(helpers.flatten(network.edges(data = "osmid")))
 
     assert not set(expected_osmids).isdisjoint(set(all_osmids))
 
-    edges = list(anprx.edges_from_osmid(network, expected_osmids))
+    edges = list(core.edges_from_osmid(network, expected_osmids))
 
-    returned_osmids = set(anprx.flatten(map(lambda edge: network[edge.u][edge.v][edge.k]["osmid"], edges)))
+    returned_osmids = set(helpers.flatten(map(lambda edge: network[edge.u][edge.v][edge.k]["osmid"], edges)))
 
     assert not set(returned_osmids).isdisjoint(set(expected_osmids))
 
@@ -228,24 +233,24 @@ def test_distance_to_edge():
 
     network = get_network(distance = 1000)
 
-    edge = anprx.Edge(u = 826286632,
+    edge = core.Edge(u = 826286632,
                       v = 29825878,
                       k = 0)
 
     assert \
-        anprx.distance_to_edge(
+        core.distance_to_edge(
                 network = network,
                 edge = edge,
                 point = point1,
-                method = anprx.EdgeDistanceMethod.farthest_node) \
+                method = core.EdgeDistanceMethod.farthest_node) \
         < 100
 
     assert \
-        anprx.distance_to_edge(
+        core.distance_to_edge(
                 network = network,
                 edge = edge,
                 point = point2,
-                method = anprx.EdgeDistanceMethod.mean_of_distances) \
+                method = core.EdgeDistanceMethod.mean_of_distances) \
         < 100
 
 
@@ -254,7 +259,7 @@ def test_nodes_and_edges_in_range():
 
     network = get_network(distance = 1000)
 
-    nn_ids, nn_distances = anprx.get_nodes_in_range(network, [point1, point2], 100)
+    nn_ids, nn_distances = core.get_nodes_in_range(network, [point1, point2], 100)
 
     assert len(nn_ids) == 2
     assert len(nn_distances) == 2
@@ -265,7 +270,7 @@ def test_nodes_and_edges_in_range():
     assert len(nn_distances[1]) == len(nn_ids[1])
 
 
-    edges = anprx.get_edges_in_range(network, nn_ids)
+    edges = core.get_edges_in_range(network, nn_ids)
 
     assert len(edges) == 2
     assert len(edges[0]) >= len(nn_ids[0])
@@ -275,17 +280,17 @@ def test_nodes_and_edges_in_range():
 def test_filter_by_address_and_get_local_coordinate_system():
     network = get_network(distance = 1000)
     address = "Pitt Street, Newcastle Upon Tyne, UK"
-    point = anprx.Point(lat = 54.974537, lng = -1.625644)
+    point = core.Point(lat = 54.974537, lng = -1.625644)
 
-    nn_ids, nn_distances = anprx.get_nodes_in_range(network, [point], 100)
-    nn_edges = anprx.get_edges_in_range(network, nn_ids)[0]
+    nn_ids, nn_distances = core.get_nodes_in_range(network, [point], 100)
+    nn_edges = core.get_edges_in_range(network, nn_ids)[0]
 
     all_nodes = { edge[0] for edge in nn_edges } | \
                 { edge[1] for edge in nn_edges }
 
     assert len(all_nodes) > len(nn_ids[0])
 
-    candidate_edges = anprx.filter_by_address(network, nn_edges, address)
+    candidate_edges = core.filter_by_address(network, nn_edges, address)
 
     assert len(candidate_edges) < len(nn_edges)
 
@@ -293,7 +298,7 @@ def test_filter_by_address_and_get_local_coordinate_system():
                       { edge[1] for edge in candidate_edges }
 
     nodes_lvectors, edges_lvectors = \
-        anprx.local_coordinate_system(
+        core.local_coordinate_system(
             network = network,
             origin = point,
             nodes = candidate_nodes,
@@ -335,61 +340,61 @@ def test_direction_of_flow_q1_q2():
     q1_q2 = np.array(np.meshgrid(points_1q, points_2q, indexing = 'xy')).T.reshape(-1,2)
 
     for q1,q2 in q1_q2:
-        assert anprx.flow_of_closest_lane(q1,q2,
+        assert core.flow_of_closest_lane(q1,q2,
                                     left_handed = True) == (q1,q2)
-        assert anprx.flow_of_closest_lane(q2,q1,
+        assert core.flow_of_closest_lane(q2,q1,
                                     left_handed = True) == (q1,q2)
-        assert anprx.flow_of_closest_lane(q1,q2,
+        assert core.flow_of_closest_lane(q1,q2,
                                     left_handed = False) == (q2,q1)
-        assert anprx.flow_of_closest_lane(q2,q1,
+        assert core.flow_of_closest_lane(q2,q1,
                                     left_handed = False) == (q2,q1)
 
 def test_direction_of_flow_q2_q3():
     q2_q3 = np.array(np.meshgrid(points_2q, points_3q, indexing = 'xy')).T.reshape(-1,2)
 
     for q2,q3 in q2_q3:
-        assert anprx.flow_of_closest_lane(q2,q3,
+        assert core.flow_of_closest_lane(q2,q3,
                                     left_handed = True) == (q2,q3)
-        assert anprx.flow_of_closest_lane(q3,q2,
+        assert core.flow_of_closest_lane(q3,q2,
                                     left_handed = True) == (q2,q3)
-        assert anprx.flow_of_closest_lane(q2,q3,
+        assert core.flow_of_closest_lane(q2,q3,
                                     left_handed = False) == (q3,q2)
-        assert anprx.flow_of_closest_lane(q3,q2,
+        assert core.flow_of_closest_lane(q3,q2,
                                     left_handed = False) == (q3,q2)
 
 def test_direction_of_flow_q3_q4():
     q3_q4 = np.array(np.meshgrid(points_3q, points_4q, indexing = 'xy')).T.reshape(-1,2)
 
     for q3,q4 in q3_q4:
-        assert anprx.flow_of_closest_lane(q3,q4,
+        assert core.flow_of_closest_lane(q3,q4,
                                     left_handed = True) == (q3,q4)
-        assert anprx.flow_of_closest_lane(q4,q3,
+        assert core.flow_of_closest_lane(q4,q3,
                                     left_handed = True) == (q3,q4)
-        assert anprx.flow_of_closest_lane(q3,q4,
+        assert core.flow_of_closest_lane(q3,q4,
                                     left_handed = False) == (q4,q3)
-        assert anprx.flow_of_closest_lane(q4,q3,
+        assert core.flow_of_closest_lane(q4,q3,
                                     left_handed = False) == (q4,q3)
 
 def test_direction_of_flow_q4_q1():
     q4_q1 = np.array(np.meshgrid(points_4q, points_1q, indexing = 'xy')).T.reshape(-1,2)
 
     for q4,q1 in q4_q1:
-        assert anprx.flow_of_closest_lane(q4,q1,
+        assert core.flow_of_closest_lane(q4,q1,
                                     left_handed = True) == (q4,q1)
-        assert anprx.flow_of_closest_lane(q1,q4,
+        assert core.flow_of_closest_lane(q1,q4,
                                     left_handed = True) == (q4,q1)
-        assert anprx.flow_of_closest_lane(q4,q1,
+        assert core.flow_of_closest_lane(q4,q1,
                                     left_handed = False) == (q1,q4)
-        assert anprx.flow_of_closest_lane(q1,q4,
+        assert core.flow_of_closest_lane(q1,q4,
                                     left_handed = False) == (q1,q4)
 
 def test_get_dead_end_nodes():
     network = get_network(distance = 1000)
-    dead_end_nodes = anprx.get_dead_end_nodes(network)
+    dead_end_nodes = core.get_dead_end_nodes(network)
 
     assert len(dead_end_nodes) > 0
 
-    anprx.remove_dead_end_nodes(network)
+    core.remove_dead_end_nodes(network)
 
     for node in dead_end_nodes:
         assert not network.has_node(node)
@@ -414,7 +419,7 @@ def test_add_address_details(monkeypatch):
                         lambda osmids,entity,drop_keys,email:
                         [dummy_address_details] * len(osmids))
 
-    subnetwork = anprx.add_address_details(subnetwork)
+    subnetwork = core.add_address_details(subnetwork)
 
     for (u,v,k,d) in subnetwork.edges(keys = True, data = True):
         assert all(item in d.items() for item in dummy_address_details.items())
@@ -446,7 +451,7 @@ def test_enrich_network(monkeypatch):
                         mock_osmnx_elevation)
 
 
-    new_network = anprx.enrich_network(network, elevation_api_key = "dummy")
+    new_network = core.enrich_network(network, elevation_api_key = "dummy")
 
     for (u,v,k,d) in network.edges(keys = True, data = True):
         # dummy_address_details are contained in edge data
