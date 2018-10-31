@@ -30,8 +30,7 @@ locations = [ Point(lat = 54.974537,
                     lng = -1.625644),
 
               Point(lat = 54.974537,
-                    lng = -1.625644)
-            ]
+                    lng = -1.625644)]
 
 network = get_surrounding_network(locations)
 
@@ -40,10 +39,13 @@ mock_camera1 = Camera(
   network = network,
   id = "c1",
   point = locations[0],
-  address = "Pitt Street, Newcastle Upon Tyne, UK",
-  filter_by_address = True)
+  address = "Pitt Street, Newcastle Upon Tyne, UK")
 
 mock_camera1.plot()
+
+mock_camera1.edge
+
+mock_camera1.p_cedges
 
 # Without address filtering
 mock_camera2 = Camera(
