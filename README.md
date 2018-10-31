@@ -21,20 +21,22 @@ See `requirements.txt` for a complete list of dependencies.
 ## Usage Example
 
 ```python
-import anprx
+from anprx.core import Point
+from anprx.core import Camera
+from anprx.core import get_surrounding_network
 
 # Using the same dummy location twice
-locations = [ anprx.Point(lat = 54.974537,
-                          lng = -1.625644),
+locations = [ Point(lat = 54.974537,
+                    lng = -1.625644),
 
-              anprx.Point(lat = 54.974537,
-                          lng = -1.625644)
+              Point(lat = 54.974537,
+                    lng = -1.625644)
             ]
 
-network = anprx.get_surrounding_network(locations)
+network = get_surrounding_network(locations)
 
 # With address filtering
-mock_camera1 = anprx.Camera(
+mock_camera1 = Camera(
   network = network,
   id = "c1",
   point = locations[0],
@@ -44,7 +46,7 @@ mock_camera1 = anprx.Camera(
 mock_camera1.plot()
 
 # Without address filtering
-mock_camera2 = anprx.Camera(
+mock_camera2 = Camera(
   network = network,
   id = "c2",
   point = locations[1])
