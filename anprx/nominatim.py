@@ -7,13 +7,16 @@
 ################################################################################
 
 import time
-import numpy as np
-import osmnx as ox
-import logging as lg
-from collections import OrderedDict
+import numpy                as np
+import osmnx                as ox
+import logging              as lg
+from collections            import OrderedDict
 
-from .helpers import flatten_dict
-from .utils import settings, config, log
+from .utils                 import log
+from .helpers               import flatten_dict
+
+###
+###
 
 def search_address(address,
                    email = None):

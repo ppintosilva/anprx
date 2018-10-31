@@ -71,21 +71,21 @@ def test_bbox_area_small():
     observed_area_km2_simple = anprx.get_bbox_area(
                             bbox = bbox,
                             unit = anprx.Units.km,
-                            method = anprx.BBoxAreaMethod.simple)
+                            method = "simple")
     observed_area_km2_sins = anprx.get_bbox_area(
                             bbox = bbox,
                             unit = anprx.Units.km,
-                            method = anprx.BBoxAreaMethod.sins)
+                            method = "sins")
 
     expected_area_m2 = 2.55e-05 * 1e6
     observed_area_m2_simple = anprx.get_bbox_area(
                             bbox = bbox,
                             unit = anprx.Units.m,
-                            method = anprx.BBoxAreaMethod.simple)
+                            method = "simple")
     observed_area_m2_sins = anprx.get_bbox_area(
                             bbox = bbox,
                             unit = anprx.Units.m,
-                            method = anprx.BBoxAreaMethod.sins)
+                            method = "sins")
 
     np.testing.assert_almost_equal(expected_area_km2, observed_area_km2_simple, decimal = 6)
     np.testing.assert_almost_equal(expected_area_m2, observed_area_m2_simple, decimal = 1)
@@ -100,21 +100,21 @@ def test_bbox_area_large():
     observed_area_km2_simple = anprx.get_bbox_area(
                             bbox = bbox,
                             unit = anprx.Units.km,
-                            method = anprx.BBoxAreaMethod.simple)
+                            method = "simple")
     observed_area_km2_sins = anprx.get_bbox_area(
                             bbox = bbox,
                             unit = anprx.Units.km,
-                            method = anprx.BBoxAreaMethod.sins)
+                            method = "sins")
 
     expected_area_m2 = 888000 * 1e6
     observed_area_m2_simple = anprx.get_bbox_area(
                             bbox = bbox,
                             unit = anprx.Units.m,
-                            method = anprx.BBoxAreaMethod.simple)
+                            method = "simple")
     observed_area_m2_sins = anprx.get_bbox_area(
                             bbox = bbox,
                             unit = anprx.Units.m,
-                            method = anprx.BBoxAreaMethod.sins)
+                            method = "sins")
 
     np.testing.assert_almost_equal(expected_area_km2, observed_area_km2_simple, decimal = -5)
     np.testing.assert_almost_equal(expected_area_m2, observed_area_m2_simple, decimal = -10)
@@ -436,7 +436,7 @@ def test_enrich_network(monkeypatch):
         'postcode' : 'NE4 5TB'
     }
 
-    network = get_network(distance = 1000)    
+    network = get_network(distance = 1000)
 
     monkeypatch.setattr('anprx.nominatim.lookup_address',
                         lambda osmids,entity,drop_keys,email:

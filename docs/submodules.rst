@@ -4,43 +4,43 @@ Submodules
 anprx.core
 ----------------------
 
-.. automodule:: anprx.core
+.. autoclass:: anprx.core.Camera
    :members:
    :undoc-members:
    :show-inheritance:
 
-anprx.navigation
-----------------------
-
-.. autoclass:: anprx.navigation.Point
+.. autoclass:: anprx.core.Point
    :show-inheritance:
 
-.. autoclass:: anprx.navigation.BBox
+.. autoclass:: anprx.core.BBox
    :show-inheritance:
 
-.. autoclass:: anprx.navigation.RelativeMargins
+.. autoclass:: anprx.core.RelativeMargins
    :show-inheritance:
 
-.. autoclass:: anprx.navigation.Edge
+.. autoclass:: anprx.core.Edge
    :show-inheritance:
 
-.. automethod:: anprx.navigation.to_point
-.. automethod:: anprx.navigation.to_nvector
-.. automethod:: anprx.navigation.great_circle_distance
-.. automethod:: anprx.navigation.true_bearing
-.. automethod:: anprx.navigation.as_lvector
-.. automethod:: anprx.navigation.get_bbox_area
-.. automethod:: anprx.navigation.get_meanpoint
-.. automethod:: anprx.navigation.bbox_from_points
-.. automethod:: anprx.navigation.get_surrounding_network
-.. automethod:: anprx.navigation.edges_from_osmid
-.. automethod:: anprx.navigation.distance_to_edge
-.. automethod:: anprx.navigation.get_balltree
-.. automethod:: anprx.navigation.get_nodes_in_range
-.. automethod:: anprx.navigation.get_edges_in_range
-.. automethod:: anprx.navigation.filter_by_address
-.. automethod:: anprx.navigation.local_coordinate_system
-
+.. automethod:: anprx.core.to_point
+.. automethod:: anprx.core.to_nvector
+.. automethod:: anprx.core.great_circle_distance
+.. automethod:: anprx.core.true_bearing
+.. automethod:: anprx.core.as_lvector
+.. automethod:: anprx.core.get_bbox_area
+.. automethod:: anprx.core.get_meanpoint
+.. automethod:: anprx.core.bbox_from_points
+.. automethod:: anprx.core.get_surrounding_network
+.. automethod:: anprx.core.edges_from_osmid
+.. automethod:: anprx.core.distance_to_edge
+.. automethod:: anprx.core.get_balltree
+.. automethod:: anprx.core.get_nodes_in_range
+.. automethod:: anprx.core.get_edges_in_range
+.. automethod:: anprx.core.filter_by_address
+.. automethod:: anprx.core.flow_of_closest_lane
+.. automethod:: anprx.core.get_dead_end_nodes
+.. automethod:: anprx.core.remove_dead_end_nodes
+.. automethod:: anprx.core.add_address_details
+.. automethod:: anprx.core.enrich_network
 
 anprx.nominatim
 ------------------------

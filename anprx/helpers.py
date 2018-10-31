@@ -7,12 +7,14 @@
 ################################################################################
 
 import collections
-import numpy as np
-import pandas as pd
-import networkx as nx
-from .utils import log
-from .constants import *
-from sklearn.neighbors import BallTree
+import numpy                as np
+import pandas               as pd
+import networkx             as nx
+
+from sklearn.neighbors      import BallTree
+
+from .constants             import PropertiesFilter
+from .utils                 import log
 
 ###
 ###
@@ -295,3 +297,25 @@ def chunks(l, n):
     """
     for i in range(0, len(l), n):
         yield l[i:i + n]
+
+###
+###
+
+def as_undirected(edges):
+    """
+    Represent a directed edge as undirected.
+
+    Parameters
+    ---------
+    edges : array-like of Edge
+        array of directed edges (u,v,k)
+
+    Returns
+    -------
+    list of tuples
+    """
+    edge_set = frozenset(
+                  [ frozenset((edge[0], edge[1]))
+                    for edge in edges])
+
+    return [ tuple(edge) for edge in edge_set ]

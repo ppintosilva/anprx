@@ -10,9 +10,8 @@ from enum import Enum, auto
 
 class Units(Enum):
     __order__ = 'm km'
-    m = 1
-    km = 2
-
+    m = auto()
+    km = auto()
 
 def earth_radius(unit = Units.m):
     if unit == Units.m:
@@ -58,11 +57,6 @@ def deg2sq_distance(unit = Units.m):
     else:
         valid_units = {Units.m.name, Units.km.name}
         raise ValueError("Unit must be in one of {}".format(valid_units))
-
-class BBoxAreaMethod(Enum):
-    __order__ = 'simple sins'
-    simple = auto()
-    sins = auto()
 
 class PropertiesFilter(Enum):
     __order__ = 'all at_least_one'
