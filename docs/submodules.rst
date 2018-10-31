@@ -36,7 +36,9 @@ anprx.core
 .. automethod:: anprx.core.get_nodes_in_range
 .. automethod:: anprx.core.get_edges_in_range
 .. automethod:: anprx.core.filter_by_address
-.. automethod:: anprx.core.flow_of_closest_lane
+.. automethod:: anprx.core.gen_lsystem
+.. automethod:: anprx.core.estimate_camera_edge
+.. automethod:: anprx.core.enrich_network
 .. automethod:: anprx.core.get_dead_end_nodes
 .. automethod:: anprx.core.remove_dead_end_nodes
 .. automethod:: anprx.core.add_address_details
