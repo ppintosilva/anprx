@@ -263,7 +263,7 @@ def as_lvector(origin, point):
     Parameters
     ----------
     origin : Point
-        nvector of the Point used as origin in the new coordinate system
+        point used as origin in the new coordinate system
 
     point : Point
         target Point to be represented in the new coordinate system
@@ -274,16 +274,56 @@ def as_lvector(origin, point):
         vector representing the target Point in the new (local) cartesian coordinate system
 
     """
-    origin_nvec = to_nvector(origin)
-    point_nvec = to_nvector(point)
+    r = ox.great_circle_vec(lat1 = origin.lat,
+                            lat2 = point.lat,
+                            lng1 = origin.lng,
+                            lng2 = point.lng,
+                            earth_radius = earth_radius(Units.m))
 
-    r = great_circle_distance(origin_nvec, point_nvec)
-    phi = true_bearing(origin_nvec, point_nvec)
+    phi = ox.get_bearing(origin, point)
 
     x = r * math.cos(np.deg2rad(90 - phi))
     y = r * math.sin(np.deg2rad(90 - phi))
 
     return np.array([x,y])
+
+###
+###
+
+def from_lvector(origin, lvector):
+    """
+    Reconstruct the lat-lng point from its lvector.
+
+    Parameters
+    ----------
+    origin : Point
+        point used as origin in the local cartesian coordinate system
+
+    lvector : np.ndarray (2,)
+        vector representing the target Point in the new local cartesian coordinate system
+
+    Returns
+    -------
+    Point
+    """
+    x = lvector[0]
+    y = lvector[1]
+
+    r = math.sqrt(x ** 2 + y ** 2)
+    phi = np.deg2rad(90) - math.atan2(lvector[1],lvector[0])
+
+    d = r / earth_radius(unit = Units.m)
+
+    lat = np.deg2rad(origin[0])
+    lng = np.deg2rad(origin[1])
+
+    p_lat = math.asin(math.sin(lat) * math.cos(d) + \
+                      math.cos(lat) * math.sin(d) * math.cos(phi))
+    p_lng = lng + \
+            math.atan2(math.sin(phi) * math.sin(d) * math.cos(lat),
+                       math.cos(d) - math.sin(lat) * math.sin(p_lat))
+
+    return Point(np.rad2deg(p_lat), np.rad2deg(p_lng))
 
 ###
 ###

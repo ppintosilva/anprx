@@ -254,6 +254,19 @@ def test_distance_to_edge():
         < 100
 
 
+def test_lvector():
+    origin, actual_point = get_points()
+
+    lvector = core.as_lvector(origin, actual_point)
+
+    desired_point = core.from_lvector(origin, lvector)
+
+    np.testing.assert_almost_equal(
+        actual_point,
+        desired_point,
+        decimal = 7)
+
+
 def test_nodes_and_edges_in_range():
     point1, point2 = get_points()
 
