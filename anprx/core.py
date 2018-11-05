@@ -1097,7 +1097,8 @@ def enrich_network(network,
                                 'osmid', ' lat', 'lon', 'display_name',
                                 'country', 'country_code', 'state',
                                 'state_district', 'county', 'city'],
-                   email = None):
+                   email = None,
+                   postcode_delim = ' '):
     """
     Enrich a street network by adding further attributes to the edges in the network. These can then be used in clustering, compression, graph embeddings, shortest paths, etc.
 
@@ -1119,6 +1120,9 @@ def enrich_network(network,
 
     email : string
         Valid email address in case you are making a large number of requests.
+
+    postcode_delim : string
+        postcode delimiter used to split the main postcode into two parts: outer and inner. Use None to skip postcode splitting.
 
     Returns
     -------
@@ -1155,7 +1159,7 @@ def enrich_network(network,
     # assume that there is a space that can be used for string split
     for (u,v,k,postcode) in network.edges(keys = True, data = 'postcode'):
         if postcode:
-            postcode_l = postcode.split(' ')
+            postcode_l = postcode.split(postcode_delim)
             if len(postcode_l) != 2:
                 log("Could not split postcode {}".format(postcode),
                     level = lg.WARNING)
