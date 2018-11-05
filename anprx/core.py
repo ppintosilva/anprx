@@ -1154,13 +1154,14 @@ def enrich_network(network,
     # Split post code into outward and inward
     # assume that there is a space that can be used for string split
     for (u,v,k,postcode) in network.edges(keys = True, data = 'postcode'):
-        postcode_l = postcode.split(' ')
-        if len(postcode_l) != 2:
-            log("Could not split postcode {}".format(postcode),
-                level = lg.WARNING)
-        else:
-            network[u][v][k]['out_postcode'] = postcode_l[0]
-            network[u][v][k]['in_postcode'] = postcode_l[1]
+        if postcode:
+            postcode_l = postcode.split(' ')
+            if len(postcode_l) != 2:
+                log("Could not split postcode {}".format(postcode),
+                    level = lg.WARNING)
+            else:
+                network[u][v][k]['out_postcode'] = postcode_l[0]
+                network[u][v][k]['in_postcode'] = postcode_l[1]
 
     log("Enriched network in {:,.3f} seconds"\
         .format(time.time() - start_time),
