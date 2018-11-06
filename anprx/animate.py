@@ -25,6 +25,7 @@ from .core                  import from_lvector
 from .constants             import Units
 from .constants             import deg2distance
 from .utils                 import settings
+from .utils                 import log
 
 
 def animate_camera(
@@ -71,7 +72,8 @@ def animate_camera(
     subtitle_placement = (0.00, 0.00),
     sample_point_size = 4,
     sample_valid_color = "green",
-    sample_invalid_color = "red"):
+    sample_invalid_color = "red",
+    subtitle_fontsize = 10):
 
     """
     Generate an animation explaining the edge estimation procedure for the camera on a networkx spatial graph.
@@ -184,6 +186,9 @@ def animate_camera(
 
     sample_invalid_color : string
         color of sample points, in candidate edges, that don't fit the criteria: < camera.radius and < camera.max_angle
+
+    subtitle_fontsize : int
+        fontsize of subtitle text
 
     Returns
     -------
@@ -348,7 +353,7 @@ def animate_camera(
                   '',
                   color = bgcolor,
                   transform = axis.transAxes,
-                  fontsize = 8,
+                  fontsize = subtitle_fontsize,
                   verticalalignment = 'center',
                   bbox = dict(boxstyle = 'round',
                               facecolor = labels_color,
