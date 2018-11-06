@@ -52,6 +52,7 @@ def animate_camera(
     edge_color='#555555',
     edge_linewidth=1.5,
     edge_alpha=1,
+    labels_fontsize = 8,
     #
     probability_cmap = plt.cm.Oranges,
     show_colorbar_label = True,
@@ -73,7 +74,6 @@ def animate_camera(
     progress = True,
     colorbar_rect = [0.125, 0.20, 0.20, 0.02],
     colorbar_ticks_fontsize = 6,
-    colorbar_label_fontsize = 8,
     show_subtitle = True,
     subtitle_placement = (0.00, 0.00),
     subtitle_fontsize = 12,
@@ -181,8 +181,8 @@ def animate_camera(
     colorbar_rect : list
         rectangle position of the colorbar as used by matplotlib.figure.add_axes
 
-    colorbar_label_fontsize : int
-        fontsize of colorbar label text
+    labels_fontsize : int
+        fontsize of generic text labels (nodes, camera, colorbar)
 
     colorbar_ticks_fontsize : int
         fontsize of colorbar ticks text
@@ -282,7 +282,8 @@ def animate_camera(
     camera_text = axis.annotate(
                         str(camera.id),
                         xy = (camera.point.lng, camera.point.lat),
-                        color = labels_color)
+                        color = labels_color,
+                        fontsize = labels_fontsize)
 
     texts.append(camera_text)
 
@@ -303,7 +304,8 @@ def animate_camera(
             text = axis.text(camera.network.node[id]['x'],
                              camera.network.node[id]['y'],
                              s = s1 + s2,
-                             color = labels_color)
+                             color = labels_color,
+                             fontsize = labels_fontsize)
             texts.append(text)
     if adjust_text:
             additional_obj = []
@@ -472,7 +474,7 @@ def animate_camera(
                 cb.set_ticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
                 cb.set_label("Proportion of valid points",
                              color = labels_color,
-                             size = colorbar_label_fontsize)
+                             size = labels_fontsize)
                 cb.ax.xaxis.set_tick_params(pad=0,
                                             color = labels_color,
                                             labelcolor = labels_color,
