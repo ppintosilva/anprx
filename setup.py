@@ -31,7 +31,8 @@ install_requires = [
     'networkx >= 2.2',
     'osmnx >= 0.8.1',
     'scikit-learn >= 0.20.0',
-    'adjustText >= 0.7.3']
+    'adjustText >= 0.7.3',
+    'progress >= 1.4']
 
 extras_require = {
     'tests': [
