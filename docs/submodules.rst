@@ -21,11 +21,15 @@ anprx.core
 .. autoclass:: anprx.core.Edge
    :show-inheritance:
 
+.. autoclass:: anprx.core.GiantBBox
+   :show-inheritance:
+
 .. automethod:: anprx.core.to_point
 .. automethod:: anprx.core.to_nvector
 .. automethod:: anprx.core.great_circle_distance
 .. automethod:: anprx.core.true_bearing
 .. automethod:: anprx.core.as_lvector
+.. automethod:: anprx.core.from_lvector
 .. automethod:: anprx.core.get_bbox_area
 .. automethod:: anprx.core.get_meanpoint
 .. automethod:: anprx.core.bbox_from_points
@@ -36,13 +40,30 @@ anprx.core
 .. automethod:: anprx.core.get_nodes_in_range
 .. automethod:: anprx.core.get_edges_in_range
 .. automethod:: anprx.core.filter_by_address
+.. automethod:: anprx.core.local_coordinate_system
 .. automethod:: anprx.core.gen_lsystem
+.. automethod:: anprx.core.flow_of_closest_lane
 .. automethod:: anprx.core.estimate_camera_edge
-.. automethod:: anprx.core.enrich_network
 .. automethod:: anprx.core.get_dead_end_nodes
 .. automethod:: anprx.core.remove_dead_end_nodes
 .. automethod:: anprx.core.add_address_details
 .. automethod:: anprx.core.enrich_network
+
+anprx.plot
+------------------------
+
+.. automodule:: anprx.plot
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+anprx.animate
+------------------------
+
+.. automodule:: anprx.animate
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 anprx.nominatim
 ------------------------
