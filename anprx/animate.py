@@ -76,6 +76,8 @@ def animate_camera(
     """
     Generate an animation explaining the edge estimation procedure for the camera on a networkx spatial graph.
 
+    Total number of scenes, in the animation, is 6 + number of candidate edges.
+
     Parameters
     ----------
     bbox_side : int
@@ -159,14 +161,29 @@ def animate_camera(
     dpi : int
         resolution of the image
 
-    time_per_scene = 5000, # ms
-    time_per_frame = 250, # ms
-    progress = True,
-    colorbar_rect = [0.125, 0.20, 0.20, 0.02],
-    subtitle_placement = (0.00, 0.00),
-    sample_point_size = 4,
-    sample_valid_color = "green",
-    sample_invalid_color = "red"
+    time_per_scene = 5000 : int
+        time per scene in milliseconds
+
+    time_per_frame = 250 : int
+        time per frame in milliseconds. If time_per_scene = 250, then each scene has 20 frames. Most scenes just repeat the same frame, except the scenes for candidate edges - which plot a new sampled point per frame.
+
+    progress : bool
+        if True then a bar will show the current progress of generating the animation.
+
+    colorbar_rect : list
+        rectangle position of the colorbar as used by matplotlib.figure.add_axes
+
+    subtitle_placement : tuple
+        (x,y) coordinates, in transformed axis, of where to place the subtitle text used to explain what is going on.
+
+    sample_point_size : int
+        marker size of points sampled in candidate edges
+
+    sample_point_valid_color : string
+        color of sample points, in candidate edges, that fit the criteria: < camera.radius and < camera.max_angle
+
+    sample_invalid_color : string
+        color of sample points, in candidate edges, that don't fit the criteria: < camera.radius and < camera.max_angle
 
     Returns
     -------
