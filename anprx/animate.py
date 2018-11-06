@@ -8,14 +8,17 @@
 
 import os
 import math
+import time
 import textwrap
 import adjustText
 import numpy                as np
 import osmnx                as ox
+import logging              as lg
 import matplotlib.pyplot    as plt
 import matplotlib.colors    as colors
 import matplotlib.colorbar  as colorbar
 import matplotlib.animation as animation
+
 from progress.bar           import Bar
 
 from .helpers               import as_undirected
@@ -61,7 +64,7 @@ def animate_camera(
     annotate_nn_distance = True,
     adjust_text = True,
     #
-    save_mp4 = True,
+    save_as = 'mp4',
     filename = None,
     dpi = 320,
     #
@@ -69,11 +72,14 @@ def animate_camera(
     time_per_frame = 250, # ms
     progress = True,
     colorbar_rect = [0.125, 0.20, 0.20, 0.02],
+    colorbar_ticks_fontsize = 6,
+    colorbar_label_fontsize = 8,
+    show_subtitle = True,
     subtitle_placement = (0.00, 0.00),
+    subtitle_fontsize = 12,
     sample_point_size = 4,
     sample_valid_color = "green",
-    sample_invalid_color = "red",
-    subtitle_fontsize = 10):
+    sample_invalid_color = "red"):
 
     """
     Generate an animation explaining the edge estimation procedure for the camera on a networkx spatial graph.
@@ -154,14 +160,14 @@ def animate_camera(
     adjust_text : bool
         whether to optimise the location of the annotations, using adjustText.adjust_text, so that overlaps are avoided. Notice that this incurs considerable computational cost. Turning this feature off will result in much faster plotting.
 
-    save_mp4 : bool
-        whether to save the animation in mp4 format, in the app folder's images directory
+    save_as : string
+        format in which to save the animation in the app folder's images directory. Choose 'mp4' to save the animation in mp4 format, using ffmpeg, 'gif' to save the animation in gif format, using imagemagick, or any other value to skip saving the animation.
 
     filename : string
         filename of the figure to be saved. The default value is the camera's id.
 
     dpi : int
-        resolution of the image
+        resolution of the image, if saving the animation in 'mp4' format.
 
     time_per_scene = 5000 : int
         time per scene in milliseconds
@@ -175,8 +181,20 @@ def animate_camera(
     colorbar_rect : list
         rectangle position of the colorbar as used by matplotlib.figure.add_axes
 
+    colorbar_label_fontsize : int
+        fontsize of colorbar label text
+
+    colorbar_ticks_fontsize : int
+        fontsize of colorbar ticks text
+
+    show_subtitle : bool
+        if True show a text box explaining each scene
+
     subtitle_placement : tuple
-        (x,y) coordinates, in transformed axis, of where to place the subtitle text used to explain what is going on.
+        (x,y) coordinates, in transformed axis, of where to place the subtitle text
+
+    subtitle_fontsize : int
+        fontsize of subtitle text
 
     sample_point_size : int
         marker size of points sampled in candidate edges
@@ -187,13 +205,12 @@ def animate_camera(
     sample_invalid_color : string
         color of sample points, in candidate edges, that don't fit the criteria: < camera.radius and < camera.max_angle
 
-    subtitle_fontsize : int
-        fontsize of subtitle text
-
     Returns
     -------
     anim : FuncAnimation
     """
+
+    start_time = time.time()
 
     # ----------------------------
     # Generate base fig
@@ -308,7 +325,10 @@ def animate_camera(
 
     axis.texts = []
 
-    n_cedges = len(as_undirected(camera.lsystem['cedges']))
+    # Not elegant at all -> think of better one in the future
+    uedges = [ frozenset((cedge.u, cedge.v)) for cedge in camera.lsystem['cedges'] ]
+    unique_uedges = list(set(uedges))
+
     # ----------------------------
     # Frame and time calculations
     # ----------------------------
@@ -317,7 +337,7 @@ def animate_camera(
     scene_names = [ 'network_only',
                     'camera',
                     'near_nodes'] + \
-                  [ 'near_edges,{}'.format(id) for id in range(n_cedges) ] + \
+                  [ 'near_edges,{}'.format(id) for id in range(len(unique_uedges)) ] + \
                   ['ne_pause',
                    'colorbar',
                    'chosen_edge']
@@ -347,36 +367,43 @@ def animate_camera(
     # Get sampled points per edge
     # ----------------------------
 
-    subtitle = \
-        axis.text(subtitle_placement[0],
-                  subtitle_placement[1],
-                  '',
-                  color = bgcolor,
-                  transform = axis.transAxes,
-                  fontsize = subtitle_fontsize,
-                  verticalalignment = 'center',
-                  bbox = dict(boxstyle = 'round',
-                              facecolor = labels_color,
-                              alpha=0.5),
-                  wrap = False,
-                  family = "serif")
+    if show_subtitle:
+        subtitle = \
+            axis.text(subtitle_placement[0],
+                      subtitle_placement[1],
+                      '',
+                      color = bgcolor,
+                      transform = axis.transAxes,
+                      fontsize = subtitle_fontsize,
+                      verticalalignment = 'center',
+                      bbox = dict(boxstyle = 'round',
+                                  facecolor = labels_color,
+                                  alpha=0.5),
+                      wrap = True,
+                      family = "serif")
+
+    log("Attempting to animate camera '{}' with {} undirected candidate edges: {} scenes, {} frames"\
+            .format(camera.id, len(unique_uedges),
+                    len(scene_names), len(scenes)),
+        level = lg.INFO)
+
+    if progress:
+        bar = Bar('Animating as {}'.format(save_as), max = len(scenes) + 1)
 
     # ----------------------------
     # Animate function
     # ----------------------------
-    if progress:
-        bar = Bar('Animating', max = len(scenes))
-
     def update(frame):
         scene = scenes[frame]
         relative_frame = scene_frame_index[frame][1]
 
+        if progress:
+            bar.next()
+
         if scene == 'network_only':
             if relative_frame == 0:
                 txtstr = """
-                         This is a graph modelling the road network centered at the camera,
-                         using a bounding box, with length/2 = {} meters. Nodes and edges
-                         represent junctions and roads, respectively."""\
+                         This is a graph modelling the road network centered at the camera, using a bounding box, with length/2 = {} meters. Nodes and edges represent junctions and roads, respectively."""\
                             .format(bbox_side)
 
         elif scene == 'camera':
@@ -385,8 +412,7 @@ def animate_camera(
                 camera_point[0].set_color(camera_color)
                 axis.texts += [texts[0]]
                 txtstr = """
-                         The camera, with id '{}', has a maximum range of {} meters, and a maximum
-                         angle of {} degrees (on the horizontal plane to the plate number)"""\
+                         The camera, with id '{}', has a maximum range of {} meters, and a maximum angle of {} degrees (on the horizontal plane to the plate number)"""\
                             .format(camera.id, camera.radius, camera.max_angle)
 
         elif scene == 'near_nodes':
@@ -394,14 +420,16 @@ def animate_camera(
                 axis.collections[1].set_color(nodes_colors)
                 axis.texts += texts[1:]
                 txtstr = """
-                         The goal is to determine which road (graph edge) the camera is
-                         pointing at. We start by finding, the nodes which are in range
-                         of the camera, and the neighbors (of degree 1) of these."""
+                         The goal is to determine which road (graph edge) the camera is pointing at. We start by finding, the nodes which are in range of the camera, and the neighbors (of degree 1) of these."""
 
         elif scene.startswith('near_edges'):
-            edge_id = int(scene.split(',')[1])
-            sample = samples[camera.lsystem['cedges'][edge_id]][0][relative_frame]
-            isvalid = samples[camera.lsystem['cedges'][edge_id]][1][relative_frame]
+            # Not elegant at all -> think of better one in the future
+            unique_uedge_id = int(scene.split(',')[1])
+            unique_uedge = unique_uedges[unique_uedge_id]
+            cedge_id = uedges.index(unique_uedge)
+
+            sample = samples[camera.lsystem['cedges'][cedge_id]][0][relative_frame]
+            isvalid = samples[camera.lsystem['cedges'][cedge_id]][1][relative_frame]
 
             if isvalid:
                 color = sample_valid_color
@@ -411,6 +439,10 @@ def animate_camera(
             point = from_lvector(origin = camera.point,
                                  lvector = sample)
 
+            log("Edge {}, id = {}. sample = {}, isvalid = {}, point = {}"\
+                    .format(unique_uedge_id, relative_frame, sample, isvalid, point),
+                level = lg.DEBUG)
+
             sample_point = axis.plot(
                 point.lng,
                 point.lat,
@@ -419,11 +451,10 @@ def animate_camera(
                 markersize = sample_point_size)
 
             txtstr = """
-                     The edges between these pairs of nodes considered candidate edges. We
-                     sample points from each candidate edge - {} - and calculate its distance
-                     and angle to the camera. Points are coloured in {} or {}, if the
-                     distance and angle to the camera are below the maximum value or not."""\
-                        .format(edge_id, sample_valid_color, sample_invalid_color)
+                     The edges between these pairs of nodes considered candidate edges. We sample points from each candidate edge - {} - and calculate its distance and angle to the camera. Points are coloured in {} or {}, if the distance and angle to the camera are below the maximum value or not."""\
+                        .format(unique_uedge_id,
+                                sample_valid_color,
+                                sample_invalid_color)
 
         elif scene == 'colorbar':
             if relative_frame == 0:
@@ -439,15 +470,16 @@ def animate_camera(
                         norm=norm,
                         orientation='horizontal')
                 cb.set_ticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
-                cb.set_label("Proportion of valid points", color = labels_color, size = 8)
+                cb.set_label("Proportion of valid points",
+                             color = labels_color,
+                             size = colorbar_label_fontsize)
                 cb.ax.xaxis.set_tick_params(pad=0,
                                             color = labels_color,
                                             labelcolor = labels_color,
-                                            labelsize = 6)
+                                            labelsize = colorbar_ticks_fontsize)
 
                 txtstr = """
-                         We then calculate the proportion of points that fit these criteria,
-                         and pick the undirected edge that maximises this value."""\
+                         We then calculate the proportion of points that fit these criteria, and pick the undirected edge that maximises this value."""\
                             .format(camera.radius, camera.max_angle)
 
         elif scene == 'chosen_edge':
@@ -469,28 +501,19 @@ def animate_camera(
                               size = 15)
 
                 txtstr = """
-                         Finally, we pick the directed edge that represents traffic moving in the
-                         nearest of the two lanes (otherwise the images would be more noisy -
-                         crossing traffic). This depends on whether the traffic system is left
-                         or right-handed. In this case it is: {}."""\
+                         Finally, we pick the directed edge that represents traffic moving in the nearest of the two lanes (avoiding crossing traffic in the camera's frame). This depends on whether the traffic system is left or right-handed. In this case it is: {}."""\
                             .format("left-handed" if camera.left_handed_traffic else "right_handed")
 
         else:
             return
 
-        if relative_frame == 0:
+        if relative_frame == 0 and show_subtitle:
             txt = textwrap.dedent(txtstr)[1:]
             subtitle.set_text(txt)
-
-        if progress:
-            bar.next()
-            # print("{:.1f}%".format(frame/len(scenes) * 100))
 
     # ----------------------------
     # Animate it!
     # ----------------------------
-    if progress:
-        bar.finish()
 
     anim = animation.FuncAnimation(fig, update,
                                   blit = False,
@@ -498,14 +521,35 @@ def animate_camera(
                                   interval = time_per_frame,
                                   repeat = False)
 
-    if save_mp4:
-        if filename is None:
-            filename = camera.id
+    if filename is None:
+        filename = camera.id
+
+    if save_as == 'mp4':
         filepath = os.path.join(settings['app_folder'],
                                 settings['images_folder_name'],
                                 "{}.mp4".format(filename))
         anim.save(filepath,
                   dpi = dpi,
                   savefig_kwargs = {'facecolor' : bgcolor})
+
+        if progress:
+            bar.finish()
+
+    elif save_as == 'gif':
+        filepath = os.path.join(settings['app_folder'],
+                                settings['images_folder_name'],
+                                "{}.gif".format(filename))
+        anim.save(filepath,
+                  writer = 'imagemagick',
+                  fps = 1000/time_per_frame,
+                  savefig_kwargs = {'facecolor' : bgcolor})
+
+        if progress:
+            bar.finish()
+
+    log("Animated camera in {:,.3f} seconds {}"\
+            .format(time.time() - start_time,
+                    "and saved it to file {}".format(filepath) if save_as in {'mp4', 'gif'} else "but did not save it to file"),
+        level = lg.INFO)
 
     return anim
