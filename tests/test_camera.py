@@ -4,6 +4,8 @@ import osmnx as ox
 import logging as lg
 import networkx as nx
 import anprx.core as core
+from anprx.plot import plot_camera
+from anprx.animate import animate_camera
 
 def get_network(distance = 1000, center = (54.97351, -1.62545)):
 
@@ -59,9 +61,19 @@ def test_camera_edge():
 def test_plot():
     camera = test_camera
 
-    camera.plot(annotate_camera = False,
+    plot_camera(camera,
+                annotate_camera = False,
                 draw_radius = True,
                 adjust_text = False)
-    camera.plot(annotate_nn_id = False,
+
+    plot_camera(camera,
+                annotate_nn_id = False,
                 annotate_nn_distance = True)
-    camera.plot(save = True, filename = "TEST_CAMERA")
+
+    plot_camera(camera,
+                save = True,
+                filename = "TEST_CAMERA")
+
+def test_animation():
+    camera = test_camera
+    animate_camera(camera, filename = "TEST_CAMERA")
