@@ -25,13 +25,13 @@ def get_network(distance = 1000, center = (54.97351, -1.62545)):
 
 test_camera = core.Camera(
     network = get_network(distance = 1000),
-    id = "fake_camera",
+    id = "c1",
     point = core.Point(lat = 54.974537, lng = -1.625644),
     address = "Pitt Street, Newcastle Upon Tyne, UK")
 
 test_camera_addressless = core.Camera(
     network = get_network(distance = 1000),
-    id = "fake_camera",
+    id = "c2",
     point = core.Point(lat = 54.974537, lng = -1.625644))
 
 #-----------#
@@ -76,4 +76,9 @@ def test_plot():
 
 def test_animation():
     camera = test_camera
-    animate_camera(camera, filename = "TEST_CAMERA")
+    animate_camera(camera,
+                   filename = "TEST_CAMERA",
+                   save_as = 'mp4')
+    animate_camera(test_camera_addressless,
+                   filename = "TEST_CAMERA",
+                   save_as = 'gif')
