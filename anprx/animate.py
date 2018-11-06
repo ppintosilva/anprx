@@ -16,6 +16,7 @@ import matplotlib.pyplot    as plt
 import matplotlib.colors    as colors
 import matplotlib.colorbar  as colorbar
 import matplotlib.animation as animation
+from progress.bar           import Bar
 
 from .helpers               import as_undirected
 from .core                  import Edge
@@ -65,7 +66,7 @@ def animate_camera(
     #
     time_per_scene = 5000, # ms
     time_per_frame = 250, # ms
-    progress = False,
+    progress = True,
     colorbar_rect = [0.125, 0.20, 0.20, 0.02],
     subtitle_placement = (0.00, 0.00),
     sample_point_size = 4,
@@ -341,14 +342,12 @@ def animate_camera(
     # ----------------------------
     # Animate function
     # ----------------------------
+    if progress:
+        bar = Bar('Animating', max = len(scenes))
 
     def update(frame):
         scene = scenes[frame]
         relative_frame = scene_frame_index[frame][1]
-
-        if progress:
-            print("{:.1f}%".format(frame/len(scenes) * 100))
-            # print("{} - {} - {}".format(frame, scene, relative_frame))
 
         if scene == 'network_only':
             if relative_frame == 0:
@@ -461,9 +460,15 @@ def animate_camera(
             txt = textwrap.dedent(txtstr)[1:]
             subtitle.set_text(txt)
 
+        if progress:
+            bar.next()
+            # print("{:.1f}%".format(frame/len(scenes) * 100))
+
     # ----------------------------
     # Animate it!
     # ----------------------------
+    if progress:
+        bar.finish()
 
     anim = animation.FuncAnimation(fig, update,
                                   blit = False,
