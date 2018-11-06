@@ -2,9 +2,11 @@
 
 ## [0.1.2] - 31/10/2018
 
-Patch with major refactoring changes. Also implements helper methods for experimenting with network clustering/compression algorithms.
+Refactoring patch - plot, animate and edge attributes.
 
 ### Added
+
+- Animation method to show, with explanation, how the camera's edge is being estimated.
 - Method that combines Edges in the network can now be 'enriched' with additional attributes: bearing, grade (calculated from node elevation), address details (road, suburb, postcode - outer and inner, OSM importance metric, type)
 - Address details can be added as attributes to every edge in the network
 - Address details, of up to 50 osmids, can be retrived from Nominatim
@@ -13,16 +15,18 @@ Patch with major refactoring changes. Also implements helper methods for experim
 ### Changed
 - Increased default value for 'mean_area' to 0.3 km^2 in `anprx.navigation.get_surrounding_network`
 - Adjusted log indentation
+- Moved camera.plot method to a separate source file - the method is now called plot_camera
 
 ### Removed
-- Removed submodules imports from `__init__.py`
+- Removed import * from anprx submodules `__init__.py`
 
 ### Refactored
 - navigation.py source file - moved to core.py
 - anprx imports in test files
+- `__init__.py` now imports anprx submodules
 
 ### Fixed
-- docs errors and typos
+- Errors and typos in docstrings
 
 ## [0.1.1] - 22/10/2018
 
