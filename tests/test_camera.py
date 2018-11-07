@@ -61,24 +61,53 @@ def test_camera_edge():
 def test_plot():
     camera = test_camera
 
+    # Just the network
     plot_camera(camera,
-                annotate_camera = False,
-                draw_radius = True,
-                adjust_text = False)
+                show_camera = False,
+                color_near_nodes = False,
+                color_candidate_edges = False,
+                draw_colorbar = False)
 
+    # + the camera
     plot_camera(camera,
-                annotate_nn_id = False,
-                annotate_nn_distance = True)
+                show_camera = True,
+                color_near_nodes = False,
+                color_candidate_edges = False,
+                draw_colorbar = False)
 
+    # + near nodes
     plot_camera(camera,
+                show_camera = True,
+                color_near_nodes = True,
+                color_candidate_edges = False,
+                draw_colorbar = False)
+
+    # + near edges
+    plot_camera(camera,
+                show_camera = True,
+                color_near_nodes = True,
+                color_candidate_edges = True,
+                draw_colorbar = False)
+
+    # default
+    plot_camera(camera,    
                 save = True,
                 filename = "TEST_CAMERA")
 
-def test_animation():
-    camera = test_camera
-    animate_camera(camera,
+
+def test_animation_mp4():
+    animate_camera(test_camera,
                    filename = "TEST_CAMERA",
                    save_as = 'mp4')
+
+def test_animation_gif():
     animate_camera(test_camera_addressless,
                    filename = "TEST_CAMERA",
-                   save_as = 'gif')
+                   save_as = 'gif',
+                   camera_markersize = 15,
+                   labels_fontsize = 12,
+                   node_size = 100,
+                   edge_linewidth=3,
+                   colorbar_ticks_fontsize = 8,
+                   subtitle_fontsize = 16,
+                   sample_point_size = 6)
