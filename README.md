@@ -66,8 +66,9 @@ mock_camera2.p_cedges
 
 # Then you can compute routes between cameras
 route = nx.shortest_path(network,
-                         mock_camera1.edge.u,
-                         mock_camera2.edge.v)
+                         source = mock_camera1.edge.u,
+                         target = mock_camera2.edge.v,
+                         weight = 'length')
 ```
 
 - Visualise the camera's placement on the road network, including nearby nodes, and the likelihood of candidate edges.
@@ -107,8 +108,8 @@ import osmnx as ox
 from anprx.core import enrich_network
 
 network     = enrich_network(network,
-                         elevation_api_key = "dummy",
-                         postcode_delim = ' ')
+                             elevation_api_key = "dummy",
+                             postcode_delim = ' ')
 
 elevations  = nx.get_edge_attributes(network, 'elevation')
 bearings    = nx.get_edge_attributes(network, 'bearing')
@@ -118,8 +119,8 @@ importance  = nx.get_edge_attributes(network, 'importance')
 road_types  = nx.get_edge_attributes(network, 'type')
 
 # You can use osmnx to plot the network and colour the edges by attribute
-edges_color = ox.get_node_colors_by_attr()
-fig, ax     = ox.plot_graph(network, egdes_color)
+edges_color = ox.get_node_colors_by_attr(network, 'bearings', cmap='plasma')
+fig, ax     = ox.plot_graph(network, edge_color = egdes_color)
 ```
 
 ### Under development
