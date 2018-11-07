@@ -25,6 +25,7 @@ from .constants             import deg2distance
 def plot_camera(
     camera,
     bbox_side = 100,
+    show_camera = True,
     camera_color = "#FFFFFF",
     camera_marker = "*",
     camera_markersize = 10,
@@ -47,7 +48,10 @@ def plot_camera(
     probability_cmap = plt.cm.Oranges,
     show_colorbar_label = True,
     draw_colorbar = True,
+    draw_arrow = False,
     #
+    color_near_nodes = True,
+    color_candidate_edges = True,
     nn_color = '#66B3BA',
     nedge_color = '#D0CE7C',
     labels_color = "white",
@@ -163,26 +167,28 @@ def plot_camera(
     # Set color of near nodes by index
     nodes_colors = [node_color] * len(camera.network.nodes())
 
-    i = 0
-    for node in camera.network.nodes(data = False):
-        if node in camera.lsystem['nnodes']:
-            nodes_colors[i] = nn_color
-        i = i + 1
+    if color_near_nodes:
+        i = 0
+        for node in camera.network.nodes(data = False):
+            if node in camera.lsystem['nnodes']:
+                nodes_colors[i] = nn_color
+            i = i + 1
 
     # Color near edges
     edges_colors = [edge_color] * len(camera.network.edges())
 
-    norm = colors.Normalize(vmin=0, vmax=1)
-    cmap = plt.cm.ScalarMappable(norm=norm, cmap=probability_cmap)
-    pcolor = { edge : cmap.to_rgba(p)
-               for edge, p in camera.p_cedges.items() }
+    if color_candidate_edges:
+        norm = colors.Normalize(vmin=0, vmax=1)
+        cmap = plt.cm.ScalarMappable(norm=norm, cmap=probability_cmap)
+        pcolor = { edge : cmap.to_rgba(p)
+                   for edge, p in camera.p_cedges.items() }
 
-    j = 0
-    for u,v,k in camera.network.edges(keys = True, data = False):
-        edge = Edge(u,v,k)
-        if edge in camera.lsystem['cedges']:
-            edges_colors[j] = pcolor[edge]
-        j = j + 1
+        j = 0
+        for u,v,k in camera.network.edges(keys = True, data = False):
+            edge = Edge(u,v,k)
+            if edge in camera.lsystem['cedges']:
+                edges_colors[j] = pcolor[edge]
+            j = j + 1
 
     # Plot it
     fig, axis = \
@@ -223,15 +229,16 @@ def plot_camera(
                                     labelsize = 8)
 
     # Plot Camera
-    camera_point = axis.plot(
-            camera.point.lng,
-            camera.point.lat,
-            marker = camera_marker,
-            color = camera_color,
-            markersize = camera_markersize)
+    if show_camera:
+        camera_point = axis.plot(
+                camera.point.lng,
+                camera.point.lat,
+                marker = camera_marker,
+                color = camera_color,
+                markersize = camera_markersize)
 
 
-    if draw_radius:
+    if show_camera and draw_radius:
         radius_circle = \
             plt.Circle((camera.point.lng, camera.point.lat),
                        radius = camera.radius/deg2distance(unit = Units.m),
@@ -240,13 +247,29 @@ def plot_camera(
 
         axis.add_artist(radius_circle)
 
-    if annotate_camera:
+    if show_camera and annotate_camera:
         camera_text = axis.annotate(
                         str(camera.id),
                         xy = (camera.point.lng, camera.point.lat),
                         color = labels_color)
 
-    if annotate_nn_id or annotate_nn_distance:
+    if draw_arrow:
+
+        base_x = camera.network.nodes[camera.edge.u]['x']
+        base_y = camera.network.nodes[camera.edge.u]['y']
+
+        end_x = camera.network.nodes[camera.edge.v]['x']
+        end_y = camera.network.nodes[camera.edge.v]['y']
+
+        color = pcolor[camera.edge]
+
+        axis.annotate('',
+            xytext = (base_x, base_y),
+            xy = (end_x, end_y),
+            arrowprops=dict(arrowstyle="->", color=color),
+            size = 15)
+
+    if color_near_nodes and (annotate_nn_id or annotate_nn_distance):
         # Annotate nearest_neighbors
         texts = []
         for id in camera.lsystem['nnodes']:
@@ -268,7 +291,7 @@ def plot_camera(
                                  color = labels_color)
                 texts.append(text)
 
-        if annotate_camera:
+        if show_camera and annotate_camera:
             texts.append(camera_text)
 
         if adjust_text:
