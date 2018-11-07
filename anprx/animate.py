@@ -75,7 +75,7 @@ def animate_camera(
     colorbar_rect = [0.125, 0.20, 0.20, 0.02],
     colorbar_ticks_fontsize = 6,
     show_subtitle = True,
-    subtitle_placement = (0.00, 0.00),
+    subtitle_placement = (0.00, 0.05),
     subtitle_fontsize = 12,
     sample_point_size = 4,
     sample_valid_color = "green",
@@ -508,7 +508,9 @@ def animate_camera(
                 axis.annotate('',
                               xytext = (base_x, base_y),
                               xy = (end_x, end_y),
-                              arrowprops=dict(arrowstyle="->", color=color),
+                              arrowprops=dict(arrowstyle="->",
+                                              color=color,
+                                              linewidth = edge_linewidth),
                               size = 15)
 
                 txtstr = """

@@ -90,7 +90,7 @@ def test_plot():
                 draw_colorbar = False)
 
     # default
-    plot_camera(camera,    
+    plot_camera(camera,
                 save = True,
                 filename = "TEST_CAMERA")
 
@@ -108,6 +108,7 @@ def test_animation_gif():
                    labels_fontsize = 12,
                    node_size = 100,
                    edge_linewidth=3,
-                   colorbar_ticks_fontsize = 8,
-                   subtitle_fontsize = 16,
-                   sample_point_size = 6)
+                   colorbar_ticks_fontsize = 7,
+                   subtitle_fontsize = 13,
+                   sample_point_size = 6,
+                   colorbar_rect = [0.15, 0.25, 0.20, 0.02])
