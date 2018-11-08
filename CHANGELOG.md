@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.2] - 31/10/2018
+## [0.1.2] - 08/11/2018
 
 Refactoring patch - plot, animate and edge attributes.
 
@@ -11,6 +11,7 @@ Refactoring patch - plot, animate and edge attributes.
 - Address details can be added as attributes to every edge in the network
 - Address details, of up to 50 osmids, can be retrived from Nominatim
 - Dead end nodes can be retrieved and removed from the network graph.
+- Further control parameters to the method plot_camera
 
 ### Changed
 - Increased default value for 'mean_area' to 0.3 km^2 in `anprx.navigation.get_surrounding_network`
