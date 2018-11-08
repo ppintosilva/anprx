@@ -4,6 +4,9 @@ language: python
 python:
   - "3.6"
 
+env:
+  - SKIP_TEST_ANIMATE=true
+
 before_install:
   # install libspatialindex necessary for osmnx
   - curl -L http://download.osgeo.org/libspatialindex/spatialindex-src-1.8.5.tar.gz | tar xz

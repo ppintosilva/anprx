@@ -97,7 +97,7 @@ def test_plot():
 
 
 @pytest.mark.skipif(
-    'TRAVIS' in os.environ,
+    'SKIP_TEST_ANIMATE' in os.environ and os.environ['SKIP_TEST_ANIMATE'],
     reason="No need to test this in travis")
 def test_animation_mp4():
     animate_camera(test_camera,
@@ -105,7 +105,7 @@ def test_animation_mp4():
                    save_as = 'mp4')
 
 @pytest.mark.skipif(
-    'TRAVIS' in os.environ,
+    'SKIP_TEST_ANIMATE' in os.environ and os.environ['SKIP_TEST_ANIMATE'],
     reason="No need to test this in travis")
 def test_animation_gif():
     animate_camera(test_camera_addressless,
