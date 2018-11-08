@@ -95,11 +95,17 @@ def test_plot():
                 filename = "TEST_CAMERA")
 
 
+@pytest.mark.skipif(
+    os.environ['TRAVIS'] == True,
+    reason="No need to test this in travis")
 def test_animation_mp4():
     animate_camera(test_camera,
                    filename = "TEST_CAMERA",
                    save_as = 'mp4')
 
+@pytest.mark.skipif(
+    os.environ['TRAVIS'] == True,
+    reason="No need to test this in travis")
 def test_animation_gif():
     animate_camera(test_camera_addressless,
                    filename = "TEST_CAMERA",

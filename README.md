@@ -64,7 +64,7 @@ mock_camera2.edge
 mock_camera1.p_cedges
 mock_camera2.p_cedges
 
-# Then you can compute routes between cameras
+# then you can compute routes between cameras
 route = nx.shortest_path(network,
                          source = mock_camera1.edge.u,
                          target = mock_camera2.edge.v,
@@ -90,12 +90,12 @@ Mock camera on Pitt Street with address filtering |  Mock camera on Pitt Street 
 ```python
 from anprx.animate import animate_camera
 
-# Saved to ~/.anprx/images/c1.mp4
+# saved to ~/.anprx/images/c1.mp4
 anim1 = animate_camera(mock_camera1,
                        progress = True,                       
                        save_mp4 = True)
 
-# Saved to ~/.anprx/images/c2.mp4
+# saved to ~/.anprx/images/c2.mp4
 anim2 = animate_camera(mock_camera2)
 ```
 
@@ -118,7 +118,7 @@ suburbs     = nx.get_edge_attributes(network, 'suburb')
 importance  = nx.get_edge_attributes(network, 'importance')
 road_types  = nx.get_edge_attributes(network, 'type')
 
-# You can use osmnx to plot the network and colour the edges by attribute
+# you can use osmnx to plot the network and colour the edges by attribute
 edges_color = ox.get_node_colors_by_attr(network, 'bearings', cmap='plasma')
 fig, ax     = ox.plot_graph(network, edge_color = egdes_color)
 ```
