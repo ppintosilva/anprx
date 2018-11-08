@@ -169,10 +169,10 @@ def animate_camera(
     dpi : int
         resolution of the image, if saving the animation in 'mp4' format.
 
-    time_per_scene = 5000 : int
+    time_per_scene : int
         time per scene in milliseconds
 
-    time_per_frame = 250 : int
+    time_per_frame : int
         time per frame in milliseconds. If time_per_scene = 250, then each scene has 20 frames. Most scenes just repeat the same frame, except the scenes for candidate edges - which plot a new sampled point per frame.
 
     progress : bool
