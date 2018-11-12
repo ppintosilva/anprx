@@ -44,6 +44,9 @@ extras_require = {
     'examples': [
        'ipykernel']}
 
+dependency_links = [
+    'http://github.com/pedroswits/osmnx/tarball/master#egg=package-1.0']
+
 # now call setup
 setup(name = 'anprx',
       version = '0.1.2',

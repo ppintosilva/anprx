@@ -21,9 +21,6 @@ anprx.core
 .. autoclass:: anprx.core.Edge
    :show-inheritance:
 
-.. autoclass:: anprx.core.GiantBBox
-   :show-inheritance:
-
 .. automethod:: anprx.core.to_point
 .. automethod:: anprx.core.to_nvector
 .. automethod:: anprx.core.great_circle_distance
@@ -87,6 +84,14 @@ anprx.constants
 ----------------------
 
 .. automodule:: anprx.constants
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+anprx.exceptions
+----------------------
+
+.. automodule:: anprx.exceptions
    :members:
    :undoc-members:
    :show-inheritance:
