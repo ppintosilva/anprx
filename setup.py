@@ -49,7 +49,7 @@ dependency_links = [
 
 # now call setup
 setup(name = 'anprx',
-      version = '0.1.2',
+      version = '0.1.3',
       description = short_description,
       long_description = long_description,
       classifiers = classifiers,

@@ -46,7 +46,7 @@ author = u'Pedro Pinto da Silva'
 # The short X.Y version
 version = u'0.1'
 # The full version, including alpha/beta/rc tags
-release = u'0.1.2'
+release = u'0.1.3'
 
 
 # -- General configuration ---------------------------------------------------
