@@ -416,7 +416,7 @@ def bbox_from_points(points,
                      unit = Units.km,
                      rel_margins = RelativeMargins(0.025,0.025,0.025,0.025),
                      min_area = 0.01, # 0.01 sq km
-                     max_area = 10.0): # 10 sq km
+                     max_area = 100.0): # 10 sq km
     """
     Get the bounding box that encompasses a set of points.
 
@@ -504,10 +504,16 @@ def get_surrounding_network(points,
         margins as a proportion of latitude/longitude difference
 
     min_area : float
-        minimum area of bounding box in squared km
+        minimum area of bounding box in squared units
 
     max_area : float
-        maximum area of bounding box in squared km
+        maximum area of bounding box in squared units
+
+    unit : Unit
+        Unit to use to calculate area (m, or km)
+
+    graph_name : string
+        name for the nx street network
 
     Returns
     -------
