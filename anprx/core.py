@@ -896,7 +896,8 @@ def local_coordinate_system(network,
 def gen_lsystem(network,
                 origin,
                 radius,
-                address = None):
+                address = None,
+                tree = None):
     """
     Generate a local cartesian coordinate system from a street network, centered around origin, whose nodes and edges within radius are represented as points and vectors in the new coordinate system.
 
@@ -913,6 +914,9 @@ def gen_lsystem(network,
 
     address: string
         only include 'candidate' edges that match the given address
+
+    tree : sklearn.neighbors.BallTree
+        ball-tree for quick nearest-neighbor lookup using the haversine formula
 
     Returns
     -------
@@ -939,7 +943,8 @@ def gen_lsystem(network,
     near_nodes, _ = \
         get_nodes_in_range(network = network,
                            points = np.array([origin]),
-                           radius = radius)
+                           radius = radius,
+                           tree = tree)
 
     log("Near nodes: {}"\
             .format(near_nodes),
@@ -1461,7 +1466,8 @@ class Camera(object):
                  radius = 40,
                  max_angle = 40,
                  nsamples = 100,
-                 left_handed_traffic = True):
+                 left_handed_traffic = True,
+                 tree = None):
         """
 
         Parameters
@@ -1489,6 +1495,9 @@ class Camera(object):
 
         left_handed_traffic : bool
             True if traffic flows on the left-hand side of the road, False otherwise.
+
+        tree : sklearn.neighbors.BallTree
+            ball-tree for quick nearest-neighbor lookup using the haversine formula
         """
         self.network = network
         # @TODO - Check if the camera location is encompassed by the network's bounding box?
@@ -1500,7 +1509,7 @@ class Camera(object):
         self.max_angle = max_angle
         self.left_handed_traffic = left_handed_traffic
 
-        lsystem = gen_lsystem(network, point, radius, address)
+        lsystem = gen_lsystem(network, point, radius, address, tree)
         edge, p_cedges = \
             estimate_camera_edge(network,
                                  lsystem,
