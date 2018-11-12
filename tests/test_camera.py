@@ -4,7 +4,9 @@ import numpy as np
 import osmnx as ox
 import logging as lg
 import networkx as nx
+
 import anprx.core as core
+import anprx.exceptions as exceptions
 from anprx.plot import plot_camera
 from anprx.animate import animate_camera
 
@@ -38,6 +40,25 @@ test_camera_addressless = core.Camera(
 #-----------#
 #-----------#
 #-----------#
+
+def test_camera_p_cedges():
+    camera = test_camera
+
+    p_cedges = camera.p_cedges
+    p_cedges_values = np.array(list(camera.p_cedges.values()))
+
+    assert (p_cedges_values >= 0  ).all() and \
+           (p_cedges_values <= 1.0).all()
+
+    assert len(p_cedges) == len(camera.lsystem['cedges'])
+
+def test_max_number_attempts_nn():
+    with pytest.raises(exceptions.MaxAttemptsExceededError):
+        core.Camera(
+            network = get_network(distance = 1000),
+            id = "dummy",
+            point = core.Point(lat = 54.974537, lng = -1.625644),
+            radius = 1)
 
 def test_camera_p_cedges():
     camera = test_camera

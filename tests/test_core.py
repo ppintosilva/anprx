@@ -6,8 +6,10 @@ import numpy as np
 import osmnx as ox
 import logging as lg
 import networkx as nx
+
 import anprx.core as core
 import anprx.helpers as helpers
+import anprx.exceptions as exceptions
 from anprx.constants import Units
 
 ###
@@ -167,7 +169,7 @@ def test_large_bbox_from_points():
 
     points = [nw, sw, ne, se]
 
-    with pytest.raises(core.GiantBBox):
+    with pytest.raises(exceptions.BBoxAreaSafetyError):
         core.bbox_from_points(points)
 
 def test_bbox_from_points_no_margins():
@@ -334,6 +336,17 @@ def test_filter_by_address_and_get_local_coordinate_system():
             ox_distance,
             lvector_distance,
             decimal = 6)
+
+def test_gen_lsystem_recursive():
+    network = get_network(distance = 1000)
+
+    neighborless_point = core.Point(lat=54.959224, lng=-1.663313)
+
+    with pytest.raises(exceptions.ZeroNeighborsError):
+        lsystem = core.gen_lsystem(
+                    network,
+                    origin = neighborless_point,
+                    radius = 40)
 
 
 def test_estimate_camera_edge():

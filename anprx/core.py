@@ -30,6 +30,10 @@ from .helpers               import as_undirected
 from .helpers               import angle_between
 from .helpers               import edges_with_properties
 
+from .exceptions            import BBoxAreaSafetyError
+from .exceptions            import ZeroNeighborsError
+from .exceptions            import MaxAttemptsExceededError
+
 from .utils                 import log
 
 import anprx.nominatim      as nominatim
@@ -323,13 +327,6 @@ def from_lvector(origin, lvector):
 ###
 ###
 
-class GiantBBox(ValueError):
-    def __init__(self,*args,**kwargs):
-        Exception.__init__(self,*args,**kwargs)
-
-###
-###
-
 def get_bbox_area(bbox,
                   unit = Units.km,
                   method = "simple"):
@@ -482,8 +479,7 @@ def bbox_from_points(points,
                     west = bbox_[3])
 
     elif bbox_area > max_area:
-        # Too large network
-        raise GiantBBox("BBox is too big: area of bounding box exceeds the upper bound. This is a safety feature. You can surpass this by re-running with a larger upper bound.")
+        raise BBoxAreaSafetyError(bbox_area, max_area, unit.name)
 
     return bbox
 
@@ -714,9 +710,8 @@ def get_nodes_in_range(network,
                               r = radius/rad2distance(Units.m),
                               return_distance = True)
 
-    if nodes is None:
-        nodes = pd.DataFrame({'x': nx.get_node_attributes(network, 'x'),
-                              'y': nx.get_node_attributes(network, 'y')})
+    nodes = pd.DataFrame({'x': nx.get_node_attributes(network, 'x'),
+                          'y': nx.get_node_attributes(network, 'y')})
 
     node_ids = np.array([ np.array(nodes.iloc[point_nn].index).astype(np.int64) for point_nn in nn_node_idx ])
 
@@ -949,6 +944,9 @@ def gen_lsystem(network,
     log("Near nodes: {}"\
             .format(near_nodes),
         level = lg.DEBUG)
+
+    if len(near_nodes[0]) == 0:
+        raise ZeroNeighborsError(origin, radius, Units.m)
 
     near_edges = get_edges_in_range(network, near_nodes)[0]
 
@@ -1467,7 +1465,8 @@ class Camera(object):
                  max_angle = 40,
                  nsamples = 100,
                  left_handed_traffic = True,
-                 tree = None):
+                 tree = None,
+                 radius_multiplier = 5):
         """
 
         Parameters
@@ -1498,6 +1497,9 @@ class Camera(object):
 
         tree : sklearn.neighbors.BallTree
             ball-tree for quick nearest-neighbor lookup using the haversine formula
+
+        radius_multiplier : int
+            multiplier used to increase near nodes search when no neighbors are returned within radius meters
         """
         self.network = network
         # @TODO - Check if the camera location is encompassed by the network's bounding box?
@@ -1509,7 +1511,26 @@ class Camera(object):
         self.max_angle = max_angle
         self.left_handed_traffic = left_handed_traffic
 
-        lsystem = gen_lsystem(network, point, radius, address, tree)
+        lsystem = None
+        attempt = 0
+        radius_copy = radius
+        while attempt <= radius_multiplier:
+            try:
+                lsystem = gen_lsystem(network,
+                                      point,
+                                      radius_copy,
+                                      address,
+                                      tree)
+                break
+            except ZeroNeighborsError:
+                attempt += 1
+                radius_copy += radius
+
+        if lsystem is None:
+            raise MaxAttemptsExceededError(
+                    radius_multiplier,
+                    "find nearest nodes for camera {}".format(id))
+
         edge, p_cedges = \
             estimate_camera_edge(network,
                                  lsystem,
