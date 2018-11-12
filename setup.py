@@ -60,4 +60,5 @@ setup(name = 'anprx',
       platforms = 'any',
       packages = ['anprx'],
       install_requires = install_requires,
-      extras_require = extras_require)
+      extras_require = extras_require,
+      dependency_links = dependency_links)
