@@ -1,5 +1,6 @@
 import pytest
 import anprx.nominatim as nominatim
+import anprx.exceptions as exceptions
 
 def test_nominatim_search_address():
     result = nominatim.search_address("Newcastle A186 Westgate Rd")
@@ -7,9 +8,8 @@ def test_nominatim_search_address():
     assert len(result) > 0
 
 def test_nominatim_search_address_fail():
-    result = nominatim.search_address("AAAAAAAAAAA")
-
-    assert result == []
+    with pytest.raises(exceptions.EmptyResponseError):
+        result = nominatim.search_address("AAAAAAAAAAA")
 
 osmids = [37899441,
           461119586,

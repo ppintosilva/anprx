@@ -14,19 +14,26 @@ from collections            import OrderedDict
 
 from .utils                 import log
 from .helpers               import flatten_dict
+from .exceptions            import EmptyResponseError
+from .exceptions            import NoSuchEntitiesError
 
 ###
 ###
 
 def search_address(address,
+                   entity = 'way',
                    email = None):
     """
-    Find the OpenStreetMap ways that match a given address.
+    Find the OpenStreetMap entities that match a given address.
 
     Parameters
     ----------
     address : string
         Address to search for
+
+    entity : string
+        OSM entity of osmids. Valid values are
+        'node', 'way' and 'relation'
 
     email : string
         Valid email address in case you are making a large number of requests.
@@ -35,7 +42,24 @@ def search_address(address,
     -------
     list of int
         List of osm ids for ways that match the given address query
+
+    Raises
+    ------
+    ValueError
+        If entity is not in {'node', 'way' and 'relation'}
+
+    EmptyResponseError
+        If the response is empty
+
+    NoSuchEntitiesError
+        If the desired entity type is not found among the returned entities
     """
+    if entity not in {'node', 'way', 'relation'}:
+        raise ValueError("Not valid OSM entity. Choose one of 'node', 'way' or 'relation'")
+
+    log("Searching for OSM entities of type '{}' matching the address '{}'"\
+            .format(entity, address),
+        level = lg.INFO)
 
     params = OrderedDict()
     params['format'] = "json"
@@ -46,12 +70,43 @@ def search_address(address,
 
     params['q'] = address
 
-    response_json = ox.nominatim_request(params = params, type = 'search')
+    request = '&'.join(['{0}={1}'.format(k, v)
+                        for k,v in params.items()])
+    log("Request: {}"\
+            .format(request),
+        level = lg.DEBUG)
 
-    ways = filter(lambda x: x['osm_type'] == "way", response_json)
-    osmids = map(lambda x: int(x["osm_id"]), ways)
+    response_json = ox.nominatim_request(
+                        params = params,
+                        type = 'search')
 
-    return list(osmids)
+    if len(response_json) == 0:
+        raise EmptyResponseError(
+                request = request,
+                API = "https://nominatim.openstreetmap.org/search")
+
+    entities = list(filter(lambda x: x['osm_type'] == entity, response_json))
+
+    log("Found entities {}"\
+            .format(list(entities)),
+        level = lg.DEBUG)
+
+    if len(entities) == 0:
+
+        raise NoSuchEntitiesError(
+                request = request,
+                desired_entity = entity,
+                found_entities = set(list(map(lambda x: x["osm_type"], response_json))))
+
+    osmids = list(map(lambda x: int(x["osm_id"]), entities))
+
+    # What if osmids are invalid? - not likely - let's assume not
+
+    log("Found {} osmids: {}"\
+            .format(len(osmids), osmids),
+        level = lg.INFO)
+
+    return osmids
 
 
 ###
