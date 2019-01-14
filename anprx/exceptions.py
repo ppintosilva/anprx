@@ -26,7 +26,9 @@ class BBoxAreaSafetyError(AnprxError):
         self.bbox_area = bbox_area
         self.max_area = max_area
         self.unit = unit
-        self.message = "This is a safety control, to avoid the retrieval of very large osm networks by mistake. Desired bbox area: {}, safety maximum : {}. Units are {} sq.".format(bbox_area, max_area, unit)
+        self.message = \
+            "This is a safety control, to avoid the retrieval of very large osm networks by mistake. Desired bbox area: {}, safety maximum : {}. Units are {} sq."\
+                .format(bbox_area, max_area, unit)
 
 
 class ZeroNeighborsError(AnprxError):
@@ -43,8 +45,27 @@ class ZeroNeighborsError(AnprxError):
         self.r = r
         self.origin = origin
         self.unit = unit
-        self.message = "No neighbors were found within {} {} of point {}".format(r, unit, origin)
+        self.message = \
+            "No neighbors were found within {} {} of point {}"\
+                .format(r, unit, origin)
 
+class AllEdgesFilteredError(AnprxError):
+    """
+    Raised when core.filter_by_address() returns an empty list/set and there are no more candidate edges to consider.
+
+    Attributes:
+        address -- address used to filter
+        point -- point of camera
+        edges -- edges filtered because their address did not match the given address
+    """
+
+    def __init__(self, address, point, edges):
+        self.address = address
+        self.point = point
+        self.edges = edges
+        self.message = \
+            "All of {} candidate edges around point {} were filtered by the address '{}', resulting in 0 edges to consider."\
+                .format(len(edges), point, address)
 
 class MaxAttemptsExceededError(AnprxError):
     """
@@ -58,4 +79,52 @@ class MaxAttemptsExceededError(AnprxError):
     def __init__(self, max_attempts, work):
         self.max_attempts = max_attempts
         self.work = work
-        self.message = "Exceeded maximum number of attempts {} when trying to {}.".format(max_attempts, work)
+        self.message = \
+            "Exceeded maximum number of attempts {} when trying to {}."\
+                .format(max_attempts, work)
+
+class ExternalRequestError(AnprxError):
+    """
+    Raised when a request to an external API fails.
+
+    Attributes:
+        request -- request to external API
+        API -- name or base url of external API
+        reason -- reason why the request failed
+    """
+
+    def __init__(self, request, API, reason):
+        self.request = request
+        self.API = API
+        self.message = \
+            "Request to {}: {} -- {}."\
+                .format(API, reason, request)
+
+class EmptyResponseError(ExternalRequestError):
+    """
+    Raised when a request to an external API returns an empty response.
+
+    Attributes:
+        request -- request to external API
+        API -- name or base url of external API
+    """
+
+    def __init__(self, request, API):
+        super().__init__(request, API, reason = "empty response")
+
+class NoSuchEntitiesError(ExternalRequestError):
+    """
+    Raised when a request to OpenStreetMap's lookup API does not find the desired Entities.
+
+    Attributes:
+        request -- request to OSM
+        desired_entity -- desired OSM entity
+        found_entities -- found OSM entities
+    """
+
+    def __init__(self, request, desired_entity, found_entity):
+        self.request = request
+        self.API = "https://nominatim.openstreetmap.org/"
+        super().__init__(request, self.API,
+                         reason = "wanted entity {}, but found {} instead"\
+                            .format(desired_entity, found_entity))
