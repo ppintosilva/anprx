@@ -33,6 +33,7 @@ from .helpers               import edges_with_properties
 from .exceptions            import BBoxAreaSafetyError
 from .exceptions            import ZeroNeighborsError
 from .exceptions            import MaxAttemptsExceededError
+from .exceptions            import AllEdgesFilteredError
 
 from .utils                 import log
 
@@ -785,7 +786,7 @@ def get_edges_in_range(network,
 
 def filter_by_address(network,
                       edges,
-                      address = []):
+                      address):
     """
     Filter edges by address.
 
@@ -803,13 +804,21 @@ def filter_by_address(network,
     -------
     list of Edge
         edges or a subset of edges
+
+    Raises
+    ------
+    ExternalRequestError
+        if OpenStreetMap's Nominatim service didn't found any osm ways that match the given address
     """
     start_time = time.time()
 
     log("Filtering edges by address.",
         level = lg.INFO)
 
-    osmway_ids = nominatim.search_address(address)
+    osmway_ids = nominatim.search_address(
+                    address = address,
+                    entity = 'way')
+
     address_edges = edges_from_osmid(
                         network = network,
                         osmids  = osmway_ids)
@@ -985,6 +994,8 @@ def gen_lsystem(network,
             filter_by_address(network,
                               near_edges,
                               address)
+        if len(candidate_edges) == 0:
+            raise AllEdgesFilteredError(address, origin, near_edges)
     else:
         candidate_edges = near_edges
 
