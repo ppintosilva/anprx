@@ -1,7 +1,9 @@
 """Test module for data wranlging methods."""
 
 from   anprx.preprocessing import wrangle_cameras
+from   anprx.preprocessing import network_from_cameras
 
+import os
 import pandas              as     pd
 
 """
@@ -32,7 +34,7 @@ raw_cameras_testset_1 = pd.DataFrame({
     'is_commissioned' : [1,1,1,1,1,1,0,1,1,1]
 })
 
-def test_wrangle_cameras():
+def test_pipeline():
     """Test default behavior."""
     cameras = wrangle_cameras(
         cameras = raw_cameras_testset_1,
@@ -60,3 +62,12 @@ def test_wrangle_cameras():
     assert "Milton Street" in cameras[cameras['id'] == '5']['address'].iloc[0]
 
     assert len(cameras) == 6
+
+    network = network_from_cameras(
+        cameras,
+        filter_residential = True,
+        clean_intersections = False,
+        tolerance = 30,
+        make_plots = True,
+        file_format = 'svg'
+    )

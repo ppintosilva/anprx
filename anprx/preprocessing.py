@@ -2,14 +2,21 @@
 # ------------------------------------------------------------------------------
 
 from   .utils               import log
+from   .utils               import save_fig
+from   .utils               import settings
+from   .helpers             import add_edge_directions
+from   .core                import Point
+from   .core                import RelativeMargins
+from   .core                import bbox_from_points
 
 import re
 import math
 import time
+import osmnx                as ox
 import pandas               as pd
 import geopandas            as gpd
 import logging              as lg
-from   shapely.geometry     import Point
+import shapely.geometry     as geometry
 from   collections          import OrderedDict
 
 # ------------------------------------------------------------------------------
@@ -25,22 +32,23 @@ road_category_regex = \
 r'(A\d+|B\d+|C\d+)'
 
 # ------------------------------------------------------------------------------
-def wrangle_cameras(cameras,
-                    infer_direction_col      = "description",
-                    infer_direction_re       = infer_direction_regex,
-                    drop_car_park            = "description",
-                    drop_is_test             = "name",
-                    drop_is_not_commissioned = True,
-                    extract_address          = "description",
-                    address_regex            = address_regex,
-                    extract_road_category    = "description",
-                    road_category_regex      = road_category_regex,
-                    sort_by                  = "id",
-                    project_coords           = True,
-                    utm_crs                  = {'datum': 'WGS84',
-                                               'ellps': 'WGS84',
-                                               'proj' : 'utm',
-                                               'units': 'm'}
+def wrangle_cameras(
+    cameras,
+    infer_direction_col      = "description",
+    infer_direction_re       = infer_direction_regex,
+    drop_car_park            = "description",
+    drop_is_test             = "name",
+    drop_is_not_commissioned = True,
+    extract_address          = "description",
+    address_regex            = address_regex,
+    extract_road_category    = "description",
+    road_category_regex      = road_category_regex,
+    sort_by                  = "id",
+    project_coords           = True,
+    utm_crs                  = {'datum': 'WGS84',
+                               'ellps': 'WGS84',
+                               'proj' : 'utm',
+                               'units': 'm'}
 ):
     """
     Wrangles a raw dataset of ANPR camera data.
@@ -156,8 +164,8 @@ def wrangle_cameras(cameras,
             cameras.loc[~cameras.both_directions].direction.str[0]
 
         cameras.loc[cameras.both_directions, 'direction'] = \
-            cameras.loc[cameras.both_directions].direction\
-                .str.split(pat = "/")\
+            cameras.loc[cameras.both_directions].direction.str\
+                .split(pat = "/")\
                 .apply(lambda x: "{}-{}".format(x[0][0], x[1][0]))
     else:
         log("Skipping inferring direction", level = lg.INFO)
@@ -233,7 +241,7 @@ def wrangle_cameras(cameras,
             level = lg.INFO)
 
         camera_points = gpd.GeoSeries(
-            [ Point(x,y) for x, y in zip(
+            [ geometry.Point(x,y) for x, y in zip(
                 cameras['lon'],
                 cameras['lat'])
             ])
@@ -258,3 +266,171 @@ def wrangle_cameras(cameras,
     return cameras
 
 # ------------------------------------------------------------------------------
+
+def network_from_cameras(
+    cameras,
+    filter_residential = True,
+    clean_intersections = False,
+    tolerance = 30,
+    make_plots = True,
+    file_format = 'svg',
+    **plot_kwargs
+):
+    """
+    Get the road graph encompassing a set of ANPR cameras from OpenStreetMap.
+    """
+    log("Getting road network for cameras dataset of length {}"\
+            .format(len(cameras)),
+        level = lg.INFO)
+
+    start_time = time.time()
+
+    if filter_residential:
+        osm_road_filter = \
+            ('["area"!~"yes"]["highway"~"motorway|trunk|primary|'
+             'secondary|tertiary"]["motor_vehicle"!~"no"]["motorcar"!~"no"]'
+             '["access"!~"private"]')
+    else:
+        osm_road_filter = None
+
+    points = [Point(lat,lng) for lat,lng in zip(cameras['lat'], cameras['lon'])]
+
+    log("{}".format(points))
+
+    bbox = bbox_from_points(
+        points = points,
+        max_area = 1000,
+        rel_margins = RelativeMargins(0.1,0.1,0.1,0.1)
+    )
+
+    log("Returning bbox from camera points: {}"\
+            .format(bbox),
+        level = lg.INFO)
+
+    G = ox.graph_from_bbox(
+            north = bbox.north,
+            south = bbox.south,
+            east = bbox.east,
+            west = bbox.west,
+            custom_filter = osm_road_filter
+    )
+
+    log("Returned road graph in {:,.3f} sec"\
+            .format(time.time() - start_time),
+        level = lg.INFO)
+    checkpoint = time.time()
+
+    G = add_edge_directions(G)
+
+    G = ox.project_graph(G)
+
+    log("Added edge directions and projected graph in {:,.3f} sec"\
+            .format(checkpoint- start_time),
+        level = lg.INFO)
+    checkpoint = time.time()
+
+    if make_plots:
+        fig_height      = plot_kwargs.get('fig_height', 10)
+        fig_width       = plot_kwargs.get('fig_width', 14)
+
+        node_size       = plot_kwargs.get('node_size', 30)
+        node_alpha      = plot_kwargs.get('node_alpha', 1)
+        node_zorder     = plot_kwargs.get('node_zorder', 2)
+        node_color      = plot_kwargs.get('node_color', '#66ccff')
+        node_edgecolor  = plot_kwargs.get('node_edgecolor', 'k')
+
+        edge_color      = plot_kwargs.get('edge_color', '#999999')
+        edge_linewidth  = plot_kwargs.get('edge_linewidth', 1)
+        edge_alpha      = plot_kwargs.get('edge_alpha', 1)
+
+
+        fig, ax = ox.plot_graph(
+            G, fig_height=fig_height, fig_width=fig_width,
+            node_alpha=node_alpha, node_zorder=node_zorder,
+            node_size = node_size, node_color=node_color,
+            node_edgecolor=node_edgecolor, edge_color=edge_color,
+            edge_linewidth = edge_linewidth, edge_alpha = edge_alpha,
+            use_geom = True, annotate = False, save = False, show = False
+        )
+
+        image_name = "road_graph"
+        save_fig(fig, ax, image_name, file_format = file_format, dpi = 320)
+
+        filename = "{}/{}/{}.{}".format(
+                        settings['app_folder'],
+                        settings['images_folder_name'],
+                        image_name, file_format)
+
+        log("Saved image of the road graph to disk {} in {:,.3f} sec"\
+                .format(filename, time.time() - checkpoint),
+            level = lg.INFO)
+        checkpoint = time.time()
+
+    if clean_intersections:
+        G = ox.clean_intersections(G, tolerance = tolerance)
+
+        log("Cleaned intersections (tol = {}) in {:,.3f} sec"\
+                .format(tolerance, time.time() - checkpoint),
+            level = lg.INFO)
+        checkpoint = time.time()
+
+        if make_plots:
+            image_name = "road_graph_cleaned"
+            filename = "{}/{}/{}.{}".format(
+                            settings['app_folder'],
+                            settings['images_folder_name'],
+                            image_name, file_format)
+
+            fig, ax = ox.plot_graph(
+                G, fig_height=fig_height, fig_width=fig_width,
+                node_alpha=node_alpha, node_zorder=node_zorder,
+                node_size = node_size, node_color=node_color,
+                node_edgecolor=node_edgecolor, edge_color=edge_color,
+                edge_linewidth = edge_linewidth, edge_alpha = edge_alpha,
+                use_geom = True, annotate = False, save = False, show = False
+            )
+
+            save_fig(fig, ax, image_name, file_format = file_format, dpi = 320)
+
+            log("Saved image of cleaned road graph to disk {} in {:,.3f} sec"\
+                    .format(filename, time.time() - checkpoint),
+                level = lg.INFO)
+            checkpoint = time.time()
+
+    if make_plots:
+        if 'geometry' in cameras.columns:
+            cameras_color  = plot_kwargs.get('cameras_color', '#D91A35')
+            cameras_marker = plot_kwargs.get('cameras_marker', '*')
+            cameras_size   = plot_kwargs.get('cameras_size', 100)
+            cameras_zorder = plot_kwargs.get('cameras_zorder', 20)
+
+            camera_points = ax.scatter(
+                cameras['geometry'].x,
+                cameras['geometry'].y,
+                marker = cameras_marker,
+                color = cameras_color,
+                s = cameras_size,
+                zorder = cameras_zorder,
+                label = "cameras"
+            )
+            ax.legend()
+
+            image_name = "road_graph_cleaned_cameras" if clean_intersections \
+                         else "road_graph_cameras"
+            filename = "{}/{}/{}.{}".format(
+                            settings['app_folder'],
+                            settings['images_folder_name'],
+                            image_name, file_format)
+
+            save_fig(fig, ax, image_name, file_format = file_format, dpi = 320)
+
+            log("Saved image of cleaned road graph to disk {} in {:,.3f} sec"\
+                    .format(filename, time.time() - checkpoint),
+                level = lg.INFO)
+        else:
+            log(("Skipped making image of road graph with cameras because "
+                "no geometry was available"),
+                level = lg.WARNING)
+
+    log("Retrieved road network from points in {:,.3f}"\
+        .format(time.time() - start_time))
