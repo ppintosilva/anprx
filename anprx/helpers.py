@@ -8,6 +8,7 @@
 
 import collections
 import numpy                as np
+import osmnx                as ox
 import pandas               as pd
 import networkx             as nx
 
@@ -319,3 +320,56 @@ def as_undirected(edges):
                     for edge in edges])
 
     return [ tuple(edge) for edge in edge_set ]
+
+
+def add_edge_directions(G):
+    """
+    Add the direction of each edge as an attribute
+
+    Parameters
+    ---------
+    G : nx.MultiDiGraph
+
+    Returns
+    -------
+    G
+    """
+    G = ox.add_edge_bearings(G)
+    for u,v,k,data in G.edges(keys = True, data = True):
+        bearing = data['bearing']
+        phi = (360 - bearing) + 90
+        if phi > 360:
+            phi = phi - 360
+        data['direction'] = get_quadrant(phi)
+    return G
+
+def get_quadrant(phi):
+    """
+    Get the quadrant of an angle.
+
+    E.g. phi = 40 -> ('E', 'N')
+
+    Parameters
+    ---------
+    phi : angle
+
+    Returns
+    -------
+    tuple
+    """
+    if   phi >= 0 and phi <= 45:
+        return ('E', 'N')
+    elif phi > 45 and phi <= 90:
+        return ('N', 'E')
+    elif phi > 90 and phi <= 135:
+        return ('N', 'W')
+    elif phi > 135 and phi <= 180:
+        return ('W', 'N')
+    elif phi > 180 and phi <= 225:
+        return ('W', 'S')
+    elif phi > 225 and phi <= 270:
+        return ('S', 'W')
+    elif phi > 270 and phi <= 315:
+        return ('S', 'E')
+    elif phi > 315 and phi <= 360:
+        return ('E', 'S')
