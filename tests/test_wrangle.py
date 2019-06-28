@@ -25,7 +25,7 @@ raw_cameras_testset_1 = pd.DataFrame({
               -1.75, -1.76, -1.77, -1.70, -1.70],
     'name' : ["CA" , "CB" , "CC", "CD", "CE", "CF", "CG", "Test1", "CA2", "CA3"],
     'desc' : ["Westbound A13", "East/West A13",
-              "North/South A1", "Southbound A27",
+              "North/South B1", "Southbound A27",
               "Northbound A3 Milton Street", "Car park in",
               "Disabled", "Camera Test",
               "Eastbound A13", "Westbound A13"],
@@ -49,13 +49,13 @@ def test_wrangle_cameras():
     assert {'1-10', '2', '3', '4', '5', '9'}.issubset(cameras['id'].unique())
 
     assert cameras[cameras['id'] == '1-10']['direction'].iloc[0] == "W"
-    assert cameras[cameras['id'] == '2']['direction'].iloc[0] == ("E","W")
-    assert cameras[cameras['id'] == '3']['direction'].iloc[0] == ("N","S")
+    assert cameras[cameras['id'] == '2']['direction'].iloc[0] == "E-W"
+    assert cameras[cameras['id'] == '3']['direction'].iloc[0] == "N-S"
     assert cameras[cameras['id'] == '9']['direction'].iloc[0] == "E"
 
-    assert cameras[cameras['id'] == '1-10']['road_category'].iloc[0] == "A13"
-    assert cameras[cameras['id'] == '3']['road_category'].iloc[0] == "A1"
-    assert cameras[cameras['id'] == '5']['road_category'].iloc[0] == "A3"
+    assert cameras[cameras['id'] == '1-10']['road_category'].iloc[0] == "A"
+    assert cameras[cameras['id'] == '3']['road_category'].iloc[0] == "B"
+    assert cameras[cameras['id'] == '5']['road_category'].iloc[0] == "A"
 
     assert "Milton Street" in cameras[cameras['id'] == '5']['address'].iloc[0]
 

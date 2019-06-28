@@ -141,20 +141,24 @@ def wrangle_cameras(cameras,
                 .format(infer_direction_col),
             level = lg.INFO)
 
-        cameras = cameras.assign(direction = cameras[infer_direction_col]\
-                    .str.extract(infer_direction_re, flags = re.IGNORECASE))
+        cameras = cameras.assign(
+            direction = cameras[infer_direction_col].str.extract(
+                infer_direction_re,
+                flags = re.IGNORECASE))
+
+        cameras = cameras.assign(
+            both_directions =
+                (cameras.direction.str.contains("/|&", na=False))
+        )
 
         # ugly code, but will have to do for now
-        cameras.loc[~cameras['direction'].str.\
-                contains("/", na=False), 'direction'] = \
-            cameras.loc[~cameras['direction'].str.\
-                contains("/", na=False)].direction.str[0] # get first char
+        cameras.loc[~cameras.both_directions, 'direction'] = \
+            cameras.loc[~cameras.both_directions].direction.str[0]
 
-        cameras.loc[cameras['direction'].str.\
-                contains("/", na=False), 'direction'] = \
-            cameras.loc[cameras['direction'].str.\
-                contains("/", na=False)].direction.str.\
-                split(pat = "/").apply(lambda x: (x[0][0], x[1][0]))
+        cameras.loc[cameras.both_directions, 'direction'] = \
+            cameras.loc[cameras.both_directions].direction\
+                .str.split(pat = "/")\
+                .apply(lambda x: "{}-{}".format(x[0][0], x[1][0]))
     else:
         log("Skipping inferring direction", level = lg.INFO)
 
@@ -162,7 +166,8 @@ def wrangle_cameras(cameras,
     if extract_address:
         cameras = cameras.assign(
             address = cameras[extract_address]\
-                        .str.replace(address_regex, '',regex = True))
+                        .str.replace(address_regex, '',regex = True)\
+                            .replace(' +', ' ', regex = True))
 
         log("Extracting address from '{}'.".format(extract_address),
             level = lg.INFO)
@@ -170,11 +175,12 @@ def wrangle_cameras(cameras,
         log("Skipping extracting address", level = lg.INFO)
 
 
-    # Computing new column 'road_category'
+    # Computing new column 'road category'
     if extract_road_category:
         cameras = cameras.assign(
             road_category = cameras[extract_road_category]\
                                 .str.extract(road_category_regex))
+        cameras = cameras.assign(road_category = cameras.road_category.str[0])
     else:
         log("Skipping extracting road category", level = lg.INFO)
 
