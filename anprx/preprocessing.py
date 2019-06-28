@@ -274,6 +274,7 @@ def network_from_cameras(
     tolerance = 30,
     make_plots = True,
     file_format = 'svg',
+    margins = [0.1, 0.1, 0.1, 0.1],
     **plot_kwargs
 ):
     """
@@ -299,8 +300,9 @@ def network_from_cameras(
 
     bbox = bbox_from_points(
         points = points,
-        max_area = 1000,
-        rel_margins = RelativeMargins(0.1,0.1,0.1,0.1)
+        max_area = 1000000000,
+        rel_margins = RelativeMargins(margins[0], margins[1],
+                                      margins[2], margins[3])
     )
 
     log("Returning bbox from camera points: {}"\
