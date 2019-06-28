@@ -506,7 +506,12 @@ def save_fig(fig,
         axis.set_position([0, 0, 1, 1])
         axis.patch.set_alpha(0.)
         fig.patch.set_alpha(0.)
-        fig.savefig(path_filename, bbox_inches=0, format=file_format, facecolor=fig.get_facecolor(), transparent=True)
+        fig.savefig(
+            path_filename,
+            bbox_inches=0,
+            format=file_format,
+            facecolor=fig.get_facecolor(),
+            transparent=True)
 
     else:
         extent = 'tight'
