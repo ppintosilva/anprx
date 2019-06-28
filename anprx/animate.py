@@ -1,10 +1,4 @@
-################################################################################
-# Module: animate.py
-# Description: Animation funcions
-# License: Apache v2.0
-# Author: Pedro Pinto da Silva
-# Web: https://github.com/pedroswits/anprx
-################################################################################
+"""Methods for animating plots."""
 
 import os
 import math
@@ -80,9 +74,8 @@ def animate_camera(
     sample_point_size = 4,
     sample_valid_color = "green",
     sample_invalid_color = "red"):
-
     """
-    Generate an animation explaining the edge estimation procedure for the camera on a networkx spatial graph. The generated animation is not
+    Generate an animation explaining the edge estimation procedure for the camera on a networkx spatial graph. The generated animation is not.
 
     Total number of scenes, in the animation, is 6 + number of candidate edges.
 
@@ -208,8 +201,8 @@ def animate_camera(
     Returns
     -------
     anim : FuncAnimation
-    """
 
+    """
     start_time = time.time()
 
     # ----------------------------

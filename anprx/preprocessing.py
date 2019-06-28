@@ -43,7 +43,7 @@ def wrangle_cameras(cameras,
                                                'units': 'm'}
 ):
     """
-    Wrangles a raw dataset of ANPR camera data
+    Wrangles a raw dataset of ANPR camera data.
 
     Parameters
     ----------
@@ -58,13 +58,13 @@ def wrangle_cameras(cameras,
     """
     nrows = len(cameras)
     log("Wrangling cameras dataset with {} rows and colnames: {}"\
-            .format(nrows, cameras.columns.values),
+            .format(nrows, ",".join(cameras.columns.values)),
         level = lg.INFO)
 
     start_time = time.time()
 
     mandatory_columns = {'id', 'lat', 'lon'}
-    optional_columns = {'name', 'description', 'is_commissioned', 'type'}
+    optional_columns  = {'name', 'description', 'is_commissioned', 'type'}
 
     log("Checking if input dataframe contains mandatory columns {}."\
             .format(mandatory_columns),
@@ -148,7 +148,7 @@ def wrangle_cameras(cameras,
         cameras.loc[~cameras['direction'].str.\
                 contains("/", na=False), 'direction'] = \
             cameras.loc[~cameras['direction'].str.\
-                contains("/", na=False)].direction.str[0]
+                contains("/", na=False)].direction.str[0] # get first char
 
         cameras.loc[cameras['direction'].str.\
                 contains("/", na=False), 'direction'] = \
@@ -191,7 +191,7 @@ def wrangle_cameras(cameras,
                              ])
     ids = groups['id'].apply(lambda x: "-".join(x))\
                       .reset_index()\
-                      .sort_values(by = ['lat', 'lon'])['id']\
+                      .sort_values(by = ['lat', 'lon', 'direction'])['id']\
                       .reset_index(drop = True)
 
     names = groups['name'].apply(lambda x: "-".join(x))\

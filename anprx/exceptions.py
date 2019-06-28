@@ -120,6 +120,7 @@ class NoSuchEntitiesError(ExternalRequestError):
         request -- request to OSM
         desired_entity -- desired OSM entity
         found_entities -- found OSM entities
+
     """
 
     def __init__(self, request, desired_entity, found_entity):
