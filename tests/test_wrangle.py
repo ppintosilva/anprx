@@ -22,7 +22,7 @@ Test set 1 - assert:
 """
 raw_cameras_testset_1 = pd.DataFrame({
     'id'   : ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
-    'lat'  : [54.972017, 54.975509, 54.974499, 54.974612, 54.874181,
+    'lat'  : [54.972017, 54.975509, 54.974499, 54.974612, 54.974181,
               54.90, 54.89, 54.88, 54.972017, 54.972017],
     'lon'  : [-1.631206, -1.628498, -1.627997, -1.637108, -1.659476,
               -1.60, -1.61, -1.67, -1.631206, -1.631206],
@@ -49,8 +49,6 @@ def test_pipeline():
         sort_by                  = "id"
     )
 
-    print(cameras.head(5))
-
     assert {'1-10', '2', '3', '4', '5', '9'}.issubset(cameras['id'].unique())
 
     assert cameras[cameras['id'] == '1-10']['direction'].iloc[0] == "W"
@@ -73,7 +71,9 @@ def test_pipeline():
         clean_intersections = False,
         tolerance = 30,
         make_plots = True,
-        file_format = 'svg'
+        file_format = 'png',
+        fig_height = 12,
+        fig_width = 12
     )
 
-    G, untreated = merge_cameras_network(G, cameras)
+    G = merge_cameras_network(G, cameras)

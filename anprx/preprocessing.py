@@ -7,6 +7,7 @@ from   .utils               import settings
 from   .helpers             import add_edge_directions
 from   .helpers             import get_quadrant
 from   .helpers             import cut
+from   .core                import get_meanpoint
 from   .core                import edges_by_distance
 from   .core                import Point
 from   .core                import RelativeMargins
@@ -276,9 +277,11 @@ def network_from_cameras(
     filter_residential = True,
     clean_intersections = False,
     tolerance = 30,
+    min_bbox_length_km = 0.2,
+    max_bbox_length_km = 50,
+    bbox_margin = 0.10,
     make_plots = True,
-    file_format = 'svg',
-    margins = [0.1, 0.1, 0.1, 0.1],
+    file_format = 'png',
     **plot_kwargs
 ):
     """
@@ -298,25 +301,46 @@ def network_from_cameras(
     else:
         osm_road_filter = None
 
+    xs = [p.x for p in cameras['geometry']]
+    ys = [p.y for p in cameras['geometry']]
+
+    center_x = min(xs) + (max(xs) - min(xs))/2
+    center_y = min(ys) + (max(ys) - min(ys))/2
+
+    dists_center = list(map(
+        lambda p: math.sqrt((p.x - center_x) ** 2 + (p.y - center_y) ** 2),
+        cameras['geometry']))
+
+    length = max(dists_center)
+
+    # 10% margin
+    length = length + bbox_margin * length
+
+    # if length is still very small
+    if length < min_bbox_length_km * 1000:
+        length = min_bbox_length_km * 1000
+
+    elif length > max_bbox_length_km * 1000:
+        raise ValueError("This exception prevents accidently querying large networks")
+
+    # but now we need center point in lat,lon
     points = [Point(lat,lng) for lat,lng in zip(cameras['lat'], cameras['lon'])]
 
-    bbox = bbox_from_points(
-        points = points,
-        max_area = 1000000000,
-        rel_margins = RelativeMargins(margins[0], margins[1],
-                                      margins[2], margins[3])
-    )
+    lat = cameras['lat']
+    lon = cameras['lon']
 
-    log("Returning bbox from camera points: {}"\
-            .format(bbox),
+    center_lat = min(lat) + (max(lat) - min(lat))/2
+    center_lon = min(lon) + (max(lon) - min(lon))/2
+
+    log("Center point = {}, distance = {}"\
+            .format((center_lat, center_lon), length),
         level = lg.INFO)
+    checkpoint = time.time()
 
-    G = ox.graph_from_bbox(
-            north = bbox.north,
-            south = bbox.south,
-            east = bbox.east,
-            west = bbox.west,
-            custom_filter = osm_road_filter
+    G = ox.graph_from_point(
+        center_point = (center_lat, center_lon),
+        distance = length,
+        custom_filter = osm_road_filter
     )
 
     log("Returned road graph in {:,.3f} sec"\
@@ -334,10 +358,10 @@ def network_from_cameras(
     checkpoint = time.time()
 
     if make_plots:
-        fig_height      = plot_kwargs.get('fig_height', 10)
-        fig_width       = plot_kwargs.get('fig_width', 14)
+        fig_height      = plot_kwargs.get('fig_height', 6)
+        fig_width       = plot_kwargs.get('fig_width', None)
 
-        node_size       = plot_kwargs.get('node_size', 30)
+        node_size       = plot_kwargs.get('node_size', 15)
         node_alpha      = plot_kwargs.get('node_alpha', 1)
         node_zorder     = plot_kwargs.get('node_zorder', 2)
         node_color      = plot_kwargs.get('node_color', '#66ccff')
@@ -713,10 +737,16 @@ def merge_cameras_network(G, cameras, passes = 2, camera_range = 40.0):
             level = lg.INFO)
 
         to_merge = to_merge.iloc[untreated]
+        if len(to_merge) == 0:
+            break
 
     log("Finished merging cameras with the road graph in {:,.2f}."\
             .format(time.time() - start_time),
         level = lg.INFO)
 
+    if len(to_merge) > 0:
+        log("Cameras that could not be merged automatically:"\
+                .format(to_merge),
+            level = lg.INFO)
 
-    return G, to_merge
+    return G
