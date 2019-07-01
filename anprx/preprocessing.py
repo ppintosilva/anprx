@@ -5,6 +5,9 @@ from   .utils               import log
 from   .utils               import save_fig
 from   .utils               import settings
 from   .helpers             import add_edge_directions
+from   .helpers             import get_quadrant
+from   .helpers             import cut
+from   .core                import edges_by_distance
 from   .core                import Point
 from   .core                import RelativeMargins
 from   .core                import bbox_from_points
@@ -12,6 +15,7 @@ from   .core                import bbox_from_points
 import re
 import math
 import time
+import numpy                as np
 import osmnx                as ox
 import pandas               as pd
 import geopandas            as gpd
@@ -296,8 +300,6 @@ def network_from_cameras(
 
     points = [Point(lat,lng) for lat,lng in zip(cameras['lat'], cameras['lon'])]
 
-    log("{}".format(points))
-
     bbox = bbox_from_points(
         points = points,
         max_area = 1000000000,
@@ -436,3 +438,285 @@ def network_from_cameras(
 
     log("Retrieved road network from points in {:,.3f}"\
         .format(time.time() - start_time))
+
+    return G
+
+
+def identify_cameras_merge(G, cameras, camera_range = 40.0):
+
+    # Input validation
+    required_cols = {'id', 'geometry', 'direction', 'address'}
+
+    if not required_cols.issubset(set(cameras.columns.values)):
+        raise ValueError("The following required columns are not available: {}"\
+                         .format(required_cols))
+
+    edges_to_remove = []
+    edges_to_add = {}
+    cameras_to_add = {}
+    untreated = []
+
+    # We assume that there is a road within 40 meters of each camera
+    for index, row in cameras.iterrows():
+
+        id = row['id']
+        direction = row['direction']
+        address = row['address']
+        x = row['geometry'].x
+        y = row['geometry'].y
+
+        # Get nearest edges to
+        nedges = edges_by_distance(G, (y,x))
+
+        # identify the edges that are in range
+        distances = np.array(list(map(lambda x: x[1], nedges)))
+        # log(("({}) - Camera {} top 5 closest distances: {}")\
+        #         .format(index, id, distances[0:5]),
+        #     level = lg.INFO)
+
+        out_of_range_idx = np.argwhere(distances > camera_range)\
+                             .reshape(-1)[0]
+        in_range_slice = slice(0, (out_of_range_idx))
+
+        log(("({}) - Camera {} has {} edges in range, is located on {} "
+             "and points towards {}")\
+                .format(index, id, len(nedges[in_range_slice]),
+                        address, direction),
+            level = lg.INFO)
+
+        if len(nedges[in_range_slice]) == 0:
+            log(("({}) - Camera {} has no edge within {} meters. "
+                 "Appending to untreated list.")\
+                    .format(index, id, camera_range),
+                level = lg.WARNING)
+            untreated.append(index)
+            continue
+
+        for i in range(len(nedges)):
+
+            geom,u,v = nedges[in_range_slice][i][0]
+            distance = nedges[in_range_slice][i][1]
+
+            origin = geometry.Point([row['geometry'].x, row['geometry'].y])
+
+            # Direction of (u,v)
+            point_u = np.array((G.nodes[u]['x'], G.nodes[u]['y']))
+            point_v = np.array((G.nodes[v]['x'], G.nodes[v]['y']))
+
+            vec_uv = point_v - point_u
+            vec_uv_phi = np.rad2deg(math.atan2(vec_uv[1], vec_uv[0]))
+
+            if vec_uv_phi < 0:
+                vec_uv_phi = vec_uv_phi + 360
+
+            dir_uv = get_quadrant(vec_uv_phi)
+
+            log(("({}) - Camera {}: Analysing candidate {} edge {}, "
+                 "distance = {:.2f} m, direction = {}")\
+                    .format(index, id, i+1, (u,v), distance, dir_uv, i),
+                level = lg.INFO)
+
+            # If the direction does not match the camera's direction
+            if direction not in dir_uv:
+                log(("({}) - Camera {}: candidate {} edge {}, is pointing in "
+                     "the opposite direction {} != {}. Trying next edge.")\
+                        .format(index, id, i+1, (u,v), dir_uv, direction),
+                    level = lg.WARNING)
+                # SKIP TO NEXT EDGE
+                if i == out_of_range_idx:
+                    log(("({}) - Camera {}: no more candidate edges in range."
+                         "Appending to list of untreated.")\
+                            .format(index, id),
+                        level = lg.ERROR)
+                    untreated.append(index)
+                    break
+
+                else:
+                    continue
+
+            # We get the attributes of G
+            attr_uv = G.edges[u,v,0]
+
+            # Is this edge already assigned to a different camera?
+            if (u,v) in edges_to_remove:
+                log(("({}) - Camera {}: Another camera is already pointing at "
+                     "this edge. Appending to untreated list.")\
+                        .format(index, id),
+                    level = lg.WARNING)
+
+                untreated.append(index)
+                break
+
+            # Get the edge address just for validation/logging purposes
+            edge_ref = attr_uv['ref'] if 'ref' in attr_uv else "NULL"
+            edge_name = attr_uv['name'] if 'name' in attr_uv else "NULL"
+            edge_address = "{} {}".format(edge_ref, edge_name)
+
+            log(("({}) - Camera {}: Mapping to candidate {} edge {} available "
+                 "at address = {}")\
+                    .format(index, id, i+1, (u,v), edge_address),
+                level = lg.INFO)
+
+            # Set the new node label
+            camera_label = "c_{}".format(id)
+
+            # It's this simple afterall
+            midpoint_dist = geom.project(origin)
+            sublines = cut(geom, midpoint_dist)
+
+            midpoint = geom.interpolate(midpoint_dist).coords[0]
+
+            # We have split the geometries and have the new point for the camera
+            # belonging to both new geoms
+            geom_u_camera = sublines[0]
+            geom_camera_v = sublines[1]
+
+            # Set the new edge attributes
+            attr_u_camera = dict(attr_uv)
+            attr_camera_v = dict(attr_uv)
+
+            attr_u_camera['geometry'] = geom_u_camera
+            attr_u_camera['length'] = attr_u_camera['geometry'].length
+
+            attr_camera_v['geometry'] = geom_camera_v
+            attr_camera_v['length'] = attr_camera_v['geometry'].length
+
+            # I hate having to do this, but will do for now..
+            new_row = dict(row)
+            new_row['x'] = midpoint[0]
+            new_row['y'] = midpoint[1]
+
+            # Appending to output lists/dicts
+            if camera_label in cameras_to_add.keys():
+                # If this is a camera that sees in both directions, we still
+                # just want to add one new node on the network but with edges
+                # in both directions. We don't want duplicate camera entries
+                # here, so if it already exists we update it's 'direction' key
+                first_direction = cameras_to_add[camera_label]['direction']
+
+                cameras_to_add[camera_label]['direction'] = \
+                    "{}-{}".format(first_direction, direction)
+            else:
+                cameras_to_add[camera_label] = new_row
+
+            edges_to_remove.append((u,v))
+            edges_to_add[(u,camera_label)] = attr_u_camera
+            edges_to_add[(camera_label,v)] = attr_camera_v
+
+            if (geom_u_camera.length + geom_camera_v.length) - (geom.length) > 1e-3:
+                log(("({}) - Camera {}: There is a mismatch between the prior"
+                     "and posterior geometries lengths:"
+                     "{} -> {}, {} | {} != {} + {}")\
+                        .format(index, id, (u,v), (u,camera_label),
+                                (camera_label,v), geom.length,
+                                geom_u_camera.length, geom_camera_v.length),
+                    level = lg.ERROR)
+
+
+            log(("({}) - Camera {}: Scheduled the removal of candidate {}"
+                 "edge {} and the addition of edges {}, {}.")\
+                    .format(index, id, i+1, (u,v), (u,camera_label),
+                            (camera_label,v)),
+                level = lg.INFO)
+
+            break
+
+    return (cameras_to_add, edges_to_remove, edges_to_add, untreated)
+
+###
+###
+
+def merge_cameras_network(G, cameras, passes = 2, camera_range = 40.0):
+    """
+    Merge
+    """
+    log("Merging {} cameras with road network with {} nodes and {} edges"\
+            .format(len(cameras), len(G.nodes), len(G.edges)),
+        level = lg.INFO)
+
+    start_time = time.time()
+
+    if 'both_directions' in cameras.columns.values:
+
+        both_directions_mask = cameras.both_directions\
+                                      .apply(lambda x: x == 1)
+
+        tmp = cameras[both_directions_mask]
+
+        tmp1 = tmp.assign(direction = tmp.direction.str\
+                                         .split(pat = "-").str[0])
+        tmp2 = tmp.assign(direction = tmp.direction.str\
+                                         .split(pat = "-").str[1])
+
+        to_merge = pd.concat([tmp1, tmp2, cameras[~both_directions_mask]])\
+                     .reset_index(drop = True)
+
+        log("Duplicated {} rows for cameras that see in both directions"\
+                .format(len(cameras[both_directions_mask])),
+            level = lg.INFO)
+
+    else:
+        to_merge = cameras
+
+        log("No column 'both_directions' was found, dataframe is unchanged"\
+                .format(len(cameras[both_directions_mask])),
+            level = lg.WARNING)
+
+
+    for i in range(passes):
+
+        if len(to_merge) == 0:
+            log("Pass {}/{}: Identifying edges to be added and removed."\
+                    .format(i+1, passes),
+                level = lg.INFO)
+            break
+
+        log("Pass {}/{}: Identifying edges to be added and removed."\
+                .format(i+1, passes),
+            level = lg.INFO)
+
+        cameras_to_add, edges_to_remove, edges_to_add, untreated = \
+            identify_cameras_merge(G, to_merge)
+
+        log("Pass {}/{}: Adding {} cameras."\
+                .format(i+1, passes, len(cameras_to_add)),
+            level = lg.INFO)
+
+        for label, row in cameras_to_add.items():
+            d = dict(row)
+            d['osmid'] = None
+            d['is_camera'] = True
+
+            G.add_node(label, **d)
+
+        log("Pass {}/{}: Adding {} new edges."\
+                .format(i+1, passes, len(edges_to_add)),
+            level = lg.INFO)
+
+        for edge, attr in edges_to_add.items():
+            G.add_edge(edge[0], edge[1], **attr)
+
+        log("Pass {}/{}: Removing {} stale edges."\
+                .format(i+1, passes, len(edges_to_remove)),
+            level = lg.INFO)
+
+        for edge in edges_to_remove:
+            G.remove_edge(*edge)
+
+        log("Pass {}/{}: G has now {} nodes and {} edges."\
+                .format(i+1, passes, len(G.nodes()), len(G.edges())),
+            level = lg.INFO)
+
+        log(("Pass {}/{}: {} cameras were not merged because their edge "
+             "overlapped with another camera.")\
+                .format(i+1, passes, len(untreated)),
+            level = lg.INFO)
+
+        to_merge = to_merge.iloc[untreated]
+
+    log("Finished merging cameras with the road graph in {:,.2f}."\
+            .format(time.time() - start_time),
+        level = lg.INFO)
+
+
+    return G, to_merge
