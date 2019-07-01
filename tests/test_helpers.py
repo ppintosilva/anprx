@@ -3,6 +3,7 @@ import numpy as np
 import networkx as nx
 import anprx.helpers as helpers
 from anprx.constants import PropertiesFilter
+from shapely.geometry import LineString
 
 ###
 ###
@@ -146,3 +147,11 @@ def test_angle_between():
                   0,
                   36.8698976]),
         angles)
+
+def test_cut():
+    line = LineString([(0, 0), (1, 1)])
+
+    line_parts = helpers.cut(line, 0.41421)
+
+    assert (line_parts[0].length - 0.41421) <= 0.0001
+    assert (line_parts[1].length - 1.00000) <= 0.0001

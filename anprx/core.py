@@ -16,7 +16,8 @@ import pandas               as pd
 import logging              as lg
 import networkx             as nx
 
-from sklearn.neighbors      import BallTree
+import shapely.geometry    as geometry
+from   sklearn.neighbors   import BallTree
 
 from .constants             import Units
 from .constants             import earth_radius
@@ -574,6 +575,41 @@ def edges_from_osmid(network, osmids):
 
     for u,v,k in list(edges_with_properties(network, properties)):
         yield Edge(u, v, k)
+
+###
+###
+
+def edges_by_distance(G, point):
+    """
+    Calculate the distance of every edge to point and sort them by distance.
+
+    Parameters
+    ---------
+    G : nx.MultiDiGraph
+
+    point : tuple
+        The (lat, lng) or (y, x) point for which we will
+        find the nearest edge in the graph
+
+    Returns
+    -------
+    list
+        edges in the graph sorted by distance to point
+    """
+    # graph to GeoDataFrame
+    gdf = ox.graph_to_gdfs(G, nodes=False, fill_edge_geometry=True)
+    graph_edges = gdf[["geometry", "u", "v"]].values.tolist()
+
+    edges_with_distances = [
+        (
+            graph_edge,
+            geometry.Point(tuple(reversed(point))).distance(graph_edge[0])
+        )
+        for graph_edge in graph_edges
+    ]
+
+    edges_with_distances = sorted(edges_with_distances, key=lambda x: x[1])
+    return edges_with_distances
 
 ###
 ###

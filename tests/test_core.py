@@ -291,6 +291,15 @@ def test_nodes_and_edges_in_range():
     assert len(edges[0]) >= len(nn_ids[0])
     assert len(edges[1]) >= len(nn_ids[1])
 
+def test_edges_by_distance():
+    point1, point2 = get_points()
+
+    G = get_network(distance = 1000)
+
+    edges = core.edges_by_distance(G, point1)
+
+    assert len(edges) == len(G.edges)
+
 
 def test_filter_by_address_and_get_local_coordinate_system():
     network = get_network(distance = 1000)

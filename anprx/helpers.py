@@ -1,21 +1,16 @@
-################################################################################
-# Module: core.py
-# Description: Helper functions
-# License: Apache v2.0
-# Author: Pedro Pinto da Silva
-# Web: https://github.com/pedroswits/anprx
-################################################################################
+"""A series of helper methods that are useful in a variety of contexts."""
 
-import collections
-import numpy                as np
-import osmnx                as ox
-import pandas               as pd
-import networkx             as nx
+import  collections
+import  numpy                   as np
+import  osmnx                   as ox
+import  pandas                  as pd
+import  networkx                as nx
 
-from sklearn.neighbors      import BallTree
+import  shapely.geometry        as geometry
+from    sklearn.neighbors       import BallTree
 
-from .constants             import PropertiesFilter
-from .utils                 import log
+from    .constants              import PropertiesFilter
+from    .utils                  import log
 
 ###
 ###
@@ -373,3 +368,41 @@ def get_quadrant(phi):
         return ('S', 'E')
     elif phi > 315 and phi <= 360:
         return ('E', 'S')
+
+
+def cut(line, distance):
+    """
+    Cuts a LineString in two LineStrings at a distance from its starting point.
+
+    Parameters
+    ---------
+    line : shapely.geometry.LineString
+
+    distance : float
+        distance from the starting point at which the line should be cut
+
+    Returns
+    -------
+    list of length 2
+        original line cut into two
+        
+    """
+    # Cuts a line in two at a distance from its starting point
+    if distance <= 0.0 or distance >= line.length:
+        return [geometry.LineString(line)]
+
+    coords = list(line.coords)
+
+    for i, p in enumerate(coords):
+        pd = line.project(geometry.Point(p))
+
+        if pd == distance:
+            return [
+                geometry.LineString(coords[:i+1]),
+                geometry.LineString(coords[i:])]
+
+        if pd > distance:
+            cp = line.interpolate(distance)
+            return [
+                geometry.LineString(coords[:i] + [(cp.x, cp.y)]),
+                geometry.LineString([(cp.x, cp.y)] + coords[i:])]
