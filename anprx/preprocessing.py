@@ -4,6 +4,7 @@
 from   .utils               import log
 from   .utils               import save_fig
 from   .utils               import settings
+from   .plot                import plot_G
 from   .helpers             import add_edge_directions
 from   .helpers             import get_quadrant
 from   .helpers             import cut
@@ -19,6 +20,7 @@ import time
 import numpy                as np
 import osmnx                as ox
 import pandas               as pd
+import networkx             as nx
 import geopandas            as gpd
 import logging              as lg
 import shapely.geometry     as geometry
@@ -280,8 +282,7 @@ def network_from_cameras(
     min_bbox_length_km = 0.2,
     max_bbox_length_km = 50,
     bbox_margin = 0.10,
-    make_plots = True,
-    file_format = 'png',
+    plot = True,
     **plot_kwargs
 ):
     """
@@ -357,37 +358,11 @@ def network_from_cameras(
         level = lg.INFO)
     checkpoint = time.time()
 
-    if make_plots:
-        fig_height      = plot_kwargs.get('fig_height', 6)
-        fig_width       = plot_kwargs.get('fig_width', None)
-
-        node_size       = plot_kwargs.get('node_size', 15)
-        node_alpha      = plot_kwargs.get('node_alpha', 1)
-        node_zorder     = plot_kwargs.get('node_zorder', 2)
-        node_color      = plot_kwargs.get('node_color', '#66ccff')
-        node_edgecolor  = plot_kwargs.get('node_edgecolor', 'k')
-
-        edge_color      = plot_kwargs.get('edge_color', '#999999')
-        edge_linewidth  = plot_kwargs.get('edge_linewidth', 1)
-        edge_alpha      = plot_kwargs.get('edge_alpha', 1)
-
-
-        fig, ax = ox.plot_graph(
-            G, fig_height=fig_height, fig_width=fig_width,
-            node_alpha=node_alpha, node_zorder=node_zorder,
-            node_size = node_size, node_color=node_color,
-            node_edgecolor=node_edgecolor, edge_color=edge_color,
-            edge_linewidth = edge_linewidth, edge_alpha = edge_alpha,
-            use_geom = True, annotate = False, save = False, show = False
-        )
-
-        image_name = "road_graph"
-        save_fig(fig, ax, image_name, file_format = file_format, dpi = 320)
-
-        filename = "{}/{}/{}.{}".format(
-                        settings['app_folder'],
-                        settings['images_folder_name'],
-                        image_name, file_format)
+    if plot:
+        _, _, filename = plot_G(
+            G,
+            name = "road_graph",
+            **plot_kwargs)
 
         log("Saved image of the road graph to disk {} in {:,.3f} sec"\
                 .format(filename, time.time() - checkpoint),
@@ -402,55 +377,28 @@ def network_from_cameras(
             level = lg.INFO)
         checkpoint = time.time()
 
-        if make_plots:
-            image_name = "road_graph_cleaned"
-            filename = "{}/{}/{}.{}".format(
-                            settings['app_folder'],
-                            settings['images_folder_name'],
-                            image_name, file_format)
-
-            fig, ax = ox.plot_graph(
-                G, fig_height=fig_height, fig_width=fig_width,
-                node_alpha=node_alpha, node_zorder=node_zorder,
-                node_size = node_size, node_color=node_color,
-                node_edgecolor=node_edgecolor, edge_color=edge_color,
-                edge_linewidth = edge_linewidth, edge_alpha = edge_alpha,
-                use_geom = True, annotate = False, save = False, show = False
-            )
-
-            save_fig(fig, ax, image_name, file_format = file_format, dpi = 320)
+        if plot:
+            _, _, filename = plot_G(
+                G,
+                name = "road_graph_cleaned",
+                **plot_kwargs)
 
             log("Saved image of cleaned road graph to disk {} in {:,.3f} sec"\
                     .format(filename, time.time() - checkpoint),
                 level = lg.INFO)
             checkpoint = time.time()
 
-    if make_plots:
+    if plot:
         if 'geometry' in cameras.columns:
-            cameras_color  = plot_kwargs.get('cameras_color', '#D91A35')
-            cameras_marker = plot_kwargs.get('cameras_marker', '*')
-            cameras_size   = plot_kwargs.get('cameras_size', 100)
-            cameras_zorder = plot_kwargs.get('cameras_zorder', 20)
 
-            camera_points = ax.scatter(
-                cameras['geometry'].x,
-                cameras['geometry'].y,
-                marker = cameras_marker,
-                color = cameras_color,
-                s = cameras_size,
-                zorder = cameras_zorder,
-                label = "cameras"
-            )
-            ax.legend()
+            plot_kwargs['label'] = 'cameras'
+            plot_kwargs['legend'] = True
 
-            image_name = "road_graph_cleaned_cameras" if clean_intersections \
-                         else "road_graph_cameras"
-            filename = "{}/{}/{}.{}".format(
-                            settings['app_folder'],
-                            settings['images_folder_name'],
-                            image_name, file_format)
-
-            save_fig(fig, ax, image_name, file_format = file_format, dpi = 320)
+            _, _, filename = plot_G(
+                G,
+                name = "road_graph_cameras",
+                points = (cameras['geometry'].x, cameras['geometry'].y),
+                **plot_kwargs)
 
             log("Saved image of cleaned road graph to disk {} in {:,.3f} sec"\
                     .format(filename, time.time() - checkpoint),
@@ -466,8 +414,14 @@ def network_from_cameras(
     return G
 
 
-def identify_cameras_merge(G, cameras, camera_range = 40.0):
-
+def identify_cameras_merge(
+    G,
+    cameras,
+    camera_range = 40.0
+):
+    """
+    Identify camera merges
+    """
     # Input validation
     required_cols = {'id', 'geometry', 'direction', 'address'}
 
@@ -650,7 +604,14 @@ def identify_cameras_merge(G, cameras, camera_range = 40.0):
 ###
 ###
 
-def merge_cameras_network(G, cameras, passes = 2, camera_range = 40.0):
+def merge_cameras_network(
+    G,
+    cameras,
+    passes = 2,
+    camera_range = 40.0,
+    plot = True,
+    **plot_kwargs
+):
     """
     Merge
     """
@@ -659,6 +620,9 @@ def merge_cameras_network(G, cameras, passes = 2, camera_range = 40.0):
         level = lg.INFO)
 
     start_time = time.time()
+
+    # Adding new attribute to nodes
+    nx.set_node_attributes(G, False, 'is_camera')
 
     if 'both_directions' in cameras.columns.values:
 
@@ -731,22 +695,44 @@ def merge_cameras_network(G, cameras, passes = 2, camera_range = 40.0):
                 .format(i+1, passes, len(G.nodes()), len(G.edges())),
             level = lg.INFO)
 
-        log(("Pass {}/{}: {} cameras were not merged because their edge "
-             "overlapped with another camera.")\
-                .format(i+1, passes, len(untreated)),
-            level = lg.INFO)
-
         to_merge = to_merge.iloc[untreated]
         if len(to_merge) == 0:
             break
+        else:
+            log(("Pass {}/{}: {} cameras were not merged because their edge "
+                 "overlapped with another camera.")\
+                    .format(i+1, passes, len(untreated)),
+                level = lg.INFO)
 
+
+    checkpoint = time.time()
     log("Finished merging cameras with the road graph in {:,.2f}."\
-            .format(time.time() - start_time),
+            .format(checkpoint - start_time),
         level = lg.INFO)
 
     if len(to_merge) > 0:
-        log("Cameras that could not be merged automatically:"\
+        log("Cameras that could not be merged automatically: {}"\
                 .format(to_merge),
+            level = lg.INFO)
+
+    if plot:
+        plot_kwargs['legend'] = True
+        plot_kwargs['label'] = 'cameras'
+        plot_kwargs['points_marker'] = '.'
+
+        points = [ (data['x'],data['y']) for _, data in \
+                    G.nodes(data = True) if data['is_camera'] ]
+
+        _, _, filename = plot_G(
+            G,
+            name = "road_graph_merged",
+            # key = "is_camera",
+            points = ( list(map(lambda x: x[0], points)),
+                       list(map(lambda x: x[1], points))),
+            **plot_kwargs)
+
+        log("Saved image of merged road graph to disk {} in {:,.3f} sec"\
+                .format(filename, time.time() - checkpoint),
             level = lg.INFO)
 
     return G

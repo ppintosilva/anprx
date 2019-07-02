@@ -1,19 +1,15 @@
-################################################################################
-# Module: plot.py
-# Description: Plot functions
-# License: Apache v2.0
-# Author: Pedro Pinto da Silva
-# Web: https://github.com/pedroswits/anprx
-################################################################################
+"""Some useful plot methods"""
 
 import math
 import adjustText
+import numpy                as np
 import osmnx                as ox
 import matplotlib.pyplot    as plt
 import matplotlib.colors    as colors
 import matplotlib.colorbar  as colorbar
 
 from .utils                 import save_fig
+from .utils                 import settings
 from .core                  import Edge
 from .constants             import Units
 from .constants             import deg2distance
@@ -316,3 +312,66 @@ def plot_camera(
         save_fig(fig, axis, filename, file_format, dpi)
 
     return fig, axis
+
+
+def plot_G(G, name = None, points = None, key = None, **plot_kwargs):
+    file_format     = plot_kwargs.get('file_format', 'png')
+    fig_height      = plot_kwargs.get('fig_height', 6)
+    fig_width       = plot_kwargs.get('fig_width', None)
+
+    node_size       = plot_kwargs.get('node_size', 15)
+    node_alpha      = plot_kwargs.get('node_alpha', 1)
+    node_zorder     = plot_kwargs.get('node_zorder', 2)
+    node_color      = plot_kwargs.get('node_color', '#66ccff')
+    node_edgecolor  = plot_kwargs.get('node_edgecolor', 'k')
+
+    edge_color      = plot_kwargs.get('edge_color', '#999999')
+    edge_linewidth  = plot_kwargs.get('edge_linewidth', 1)
+    edge_alpha      = plot_kwargs.get('edge_alpha', 1)
+    legend          = plot_kwargs.get('legend', False)
+
+    points_color    = plot_kwargs.get('points_color', '#D91A35')
+    points_edgecolor= plot_kwargs.get('points_edgecolor', 'k')
+    points_marker   = plot_kwargs.get('points_marker', '*')
+    points_size     = plot_kwargs.get('points_size', 100)
+    points_zorder   = plot_kwargs.get('points_zorder', 20)
+    points_label    = plot_kwargs.get('label', 'points')
+
+    if key:
+        node_color = [ points_color if key in data else node_color \
+                        for _,data in G.nodes(data = True) ]
+
+    fig, ax = ox.plot_graph(
+        G, fig_height=fig_height, fig_width=fig_width,
+        node_alpha=node_alpha, node_zorder=node_zorder,
+        node_size = node_size, node_color=node_color,
+        node_edgecolor=node_edgecolor, edge_color=edge_color,
+        edge_linewidth = edge_linewidth, edge_alpha = edge_alpha,
+        use_geom = True, annotate = False, save = False, show = False
+    )
+
+    if points:
+
+        points = ax.scatter(
+            points[0],
+            points[1],
+            marker = points_marker,
+            color = points_color,
+            s = points_size,
+            zorder = points_zorder,
+            label = points_label,
+            edgecolors = points_edgecolor
+        )
+
+    if legend:
+        ax.legend()
+
+    if name:
+        save_fig(fig, ax, name, file_format = file_format, dpi = 320)
+
+        filename = "{}/{}/{}.{}".format(
+                        settings['app_folder'],
+                        settings['images_folder_name'],
+                        name, file_format)
+
+    return fig, ax, filename

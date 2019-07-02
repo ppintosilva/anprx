@@ -69,11 +69,18 @@ def test_pipeline():
         cameras,
         filter_residential = False,
         clean_intersections = False,
-        tolerance = 30,
-        make_plots = True,
+        tolerance = 15,
+        plot = True,
         file_format = 'png',
         fig_height = 12,
         fig_width = 12
     )
 
-    G = merge_cameras_network(G, cameras)
+    G = merge_cameras_network(
+        G,
+        cameras,
+        plot = True,
+        file_format = 'png',
+        fig_height = 12,
+        fig_width = 12
+    )
