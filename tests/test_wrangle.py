@@ -68,8 +68,8 @@ def test_pipeline():
     G = network_from_cameras(
         cameras,
         filter_residential = False,
-        clean_intersections = False,
-        tolerance = 15,
+        clean_intersections = True,
+        tolerance = 5,
         plot = True,
         file_format = 'png',
         fig_height = 12,
