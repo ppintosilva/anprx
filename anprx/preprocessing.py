@@ -408,7 +408,7 @@ def network_from_cameras(
                 "no geometry was available"),
                 level = lg.WARNING)
 
-    log("Retrieved road network from points in {:,.3f}"\
+    log("Retrieved road network from points in {:,.3f} sec"\
         .format(time.time() - start_time))
 
     return G
