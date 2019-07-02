@@ -21,18 +21,19 @@ Test set 1 - assert:
     - Resulting df has 6 rows
 """
 raw_cameras_testset_1 = pd.DataFrame({
-    'id'   : ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+    'id'   : ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11'],
     'lat'  : [54.972017, 54.975509, 54.974499, 54.974612, 54.974181,
-              54.90, 54.89, 54.88, 54.972017, 54.972017],
+              54.90, 54.89, 54.88, 54.972017, 54.972017, 54.974612],
     'lon'  : [-1.631206, -1.628498, -1.627997, -1.637108, -1.659476,
-              -1.60, -1.61, -1.67, -1.631206, -1.631206],
-    'name' : ["CA" , "CB" , "CC", "CD", "CE", "CF", "CG", "Test", "CA2", "CA3"],
+              -1.60, -1.61, -1.67, -1.631206, -1.631206, -1.637108],
+    'name' : ["CA" , "CB" , "CC", "CD", "CE", "CF", "CG",
+              "Test", "CA2", "CA3", "No Direction"],
     'desc' : ["Westbound A186", "East/West Stanhope St A13",
               "North/South Diana St B1", "Beaconsfield St Southbound A27",
               "Northbound B1305 Condercum Rd", "Car park in",
               "Disabled", "Camera Test",
-              "Eastbound A186", "Westbound A186"],
-    'is_commissioned' : [1,1,1,1,1,1,0,1,1,1]
+              "Eastbound A186", "Westbound A186", "Directionless"],
+    'is_commissioned' : [1,1,1,1,1,1,0,1,1,1,1]
 })
 
 def test_pipeline():

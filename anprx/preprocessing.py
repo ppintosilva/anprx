@@ -29,11 +29,12 @@ from   collections          import OrderedDict
 # ------------------------------------------------------------------------------
 
 infer_direction_regex = \
-('(East\/West|North\/South|Northbound|Eastbound|Southbound|Westbound)')
+(r'(East\/West|North\/South|Northbound|Eastbound|Southbound|'
+  'Westbound|Northhbound|Southhbound)')
 
 address_regex = \
 (r'(East\/West|North\/South|Northbound|Eastbound|Southbound|Westbound|Site \d'
-'|Camera \d|Camera|Site)')
+  '|Camera \d|Camera|Site)')
 
 road_category_regex = \
 r'(A\d+|B\d+|C\d+)'
@@ -79,7 +80,7 @@ def wrangle_cameras(
     start_time = time.time()
 
     mandatory_columns = {'id', 'lat', 'lon'}
-    optional_columns  = {'name', 'description', 'is_commissioned', 'type'}
+    optional_columns = {'name', 'description', 'is_commissioned'}
 
     log("Checking if input dataframe contains mandatory columns {}."\
             .format(mandatory_columns),
@@ -134,6 +135,10 @@ def wrangle_cameras(
 
     # Find and drop cameras that are in car parks
     if drop_car_park:
+        if drop_car_park not in cols:
+            raise ValueError(
+                "Drop car park cameras: column {} is not in the input dataframe"\
+                .format(drop_car_park))
         oldlen = len(cameras)
 
         cameras = cameras.assign(
@@ -150,35 +155,54 @@ def wrangle_cameras(
         log("No more cameras to process..", level = lg.WARNING)
         return None
 
-    # Get direction from other fields
-    if infer_direction_col:
-        log("Inferring direction based on column '{}'."\
-                .format(infer_direction_col),
-            level = lg.INFO)
+    # Get direction from other fields - NOT OPTIONAL ANYMORE
+    log("Inferring direction based on column '{}'."\
+            .format(infer_direction_col),
+        level = lg.INFO)
 
-        cameras = cameras.assign(
-            direction = cameras[infer_direction_col].str.extract(
-                infer_direction_re,
-                flags = re.IGNORECASE))
+    if infer_direction_col not in cols:
+        raise ValueError(
+            "Inferring direction: column {} is not in the input dataframe"\
+            .format(infer_direction_col))
 
-        cameras = cameras.assign(
-            both_directions =
-                (cameras.direction.str.contains("/|&", na=False))
-        )
+    cameras = cameras.assign(
+        direction = cameras[infer_direction_col].str.extract(
+            infer_direction_re,
+            flags = re.IGNORECASE))
 
-        # ugly code, but will have to do for now
-        cameras.loc[~cameras.both_directions, 'direction'] = \
-            cameras.loc[~cameras.both_directions].direction.str[0]
+    cameras = cameras.assign(
+        both_directions =
+            (cameras.direction.str.contains("/|&", na=False))
+    )
 
-        cameras.loc[cameras.both_directions, 'direction'] = \
-            cameras.loc[cameras.both_directions].direction.str\
-                .split(pat = "/")\
-                .apply(lambda x: "{}-{}".format(x[0][0], x[1][0]))
-    else:
-        log("Skipping inferring direction", level = lg.INFO)
+    # ugly code, but will have to do for now
+    cameras.loc[~cameras.both_directions, 'direction'] = \
+        cameras.loc[~cameras.both_directions].direction.str[0]
+
+    cameras.loc[cameras.both_directions, 'direction'] = \
+        cameras.loc[cameras.both_directions].direction.str\
+            .split(pat = "/")\
+            .apply(lambda x: "{}-{}".format(x[0][0], x[1][0]))
+
+    count_na_direction = len(cameras[pd.isna(cameras.direction)])
+
+    if count_na_direction > 0:
+        log(("Could not extract direction for {} cameras. "
+             "Removing cameras {}, otherwise these would cause errors below"
+             "when grouping by direction to merge cameras"
+             "in the same location.")\
+                .format(count_na_direction,
+                        cameras[pd.isna(cameras.direction)]['id']),
+            level = lg.ERROR)
+        cameras = cameras[~pd.isna(cameras.direction)]
 
     # Computing new column 'address'
     if extract_address:
+        if extract_address not in cols:
+            raise ValueError(
+             "Extracting address: column {} is not in the input dataframe"\
+              .format(extract_address))
+
         cameras = cameras.assign(
             address = cameras[extract_address]\
                         .str.replace(address_regex, '',regex = True)\
@@ -192,6 +216,11 @@ def wrangle_cameras(
 
     # Computing new column 'road category'
     if extract_road_category:
+        if extract_road_category not in cols:
+            raise ValueError(
+             "Extracting road category: column {} is not in the input dataframe"\
+              .format(extract_road_category))
+
         cameras = cameras.assign(
             road_category = cameras[extract_road_category]\
                                 .str.extract(road_category_regex))
@@ -215,10 +244,11 @@ def wrangle_cameras(
                       .sort_values(by = ['lat', 'lon', 'direction'])['id']\
                       .reset_index(drop = True)
 
-    names = groups['name'].apply(lambda x: "-".join(x))\
-                          .reset_index()\
-                          .sort_values(by = ['lat', 'lon', 'direction'])['name']\
-                          .reset_index(drop = True)
+    if 'names' in cameras.columns.values:
+        names = groups['name'].apply(lambda x: "-".join(x))\
+                              .reset_index()\
+                              .sort_values(by = ['lat', 'lon', 'direction'])['name']\
+                              .reset_index(drop = True)
 
     # Really janky way to do this, but I couldn't figure out the right way
     # to do this. I guess that should be done using the aggregate function.
@@ -227,8 +257,15 @@ def wrangle_cameras(
                     .sort_values(by = ['lat', 'lon', 'direction'])\
                     .reset_index(drop = True)
 
+    if len(ids) != len(cameras):
+        log(("Length of cameras and expected ids is not the same."
+            " Something went wrong here"),
+            level = lg.ERROR)
+
     cameras['id'] = ids
-    cameras['name'] = names
+
+    if 'names' in cameras.columns.values:
+        cameras['name'] = names
 
     log("Merged {} cameras that were in the same location as other cameras."\
             .format(oldlen - len(cameras)),
@@ -591,7 +628,7 @@ def identify_cameras_merge(
                     level = lg.ERROR)
 
 
-            log(("({}) - Camera {}: Scheduled the removal of candidate {}"
+            log(("({}) - Camera {}: Scheduled the removal of candidate {} "
                  "edge {} and the addition of edges {}, {}.")\
                     .format(index, id, i+1, (u,v), (u,camera_label),
                             (camera_label,v)),
