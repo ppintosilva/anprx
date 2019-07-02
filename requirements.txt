@@ -7,6 +7,6 @@ pandas>=0.23
 geopandas>=0.4
 statistics >= 1.0.3
 scikit-learn >= 0.20.0
--e git://github.com/pedroswits/osmnx.git@f180567e71737c146cc100be19954a525237bbf6#egg=osmnx
+-e git://github.com/pedroswits/osmnx.git@master#egg=osmnx
 adjustText >= 0.7.3
 progress >= 1.4
