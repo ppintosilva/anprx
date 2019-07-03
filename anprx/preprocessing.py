@@ -734,7 +734,7 @@ def merge_cameras_network(
                 .format(i+1, passes, len(G.nodes()), len(G.edges())),
             level = lg.INFO)
 
-        to_merge = to_merge.iloc[untreated]
+        to_merge = to_merge.loc[untreated]
         if len(to_merge) == 0:
             break
         else:
