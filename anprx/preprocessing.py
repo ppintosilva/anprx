@@ -689,7 +689,7 @@ def merge_cameras_network(
                 .format(len(cameras[both_directions_mask])),
             level = lg.WARNING)
 
-    all_untreatable = {}
+    all_untreatable = set()
 
     for i in range(passes):
 
