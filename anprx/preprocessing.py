@@ -689,6 +689,7 @@ def merge_cameras_network(
                 .format(len(cameras[both_directions_mask])),
             level = lg.WARNING)
 
+    all_untreatable = {}
 
     for i in range(passes):
 
@@ -704,6 +705,8 @@ def merge_cameras_network(
 
         cameras_to_add, edges_to_remove, edges_to_add, untreated, untreatable =\
             identify_cameras_merge(G, to_merge)
+
+        all_untreatable.update(untreatable)
 
         log("Pass {}/{}: Adding {} cameras."\
                 .format(i+1, passes, len(cameras_to_add)),
@@ -745,15 +748,15 @@ def merge_cameras_network(
 
 
     checkpoint = time.time()
-    log("Finished merging cameras with the road graph in {:,.2f}."\
+    log("Finished merging cameras with the road graph in {:,.2f} sec."\
             .format(checkpoint - start_time),
         level = lg.INFO)
 
-    if len(untreatable) > 0:
+    if len(all_untreatable) > 0:
         log(("{} cameras ({}) were flagged as 'untreatable' because there were "
              "no edges nearby that fit the distance and direction requirements."
              "Because of this they were not merged.")\
-            .format(len(untreated)),
+            .format(len(all_untreatable), cameras.loc[all_untreatable]),
         level = lg.WARNING)
     else:
         log(("No cameras were flagged as 'untreatable'.")\
@@ -781,7 +784,7 @@ def merge_cameras_network(
                        list(map(lambda x: x[1], points))),
             **plot_kwargs)
 
-        log("Saved image of merged road graph to disk {} in {:,.3f} sec"\
+        log("Saved image of merged road graph to disk {} in {:,.2f} sec"\
                 .format(filename, time.time() - checkpoint),
             level = lg.INFO)
 
