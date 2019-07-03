@@ -470,6 +470,7 @@ def identify_cameras_merge(
     edges_to_add = {}
     cameras_to_add = {}
     untreated = []
+    untreatable = []
 
     # We assume that there is a road within 40 meters of each camera
     for index, row in cameras.iterrows():
@@ -501,10 +502,10 @@ def identify_cameras_merge(
 
         if len(nedges[in_range_slice]) == 0:
             log(("({}) - Camera {} has no edge within {} meters. "
-                 "Appending to untreated list.")\
+                 "Appending to untreatable list.")\
                     .format(index, id, camera_range),
                 level = lg.WARNING)
-            untreated.append(index)
+            untreatable.append(index)
             continue
 
         for i in range(len(nedges)):
@@ -540,10 +541,10 @@ def identify_cameras_merge(
                 # SKIP TO NEXT EDGE
                 if i == out_of_range_idx:
                     log(("({}) - Camera {}: no more candidate edges in range."
-                         "Appending to list of untreated.")\
+                         "Appending to list of untreatable.")\
                             .format(index, id),
                         level = lg.ERROR)
-                    untreated.append(index)
+                    untreatable.append(index)
                     break
 
                 else:
@@ -636,7 +637,8 @@ def identify_cameras_merge(
 
             break
 
-    return (cameras_to_add, edges_to_remove, edges_to_add, untreated)
+    return (cameras_to_add, edges_to_remove, edges_to_add,
+            untreated, untreatable)
 
 ###
 ###
@@ -700,7 +702,7 @@ def merge_cameras_network(
                 .format(i+1, passes),
             level = lg.INFO)
 
-        cameras_to_add, edges_to_remove, edges_to_add, untreated = \
+        cameras_to_add, edges_to_remove, edges_to_add, untreated, untreatable =\
             identify_cameras_merge(G, to_merge)
 
         log("Pass {}/{}: Adding {} cameras."\
@@ -747,9 +749,20 @@ def merge_cameras_network(
             .format(checkpoint - start_time),
         level = lg.INFO)
 
+    if len(untreatable) > 0:
+        log(("{} cameras ({}) were flagged as 'untreatable' because there were "
+             "no edges nearby that fit the distance and direction requirements."
+             "Because of this they were not merged.")\
+            .format(len(untreated)),
+        level = lg.WARNING)
+    else:
+        log(("No cameras were flagged as 'untreatable'.")\
+                .format(i+1, passes, len(untreated)),
+            level = lg.INFO)
+
     if len(to_merge) > 0:
-        log("Cameras that could not be merged automatically: {}"\
-                .format(to_merge),
+        log("Cameras that could not be merged in {} passes: {}"\
+                .format(passes, list(to_merge['id'])),
             level = lg.INFO)
 
     if plot:
