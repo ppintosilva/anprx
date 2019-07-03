@@ -646,7 +646,7 @@ def identify_cameras_merge(
 def merge_cameras_network(
     G,
     cameras,
-    passes = 2,
+    passes = 3,
     camera_range = 40.0,
     plot = True,
     **plot_kwargs
@@ -756,7 +756,8 @@ def merge_cameras_network(
         log(("{} cameras ({}) were flagged as 'untreatable' because there were "
              "no edges nearby that fit the distance and direction requirements."
              "Because of this they were not merged.")\
-            .format(len(all_untreatable), cameras.loc[all_untreatable]),
+            .format(len(all_untreatable),
+                    cameras.loc[all_untreatable]['id'].tolist()),
         level = lg.WARNING)
     else:
         log(("No cameras were flagged as 'untreatable'.")\
