@@ -25,6 +25,8 @@ import geopandas            as gpd
 import logging              as lg
 import shapely.geometry     as geometry
 from   collections          import OrderedDict
+from   itertools            import chain
+from   functools            import reduce
 
 # ------------------------------------------------------------------------------
 
@@ -790,3 +792,122 @@ def merge_cameras_network(
             level = lg.INFO)
 
     return G
+
+
+def camera_pairs_from_graph(G):
+
+    start_time = time.time()
+
+    camera_nodes = [ data for node, data in G.nodes(data = True) \
+                        if data['is_camera'] ]
+
+    log("Computing valid pairs of cameras from {} possible combinations"
+            .format(),
+        level = lg.INFO)
+
+    cameras = pd.DataFrame(camera_nodes)
+
+    d = cameras['direction']
+
+    N = np.array(d == 'N', dtype = int, ndmin = 2)
+    S = np.array(d == 'S', dtype = int, ndmin = 2)
+    E = np.array(d == 'E', dtype = int, ndmin = 2)
+    W = np.array(d == 'W', dtype = int, ndmin = 2)
+    NS = np.array((d == 'N-S') | (d == 'S-N'), dtype = int, ndmin = 2)
+    EW = np.array((d == 'E-W') | (d == 'W-E'), dtype = int, ndmin = 2)
+
+    not_N = np.array(d != 'N', dtype = int, ndmin = 2)
+    not_S = np.array(d != 'S', dtype = int, ndmin = 2)
+    not_E = np.array(d != 'E', dtype = int, ndmin = 2)
+    not_W = np.array(d != 'W', dtype = int, ndmin = 2)
+
+    # Don't allow camera pairs of cameras pointing in opposite directions
+    # Camera pointing in both directions can pair with any other camera
+    D = (N.T * not_S) + (S.T * not_N) + (E.T * not_W) + (W.T * not_E) + \
+        (NS.T * np.ones(shape = (len(d),1), dtype = int)) + \
+        (EW.T * np.ones(shape = (len(d),1), dtype = int))
+
+    # Don't allow camera pairs with the same origin and destination
+    np.fill_diagonal(D, 0)
+
+    # Select the valid camera pairs
+    source_idx, target_idx = np.where(D == 1)
+
+    source = cameras.iloc[source_idx]['id'].apply(lambda x: 'c' + str(x))
+    target = cameras.iloc[target_idx]['id'].apply(lambda x: 'c' + str(x))
+
+    directions = list(zip(cameras.iloc[source_idx]['direction'],
+                          cameras.iloc[target_idx]['direction']))
+
+    log(("Computing shortest paths for each valid camera pair. "
+         "This may take a while.")
+            .format(),
+        level = lg.INFO)
+
+    # shortest paths for these pairs (split by direction later for plotting?)
+    paths = []
+    distances = []
+
+    # Takes ~30 seconds
+
+    start_time = time.time()
+
+    for s, t in zip(source, target):
+        try:
+            spath = nx.shortest_path(G, s, t, weight = 'length')
+
+            edges = [(u,v) for u,v in zip(spath, spath[1:])]
+            lengths = [ G.edges[u,v,0]['length'] for u,v in edges ]
+            distance = reduce(lambda x,y: x+y, lengths)
+
+            log(("Found a path between {} and {} of length {} meters.")
+                    .format(s, t, distance),
+                level = lg.DEBUG)
+
+            if distance < 50:
+                log(("Distance between cameras {} and {} is less than 50 "
+                     "meters. Are these two cameras mergeable into one?")
+                        .format(s,t),
+                    level = lg.WARNING)
+
+        except nx.NetworkXNoPath:
+            spath = None
+            edges = []
+            distance = -1
+            log(("Could not find a path between {} and {}.")
+                    .format(s,t),
+                level = lg.ERROR)
+
+        paths.append(spath)
+        distances.append(distance)
+
+    log("Computed paths in {:,.1f} minutes"\
+            .format((time.time() - start_time)/60.0)
+        level = lg.INFO)
+
+    # This should always be True unless I've coded something wrong
+    assert len(source) == len(target) == len(distances) == \
+           len(paths) == len(directions)
+
+    camera_pairs = pd.DataFrame(
+        data = {
+            'origin' : np.array(source),
+            'destination' : np.array(target),
+            'distance' : distances,
+            'direction' : directions,
+            'path' : paths}
+    )
+
+    # drop rows with path = None
+    camera_pairs = camera_pairs.drop(
+        camera_pairs.loc[pd.isna(camera_pairs.path)].index.values.tolist()
+    )
+
+    total_combinations = len(cameras) ** 2
+    log(("Out of {} possible camera pairs, {} were filtered out, resulting in a "
+         "total of {} valid camera pairs.")\
+            .format(total_combinations, total_combinations - len(camera_pairs),
+                    len(camera_pairs)),
+        level = lg.INFO)
+
+    return camera_pairs
