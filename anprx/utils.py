@@ -466,6 +466,7 @@ def get_http_headers(user_agent=None, referer=None, accept_language=None):
 def save_fig(fig,
              axis,
              filename,
+             subdir = None,
              file_format = 'png',
              dpi = 300):
     """
@@ -495,9 +496,21 @@ def save_fig(fig,
     if not filename:
         raise ValueError("Please define a filename")
 
+    if subdir:
+        path_subdir = os.path.join(
+            settings["app_folder"],
+            settings["images_folder_name"],
+            subdir)
+        if not os.path.exists(path_subdir):
+            os.makedirs(path_subdir)
+
+    else:
+        path_subdir = os.path.join(
+            settings["app_folder"],
+            settings["images_folder_name"])
+
     path_filename = os.path.join(
-        settings["app_folder"],
-        settings["images_folder_name"],
+        path_subdir,
         os.extsep.join([filename, file_format]))
 
     if file_format == 'svg':
