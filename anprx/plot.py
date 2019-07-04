@@ -314,7 +314,16 @@ def plot_camera(
     return fig, axis
 
 
-def plot_G(G, name = None, points = None, key = None, **plot_kwargs):
+def plot_G(
+    G,
+    name = None,
+    points = None,
+    labels = None,
+    **plot_kwargs
+):
+    """
+    Wrapper for ox._plot_graph
+    """
     file_format     = plot_kwargs.get('file_format', 'png')
     fig_height      = plot_kwargs.get('fig_height', 6)
     fig_width       = plot_kwargs.get('fig_width', None)
@@ -328,7 +337,6 @@ def plot_G(G, name = None, points = None, key = None, **plot_kwargs):
     edge_color      = plot_kwargs.get('edge_color', '#999999')
     edge_linewidth  = plot_kwargs.get('edge_linewidth', 1)
     edge_alpha      = plot_kwargs.get('edge_alpha', 1)
-    legend          = plot_kwargs.get('legend', False)
 
     points_color    = plot_kwargs.get('points_color', '#D91A35')
     points_edgecolor= plot_kwargs.get('points_edgecolor', 'k')
@@ -336,13 +344,14 @@ def plot_G(G, name = None, points = None, key = None, **plot_kwargs):
     points_size     = plot_kwargs.get('points_size', 100)
     points_zorder   = plot_kwargs.get('points_zorder', 20)
     points_label    = plot_kwargs.get('label', 'points')
+    labels_color    = plot_kwargs.get('labels_color', 'k')
 
-    if key:
-        node_color = [ points_color if key in data else node_color \
-                        for _,data in G.nodes(data = True) ]
+    bbox            = plot_kwargs.get('bbox', None)
+    subdir          = plot_kwargs.get('subdir', None)
+    legend          = plot_kwargs.get('legend', False)
 
     fig, ax = ox.plot_graph(
-        G, fig_height=fig_height, fig_width=fig_width,
+        G, bbox = bbox, fig_height=fig_height, fig_width=fig_width,
         node_alpha=node_alpha, node_zorder=node_zorder,
         node_size = node_size, node_color=node_color,
         node_edgecolor=node_edgecolor, edge_color=edge_color,
@@ -351,8 +360,7 @@ def plot_G(G, name = None, points = None, key = None, **plot_kwargs):
     )
 
     if points:
-
-        points = ax.scatter(
+        ax.scatter(
             points[0],
             points[1],
             marker = points_marker,
@@ -362,12 +370,17 @@ def plot_G(G, name = None, points = None, key = None, **plot_kwargs):
             label = points_label,
             edgecolors = points_edgecolor
         )
+        if labels:
+            for s,x,y in zip(labels, points[0], points[1]):
+                ax.annotate(s, xy = (x,y),
+                            xytext = (x, y + 5), color = labels_color)
 
     if legend:
         ax.legend()
 
     if name:
-        save_fig(fig, ax, name, file_format = file_format, dpi = 320)
+        save_fig(fig, ax, name,
+                 subdir = subdir, file_format = file_format, dpi = 320)
 
         filename = "{}/{}/{}.{}".format(
                         settings['app_folder'],
