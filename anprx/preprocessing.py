@@ -442,6 +442,9 @@ def network_from_cameras(
             log("Saved image of cleaned road graph to disk {} in {:,.3f} sec"\
                     .format(filename, time.time() - checkpoint),
                 level = lg.INFO)
+
+            close_up_plots(G, cameras, **plot_kwargs)
+
         else:
             log(("Skipped making image of road graph with cameras because "
                 "no geometry was available"),
@@ -451,6 +454,87 @@ def network_from_cameras(
         .format(time.time() - start_time))
 
     return G
+
+def close_up_plots(
+    G,
+    cameras = None,
+    bbox_distance = 150,
+    **plot_kwargs
+):
+    """
+    Close up plots of every camera.
+
+    If cameras is provided, close-up plots of cameras are done using geometry
+    coordinates for each row in dataframe (unmerged network).
+
+    If cameras is not provided, then
+    """
+    filenames = []
+
+    if cameras is None:
+        merged = True
+        subdir = "cameras/merged"
+        points = ([d['x'] for _, d in G.nodes(data = True) if d['is_camera']],
+                  [d['y'] for _, d in G.nodes(data = True) if d['is_camera']])
+
+        camera_nodes = [ data for node, data in G.nodes(data = True) \
+                         if data['is_camera'] ]
+
+        ids = [ data['id'] for node, data in G.nodes(data = True)\
+                if data['is_camera'] ]
+
+        node_ids = [ node for node, data in G.nodes(data = True)\
+                     if data['is_camera'] ]
+
+        cameras = pd.DataFrame(camera_nodes).assign(node = node_ids)
+    else:
+        merged = False
+        subdir = "cameras/unmerged"
+        points = ([p.x for p in cameras['geometry']],
+                  [p.y for p in cameras['geometry']])
+        ids    = cameras['id'].tolist()
+
+    for index, row in cameras.iterrows():
+
+        if merged:
+            x = row['x']
+            y = row['y']
+        else:
+            x = row['geometry'].x
+            y = row['geometry'].y
+
+        bbox = (y + bbox_distance, y - bbox_distance,
+                x + bbox_distance, x - bbox_distance)
+
+        # filter points outside the bounding box
+        poly = geometry.box(x - bbox_distance, y - bbox_distance,
+                            x + bbox_distance, y + bbox_distance)
+
+        subpoints = [ (id,x,y) for id,x,y in zip(ids, points[0], points[1]) \
+                      if geometry.Point((x,y)).within(poly)]
+
+        subids, tmp0, tmp1 = zip(*subpoints)
+        subpoints = (tmp0, tmp1)
+
+        checkpoint = time.time()
+
+        _, _, filename = plot_G(
+            G,
+            subdir = subdir,
+            name = row['id'],
+            points = subpoints,
+            bbox = bbox,
+            labels = subids,
+            **plot_kwargs
+        )
+
+        log("Saved image of close up camera {} to disk {} in {:,.3f} sec"\
+                .format(row['id'], filename, time.time() - checkpoint),
+            level = lg.INFO)
+
+        filenames.append(filename)
+
+    return filenames
 
 
 def identify_cameras_merge(
@@ -791,6 +875,8 @@ def merge_cameras_network(
                 .format(filename, time.time() - checkpoint),
             level = lg.INFO)
 
+        close_up_plots(G, **plot_kwargs)
+
     return G
 
 
@@ -862,9 +948,9 @@ def camera_pairs_from_graph(G):
             lengths = [ G.edges[u,v,0]['length'] for u,v in edges ]
             distance = reduce(lambda x,y: x+y, lengths)
 
-            log(("Found a path between {} and {} of length {} meters.")
-                    .format(s, t, distance),
-                level = lg.DEBUG)
+            # log(("Found a path between {} and {} of length {} meters.")
+            #         .format(s, t, distance),
+            #     level = lg.DEBUG)
 
             if distance < 50:
                 log(("Distance between cameras {} and {} is less than 50 "
