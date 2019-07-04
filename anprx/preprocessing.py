@@ -801,11 +801,14 @@ def camera_pairs_from_graph(G):
     camera_nodes = [ data for node, data in G.nodes(data = True) \
                         if data['is_camera'] ]
 
-    log("Computing valid pairs of cameras from {} possible combinations"
-            .format(),
-        level = lg.INFO)
+    node_ids = [ node for node, data in G.nodes(data = True)\
+                 if data['is_camera'] ]
 
-    cameras = pd.DataFrame(camera_nodes)
+    cameras = pd.DataFrame(camera_nodes).assign(node = node_ids)
+
+    log("Computing valid pairs of cameras from {} possible combinations"
+            .format(len(cameras) ** 2),
+        level = lg.INFO)
 
     d = cameras['direction']
 
@@ -833,15 +836,14 @@ def camera_pairs_from_graph(G):
     # Select the valid camera pairs
     source_idx, target_idx = np.where(D == 1)
 
-    source = cameras.iloc[source_idx]['id'].apply(lambda x: 'c' + str(x))
-    target = cameras.iloc[target_idx]['id'].apply(lambda x: 'c' + str(x))
+    source = cameras.iloc[source_idx]['node']
+    target = cameras.iloc[target_idx]['node']
 
     directions = list(zip(cameras.iloc[source_idx]['direction'],
                           cameras.iloc[target_idx]['direction']))
 
     log(("Computing shortest paths for each valid camera pair. "
-         "This may take a while.")
-            .format(),
+         "This may take a while."),
         level = lg.INFO)
 
     # shortest paths for these pairs (split by direction later for plotting?)
@@ -882,7 +884,7 @@ def camera_pairs_from_graph(G):
         distances.append(distance)
 
     log("Computed paths in {:,.1f} minutes"\
-            .format((time.time() - start_time)/60.0)
+            .format((time.time() - start_time)/60.0),
         level = lg.INFO)
 
     # This should always be True unless I've coded something wrong

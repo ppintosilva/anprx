@@ -3,6 +3,7 @@
 from   anprx.preprocessing import wrangle_cameras
 from   anprx.preprocessing import network_from_cameras
 from   anprx.preprocessing import merge_cameras_network
+from   anprx.preprocessing import camera_pairs_from_graph
 
 import os
 import pandas              as     pd
@@ -85,3 +86,7 @@ def test_pipeline():
         fig_height = 12,
         fig_width = 12
     )
+
+    pairs = camera_pairs_from_graph(G)
+
+    assert len(pairs) < len(cameras) ** 2
