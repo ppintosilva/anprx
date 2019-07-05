@@ -374,7 +374,7 @@ def get_quadrant(phi):
         return ('S', 'E')
     elif phi > 315 and phi <= 360:
         return ('E', 'S')
-    else
+    else:
         raise ValueError("Input angle is not between [-360,720] degrees")
 
 
