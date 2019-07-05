@@ -583,27 +583,35 @@ def camera_candidate_edges(
     uv_dirs = [ get_quadrant(np.rad2deg(
                     math.atan2(vec[1], vec[0]))) for vec in uv_vecs]
 
-    # log(("Vecs: {} , Directions : {}")\
-    #         .format(uv_vecs, uv_dirs),
-    #     level = lg.INFO)
-
     same_dir = [ direction in uv_dir for uv_dir in uv_dirs ]
 
-    uv_refs = [ G.edges[u,v,0]['ref'] if 'ref' in G.edges[u,v,0] else None\
-                for u,v in zip(u_nodes, v_nodes)]
+    # Names and refs might be None, str or list, must handle each case
+    uv_refs = []
+    uv_addresses = []
+    for u,v in zip(u_nodes, v_nodes):
+        attr = G.edges[u,v,0]
+        if 'name' in attr:
+            if isinstance(attr['name'], str):
+                edge_address = attr['name'].split(" ")
+            else:
+                edge_address = " ".join(attr['name']).split(" ")
+        else:
+            edge_address = None
+        uv_addresses.append(edge_address)
 
-    uv_addresses = [ G.edges[u,v,0]['name'].split(" ") \
-                     if 'name' in G.edges[u,v,0] else None \
-                     for u,v in zip(u_nodes, v_nodes)]
+        if 'ref' in attr:
+            if isinstance(attr['name'], str):
+                edge_ref = attr['ref']
+            else:
+                edge_ref = " ".join(attr['ref']).split(" ")
+        else:
+            edge_ref = None
+        uv_refs.append(edge_ref)
 
     same_ref = [ uv_ref in address_words for uv_ref in uv_refs ]
 
-    same_address = [ len(set(uv_address) & (address_words)) if uv_address else 0\
-                     for uv_address in uv_addresses ]
-
-    # log(("Address: {} , same_address : {}, ref: {}, same_ref: {}")\
-    #         .format(uv_addresses, same_address, uv_refs, same_ref),
-    #     level = lg.INFO)
+    same_address = [len(set(uv_address) & (address_words)) if uv_address else 0\
+                    for uv_address in uv_addresses ]
 
     candidates = \
         pd.DataFrame({
@@ -668,10 +676,6 @@ def identify_cameras_merge(
         valid_candidates = valid_candidates.sort_values(
             by = ['same_ref_address', 'same_address', 'same_ref', 'distance'],
             ascending = [False, False, False, True])
-
-        # log(("{}")\
-        #         .format(valid_candidates[['same_ref_address', 'address', 'same_address', 'ref', 'same_ref', 'distance']]),
-        #     level = lg.INFO)
 
         # If there was no suitable candidate
         if len(valid_candidates) == 0:
