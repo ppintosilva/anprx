@@ -600,7 +600,7 @@ def camera_candidate_edges(
         uv_addresses.append(edge_address)
 
         if 'ref' in attr:
-            if isinstance(attr['name'], str):
+            if isinstance(attr['ref'], str):
                 edge_ref = attr['ref']
             else:
                 edge_ref = " ".join(attr['ref']).split(" ")
@@ -647,7 +647,10 @@ def identify_cameras_merge(
         raise ValueError("The following required columns are not available: {}"\
                          .format(required_cols))
 
-    edges_to_remove = []
+    edges_to_remove =         # log(("{}")\
+        #         .format(valid_candidates[['same_ref_address', 'address', 'same_address', 'ref', 'same_ref', 'distance']]),
+        #     level = lg.INFO)
+[]
     edges_to_add = {}
     cameras_to_add = {}
     untreated = []
