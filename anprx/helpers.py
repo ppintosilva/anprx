@@ -352,6 +352,12 @@ def get_quadrant(phi):
     -------
     tuple
     """
+    if phi > 360:
+        phi = phi - 360
+
+    if phi < 0:
+        phi = phi + 360
+
     if   phi >= 0 and phi <= 45:
         return ('E', 'N')
     elif phi > 45 and phi <= 90:
@@ -368,6 +374,8 @@ def get_quadrant(phi):
         return ('S', 'E')
     elif phi > 315 and phi <= 360:
         return ('E', 'S')
+    else
+        raise ValueError("Input angle is not between [-360,720] degrees")
 
 
 def cut(line, distance):
@@ -385,7 +393,7 @@ def cut(line, distance):
     -------
     list of length 2
         original line cut into two
-        
+
     """
     # Cuts a line in two at a distance from its starting point
     if distance <= 0.0 or distance >= line.length:
