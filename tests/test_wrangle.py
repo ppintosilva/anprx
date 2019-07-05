@@ -37,8 +37,10 @@ raw_cameras_testset_1 = pd.DataFrame({
     'is_commissioned' : [1,1,1,1,1,1,0,1,1,1,1]
 })
 
-def test_pipeline():
+def test_pipeline(plot):
     """Test default behavior."""
+    print("PLOOOOOOT = {}".format(plot))
+
     cameras = wrangle_cameras(
         cameras = raw_cameras_testset_1,
         infer_direction_col      = "desc",
@@ -72,7 +74,7 @@ def test_pipeline():
         filter_residential = False,
         clean_intersections = True,
         tolerance = 5,
-        plot = True,
+        plot = plot,
         file_format = 'png',
         fig_height = 12,
         fig_width = 12
@@ -81,7 +83,7 @@ def test_pipeline():
     G = merge_cameras_network(
         G,
         cameras,
-        plot = True,
+        plot = plot,
         file_format = 'png',
         fig_height = 12,
         fig_width = 12
