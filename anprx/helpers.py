@@ -333,9 +333,10 @@ def add_edge_directions(G):
     for u,v,k,data in G.edges(keys = True, data = True):
         bearing = data['bearing']
         phi = (360 - bearing) + 90
-        if phi > 360:
-            phi = phi - 360
-        data['direction'] = get_quadrant(phi)
+        if phi and not np.isnan(phi):
+            data['direction'] = get_quadrant(phi)
+        else:
+            data['direction'] = None
     return G
 
 def get_quadrant(phi):

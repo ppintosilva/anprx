@@ -39,7 +39,6 @@ raw_cameras_testset_1 = pd.DataFrame({
 
 def test_pipeline(plot):
     """Test default behavior."""
-    print("PLOOOOOOT = {}".format(plot))
 
     cameras = wrangle_cameras(
         cameras = raw_cameras_testset_1,

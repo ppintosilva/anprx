@@ -710,7 +710,7 @@ def identify_cameras_merge(
             edge_address = "NA"
 
         log(("({}) - Camera {}: Picking top valid candidate edge {}. "
-             "Distance: {}, address: {}")\
+             "Distance: {:,.2f} meters, address: {}")\
                 .format(index, id, edge, distance, edge_address),
             level = lg.INFO)
 
@@ -783,7 +783,7 @@ def identify_cameras_merge(
                             geom_u_camera.length, geom_camera_v.length),
                 level = lg.ERROR)
 
-        log(("({}) - Camera {}: Scheduled the removal of"
+        log(("({}) - Camera {}: Scheduled the removal of "
              "edge {} and the addition of edges {}, {}.")\
                 .format(index, id, edge,
                         (edge[0],camera_label), (camera_label,edge[1])),
