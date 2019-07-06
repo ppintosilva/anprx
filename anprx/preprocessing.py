@@ -393,7 +393,7 @@ def network_from_cameras(
     G = ox.project_graph(G)
 
     log("Added edge directions and projected graph in {:,.3f} sec"\
-            .format(checkpoint- start_time),
+            .format(time.time() - checkpoint),
         level = lg.INFO)
     checkpoint = time.time()
 
@@ -427,6 +427,9 @@ def network_from_cameras(
                 level = lg.INFO)
             checkpoint = time.time()
 
+    log("Retrieved road network from points in {:,.3f} sec"\
+        .format(time.time() - start_time))
+
     if plot:
         if 'geometry' in cameras.columns:
 
@@ -449,9 +452,6 @@ def network_from_cameras(
             log(("Skipped making image of road graph with cameras because "
                 "no geometry was available"),
                 level = lg.WARNING)
-
-    log("Retrieved road network from points in {:,.3f} sec"\
-        .format(time.time() - start_time))
 
     return G
 
@@ -699,9 +699,10 @@ def identify_cameras_merge(
 
         chosen_edge = valid_candidates.iloc[0]
 
-        geom = chosen_edge['geometry']
+        line = chosen_edge['geometry']
         edge = (chosen_edge['u'], chosen_edge['v'])
         distance = chosen_edge['distance']
+        ref = chosen_edge['ref']
         edge_dir = chosen_edge['dir_uv']
 
         if chosen_edge['address']:
@@ -714,8 +715,8 @@ def identify_cameras_merge(
             edge_address = "NA"
 
         log(("({}) - Camera {}: Picking top valid candidate edge {}. "
-             "Distance: {:,.2f} meters, address: {}")\
-                .format(index, id, edge, distance, edge_address),
+             "Distance: {:,.2f} meters, ref: {}, address: {}")\
+                .format(index, id, edge, distance, ref, edge_address),
             level = lg.INFO)
 
         # Is this edge already assigned to a different camera?
@@ -735,13 +736,33 @@ def identify_cameras_merge(
         camera_label = "c_{}".format(id)
 
         # It's this simple afterall
-        midpoint_dist = geom.project(row['geometry'])
-        sublines = cut(geom, midpoint_dist)
+        camera_point = row['geometry']
+        midpoint_dist = line.project(camera_point)
+        sublines = cut(line, midpoint_dist)
 
-        midpoint = geom.interpolate(midpoint_dist).coords[0]
+        midpoint = line.interpolate(midpoint_dist).coords[0]
 
         # We have split the geometries and have the new point for the camera
         # belonging to both new geoms
+
+        if len(sublines) == 1:
+            # corner case:
+            # camera overlaps with point in graph: cut again a few meters away
+            # does it overlap with u or v?
+            pu = geometry.Point(chosen_edge['point_u'])
+            pv = geometry.Point(chosen_edge['point_v'])
+
+            dists = (camera_point.distance(pu), camera_point.distance(pv))
+
+            closest = np.argmin(dists)
+            cutoff = 5 if closest == 0 else line.length - 5
+
+            sublines = cut(line, cutoff)
+
+            midpoint = line.interpolate(cutoff).coords[0]
+
+        # common case:
+        # edge is split in two
         geom_u_camera = sublines[0]
         geom_camera_v = sublines[1]
 
@@ -778,12 +799,12 @@ def identify_cameras_merge(
         edges_to_add[(camera_label,edge[1])] = attr_camera_v
 
         # Check if the resulting geom has the expected length
-        if (geom_u_camera.length + geom_camera_v.length) - (geom.length) > 1e-3:
+        if (geom_u_camera.length + geom_camera_v.length) - (line.length) > 1e-3:
             log(("({}) - Camera {}: There is a mismatch between the prior"
                  "and posterior geometries lengths:"
                  "{} -> {}, {} | {} != {} + {}")\
                     .format(index, id, edge, (edge[0],camera_label),
-                            (camera_label,edge[1]), geom.length,
+                            (camera_label,edge[1]), line.length,
                             geom_u_camera.length, geom_camera_v.length),
                 level = lg.ERROR)
 
