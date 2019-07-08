@@ -596,23 +596,22 @@ def camera_candidate_edges(
             else:
                 edge_address = " ".join(attr['name']).split(" ")
         else:
-            edge_address = None
+            edge_address = []
         uv_addresses.append(edge_address)
 
         if 'ref' in attr:
             if isinstance(attr['ref'], str):
-                edge_ref = attr['ref']
+                edge_ref = [attr['ref']]
             else:
-                log(("EDGE REF BEFORE: {}").format(attr['ref']), level = lg.WARNING)
-                edge_ref = " ".join(attr['ref'])
-                log(("EDGE REF AFTER: {}").format(edge_ref), level = lg.WARNING)
+                edge_ref = " ".join(attr['ref']).split(" ")
         else:
-            edge_ref = None
+            edge_ref = []
         uv_refs.append(edge_ref)
 
-    same_ref = [ uv_ref in address_words for uv_ref in uv_refs ]
+    same_ref = [ len(set(uv_ref) & (address_words)) \
+                 for uv_ref in uv_refs ]
 
-    same_address = [len(set(uv_address) & (address_words)) if uv_address else 0\
+    same_address = [len(set(uv_address) & (address_words)) \
                     for uv_address in uv_addresses ]
 
     candidates = \
@@ -672,7 +671,7 @@ def identify_cameras_merge(
         # filter candidates not same dir and arrange by same address
         valid_candidates = candidates[candidates.same_dir == True]
         valid_candidates = valid_candidates.assign(
-            same_ref_address = valid_candidates.same_ref &
+            same_ref_address = (valid_candidates.same_ref     > 0) &
                                (valid_candidates.same_address > 0))
 
         valid_candidates = valid_candidates.sort_values(
@@ -694,7 +693,7 @@ def identify_cameras_merge(
                 .format(index, id, len(valid_candidates), len(candidates),
                     row['direction'],
                     len(valid_candidates[valid_candidates.same_ref_address]),
-                    len(valid_candidates[valid_candidates.same_ref]),
+                    len(valid_candidates[valid_candidates.same_ref     > 0]),
                     len(valid_candidates[valid_candidates.same_address > 0]),
                         row['address']),
             level = lg.INFO)
@@ -704,17 +703,9 @@ def identify_cameras_merge(
         line = chosen_edge['geometry']
         edge = (chosen_edge['u'], chosen_edge['v'])
         distance = chosen_edge['distance']
-        ref = chosen_edge['ref']
+        ref = " ".join(chosen_edge['ref'])
+        edge_address = " ".join(chosen_edge['address'])
         edge_dir = chosen_edge['dir_uv']
-
-        if chosen_edge['address']:
-            if chosen_edge['ref']:
-                l = [chosen_edge['ref']] + chosen_edge['address']
-            else:
-                l = chosen_edge['address']
-            edge_address = " ".join(l)
-        else:
-            edge_address = "NA"
 
         log(("({}) - Camera {}: Picking top valid candidate edge {}. "
              "Distance: {:,.2f} meters, ref: {}, address: {}")\
