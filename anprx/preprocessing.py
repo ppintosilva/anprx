@@ -748,7 +748,12 @@ def identify_cameras_merge(
             dists = (camera_point.distance(pu), camera_point.distance(pv))
 
             closest = np.argmin(dists)
-            cutoff = 5 if closest == 0 else line.length - 5
+            length = line.length
+
+            if length > 6.000:
+                cutoff = 5 if closest == 0 else line.length - 5
+            else:
+                cutoff = length/2
 
             sublines = cut(line, cutoff)
 
