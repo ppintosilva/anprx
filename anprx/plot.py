@@ -382,9 +382,10 @@ def plot_G(
         save_fig(fig, ax, name,
                  subdir = subdir, file_format = file_format, dpi = 320)
 
-        filename = "{}/{}/{}.{}".format(
+        filename = "{}/{}/{}/{}.{}".format(
                         settings['app_folder'],
                         settings['images_folder_name'],
+                        subdir,
                         name, file_format)
 
     return fig, ax, filename
