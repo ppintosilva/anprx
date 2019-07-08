@@ -603,7 +603,9 @@ def camera_candidate_edges(
             if isinstance(attr['ref'], str):
                 edge_ref = attr['ref']
             else:
-                edge_ref = " ".join(attr['ref']).split(" ")
+                log(("EDGE REF BEFORE: {}").format(attr['ref']), level = lg.WARNING)
+                edge_ref = " ".join(attr['ref'])
+                log(("EDGE REF AFTER: {}").format(edge_ref), level = lg.WARNING)
         else:
             edge_ref = None
         uv_refs.append(edge_ref)
