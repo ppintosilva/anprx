@@ -415,3 +415,28 @@ def cut(line, distance):
             return [
                 geometry.LineString(coords[:i] + [(cp.x, cp.y)]),
                 geometry.LineString([(cp.x, cp.y)] + coords[i:])]
+
+
+def common_words(str1, str2, delim = " ", tolower = True):
+    """
+    Count how many words two strings have in common
+
+    Parameters
+    ---------
+    str1 : string one
+    str2 : string two
+    delim : split each string using this delimiter
+    tolower : whether to lower case strings before comparison
+
+    Returns
+    -------
+    int
+    """
+    if tolower:
+        str1 = str1.lower()
+        str2 = str2.lower()
+
+    words1 = set(str1.split(delim))
+    words2 = set(str2.split(delim))
+
+    return len(words1 & words2)
