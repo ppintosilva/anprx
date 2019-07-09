@@ -41,15 +41,13 @@ def test_pipeline(plot):
     """Test default behavior."""
 
     cameras = wrangle_cameras(
-        cameras = raw_cameras_testset_1,
-        infer_direction_col      = "desc",
-        drop_car_park            = "desc",
-        drop_is_test             = "name",
-        drop_is_not_commissioned = True,
-        extract_address          = "desc",
-        extract_road_category    = "desc",
-        project_coords           = True,
-        sort_by                  = "id"
+        cameras             = raw_cameras_testset_1,
+        test_camera_col     = "name",
+        is_commissioned_col = "is_commissioned",
+        road_attr_col       = "desc",
+        drop_car_park       = True,
+        drop_na_direction   = True,
+        sort_by             = "id"
     )
 
     assert {'1-10', '2', '3', '4', '5', '9'}.issubset(cameras['id'].unique())

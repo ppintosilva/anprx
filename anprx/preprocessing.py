@@ -8,6 +8,7 @@ from   .plot                import plot_G
 from   .helpers             import add_edge_directions
 from   .helpers             import get_quadrant
 from   .helpers             import cut
+from   .helpers             import common_words
 from   .core                import get_meanpoint
 from   .core                import edges_by_distance
 from   .core                import Point
@@ -30,35 +31,153 @@ from   functools            import reduce
 
 # ------------------------------------------------------------------------------
 
-infer_direction_regex = \
-(r'(East\/West|North\/South|Northbound|Eastbound|Southbound|'
-  'Westbound|Northhbound|Southhbound)')
+direction_regex = (r'(East\/West|North\/South|Northbound|Eastbound|'
+                    'Southbound|Westbound|Northhbound|Southhbound)')
+address_regex   = (r'(East\/West|North\/South|Northbound|Eastbound|'
+                    'Southbound|Westbound|Site \d|Camera \d|Camera|Site)')
+road_ref_regex  = r'(A\d+|B\d+|C\d+)'
+car_park_regex  = r'(car park)'
+directions_separator = "/|&"
 
-address_regex = \
-(r'(East\/West|North\/South|Northbound|Eastbound|Southbound|Westbound|Site \d'
-  '|Camera \d|Camera|Site)')
+def infer_road_attr(
+    descriptions,
+    direction_regex      = direction_regex,
+    address_regex        = address_regex,
+    road_ref_regex       = road_ref_regex,
+    car_park_regex       = car_park_regex,
+    directions_separator = directions_separator,
+):
+    """
+    Hello
+    """
+    directions = descriptions.str.extract(direction_regex,
+                                          flags = re.IGNORECASE,
+                                          expand = False)
 
-road_category_regex = \
-r'(A\d+|B\d+|C\d+)'
+    both_directions = directions.str.contains(directions_separator, na=False)
 
-# ------------------------------------------------------------------------------
+    directions_wrangled = directions \
+        .dropna() \
+        .str.split(directions_separator) \
+        .apply(lambda x: x[0][0] if len(x) == 1 else (x[0][0],x[1][0]))
+
+    directions = pd.concat([directions[directions.isnull()],
+                            directions_wrangled])\
+                    .sort_index()
+
+    road_refs = descriptions.str.extract(road_ref_regex,
+                                         flags = re.IGNORECASE,
+                                         expand = False)
+
+    addresses = descriptions.str.replace(address_regex, '',regex = True)\
+                                .replace(' +', ' ', regex = True)\
+                                .replace('^ +', '', regex = True)
+
+    car_parks = descriptions.str.contains(car_park_regex, case = False)
+
+    return pd.DataFrame({
+        'direction'      : directions,
+        'both_direction' : both_directions,
+        'ref'            : road_refs,
+        'address'        : addresses,
+        'is_carpark'    : car_parks
+    })
+
+def filter_by_attr_distance(
+    row,
+    df,
+    filter_by_max_common = True,
+    filter_by_same_ref = True,
+    filter_by_same_direction = True,
+    distance_threshold = 50.0
+):
+    """
+    Hello
+    """
+    cdf = df
+
+    if 'address' in row:
+        c_address = row['address']
+        c_ref     = row['ref']
+
+        cdf = cdf\
+            .assign(common_address_words = cdf.address\
+                .apply(lambda other: common_words(c_address, other, " ")))\
+            .assign(same_ref = cdf.ref.apply(lambda other: c_ref == other))
+
+        if filter_by_max_common:
+            max_common = cdf['common_address_words'].max()
+            cdf        = cdf[cdf.common_address_words == max_common]
+
+        if filter_by_same_ref:
+            cdf = cdf[cdf.same_ref == True]
+
+    if len(cdf) == 0:
+        log("Camera {}: No other cameras with the same address and ref."\
+                .format(row['id']),
+            level = lg.INFO)
+        return cdf
+
+    # filter by direction
+    oldlen = len(cdf)
+
+    if 'direction' in row:
+        c_dir = row['direction']
+        cdf = cdf.assign(same_dir = cdf.direction\
+                    .apply(lambda other: c_dir == other))
+
+        if filter_by_same_direction:
+            cdf = cdf[cdf.same_dir == True]
+
+    if len(cdf) == 0:
+        log(("Camera {}: found {} other cameras with the same address but none "
+             "pointing in the same direction.")\
+                .format(row['id'], oldlen),
+            level = lg.INFO)
+        return cdf
+
+    oldlen = len(cdf)
+
+    c_p       = row['geometry']
+    cdf = cdf.assign(dist = cdf.geometry.apply(lambda other: c_p.distance(other)))
+    cdf = cdf[cdf.dist <= distance_threshold]
+
+    log_cols = ['id','address','ref','direction','lat','lon']
+
+    if len(cdf) == 0:
+        log(("Camera {}: found {} other cameras with the same address and "
+             "direction, but none within {} meters.")\
+                .format(row['id'], oldlen, distance_threshold),
+            level = lg.INFO)
+    else:
+        log(("Camera {}: found {} other cameras that can be merged together\n{}")\
+                .format(row['id'], len(cdf),
+                        pd.concat([ pd.DataFrame(dict(row[log_cols]),
+                                                index = [0]),
+                                    cdf[log_cols] ],
+                                  axis = 0, ignore_index=True)),
+            level = lg.INFO)
+
+    return cdf
+
+
 def wrangle_cameras(
     cameras,
-    infer_direction_col      = "description",
-    infer_direction_re       = infer_direction_regex,
-    drop_car_park            = "description",
-    drop_is_test             = "name",
-    drop_is_not_commissioned = True,
-    extract_address          = "description",
-    address_regex            = address_regex,
-    extract_road_category    = "description",
-    road_category_regex      = road_category_regex,
-    sort_by                  = "id",
-    project_coords           = True,
-    utm_crs                  = {'datum': 'WGS84',
-                               'ellps': 'WGS84',
-                               'proj' : 'utm',
-                               'units': 'm'}
+    test_camera_col       = "name",
+    is_commissioned_col   = "is_commissioned",
+    road_attr_col         = "description",
+    drop_car_park         = True,
+    drop_na_direction     = True,
+    direction_regex       = direction_regex,
+    address_regex         = address_regex,
+    road_ref_regex        = road_ref_regex,
+    car_park_regex        = car_park_regex,
+    distance_threshold    = 50.0,
+    sort_by               = "id",
+    utm_crs               = {'datum': 'WGS84',
+                             'ellps': 'WGS84',
+                             'proj' : 'utm',
+                             'units': 'm'}
 ):
     """
     Wrangles a raw dataset of ANPR camera data.
@@ -82,7 +201,6 @@ def wrangle_cameras(
     start_time = time.time()
 
     mandatory_columns = {'id', 'lat', 'lon'}
-    optional_columns = {'name', 'description', 'is_commissioned'}
 
     log("Checking if input dataframe contains mandatory columns {}."\
             .format(mandatory_columns),
@@ -92,16 +210,15 @@ def wrangle_cameras(
 
     assert mandatory_columns.issubset(cols)
 
-    log("Detected {}/{} optional columns: {}"\
-            .format(len(optional_columns & cols),
-                    len(optional_columns),
-                    optional_columns & cols),
-        level = lg.INFO)
+    other_cols = set(
+        filter(lambda x: x is None,
+               [test_camera_col, is_commissioned_col, road_attr_col]))
 
-    log("Skipping {} unrecognised columns: {}."\
-            .format(len(cols - optional_columns - mandatory_columns),
-                    cols - optional_columns - mandatory_columns),
-        level = lg.INFO)
+    unrecognised_cols = cols - mandatory_columns - other_cols
+    if len(unrecognised_cols) > 0:
+        log("Skipping {} unrecognised columns: {}."\
+                .format(len(unrecognised_cols), unrecognised_cols),
+            level = lg.INFO)
 
     # Some asserts about the input data
     log("Checking if 'id' is unique."\
@@ -110,12 +227,12 @@ def wrangle_cameras(
     assert len(cameras['id']) == len(cameras['id'].unique())
 
     # Find and drop cameras that are labelled as "test"
-    if drop_is_test:
+    if test_camera_col:
         oldlen = len(cameras)
 
         cameras = cameras.assign(
-            is_test = cameras[drop_is_test].str.contains('test',
-                                                         case = False))
+            is_test = cameras[test_camera_col].str.contains('test',
+                                                            case = False))
         cameras = cameras[(cameras.is_test == False)]
         cameras = cameras.drop(columns = 'is_test')
 
@@ -123,156 +240,137 @@ def wrangle_cameras(
                 .format(oldlen - len(cameras)),
             level = lg.INFO)
 
-
     # Find and drop cameras that not commissioned
-    if drop_is_not_commissioned:
+    if is_commissioned_col:
         oldlen = len(cameras)
 
-        cameras = cameras[(cameras.is_commissioned == True)]
-        cameras = cameras.drop('is_commissioned', axis = 1)
+        cameras = cameras[cameras[is_commissioned_col] == True]
+        cameras = cameras.drop(is_commissioned_col, axis = 1)
 
-        log("Dropping {} rows with 'is_commissioned' == True."\
-                .format(oldlen - len(cameras)),
+        log("Dropping {} rows with '{}' == False."\
+                .format(oldlen - len(cameras), is_commissioned_col),
             level = lg.INFO)
 
-    # Find and drop cameras that are in car parks
-    if drop_car_park:
-        if drop_car_park not in cols:
-            raise ValueError(
-                "Drop car park cameras: column {} is not in the input dataframe"\
-                .format(drop_car_park))
-        oldlen = len(cameras)
-
-        cameras = cameras.assign(
-            is_carpark = cameras[drop_car_park].str.contains('Car Park',
-                                                             case = False))
-        cameras = cameras[(cameras.is_carpark == False)]
-        cameras = cameras.drop(columns = 'is_carpark')
-
-        log("Dropping {} rows with 'is_carpark' == True."\
-                .format(oldlen - len(cameras)),
+    # Infer road attributes
+    if road_attr_col:
+        log(("Inferring new cols 'direction', 'address', 'ref' and 'is_carpark'"
+             " based on column '{}'.")\
+                .format(road_attr_col),
             level = lg.INFO)
+
+        road_attr = infer_road_attr(cameras[road_attr_col])
+        cameras   = pd.concat([cameras, road_attr], axis = 1)
+        # Find and drop cameras that are in car parks
+        if drop_car_park:
+            oldlen = len(cameras)
+
+            cameras = cameras[(cameras.is_carpark == False)]
+            cameras = cameras.drop(columns = 'is_carpark')
+
+            log("Dropping {} rows with 'is_carpark' == True."\
+                    .format(oldlen - len(cameras)),
+                level = lg.INFO)
+
+        count_na_direction = len(cameras[pd.isna(cameras.direction)])
+        log(("There are {} cameras (ids = {}) in missing direction.")\
+                .format(count_na_direction,
+                        cameras[pd.isna(cameras.direction)]['id'].tolist()),
+            level = lg.WARNING)
+
+        if drop_na_direction:
+            cameras = cameras[~pd.isna(cameras.direction)]
 
     if len(cameras) == 0:
         log("No more cameras to process..", level = lg.WARNING)
-        return None
+        return pd.DataFrame(columns = cameras.columns.values)
 
-    # Get direction from other fields - NOT OPTIONAL ANYMORE
-    log("Inferring direction based on column '{}'."\
-            .format(infer_direction_col),
+    # Project coordinates
+    log("Projecting cameras to utm and adding geometry column.",
         level = lg.INFO)
 
-    if infer_direction_col not in cols:
-        raise ValueError(
-            "Inferring direction: column {} is not in the input dataframe"\
-            .format(infer_direction_col))
+    cameras.reset_index(drop=True, inplace = True)
 
-    cameras = cameras.assign(
-        direction = cameras[infer_direction_col].str.extract(
-            infer_direction_re,
-            flags = re.IGNORECASE))
+    camera_points = gpd.GeoSeries(
+        [ geometry.Point(x,y) for x, y in zip(
+            cameras['lon'],
+            cameras['lat'])
+        ])
 
-    cameras = cameras.assign(
-        both_directions =
-            (cameras.direction.str.contains("/|&", na=False))
-    )
+    cameras_geodf = gpd.GeoDataFrame(index    = cameras.index,
+                                     geometry = camera_points)
+    cameras_geodf.crs = {'init' :'epsg:4326'}
 
-    # ugly code, but will have to do for now
-    cameras.loc[~cameras.both_directions, 'direction'] = \
-        cameras.loc[~cameras.both_directions].direction.str[0]
+    avg_longitude = cameras_geodf['geometry'].unary_union.centroid.x
+    utm_zone = int(math.floor((avg_longitude + 180) / 6.) + 1)
+    utm_crs["zone"] = utm_zone
 
-    cameras.loc[cameras.both_directions, 'direction'] = \
-        cameras.loc[cameras.both_directions].direction.str\
-            .split(pat = "/")\
-            .apply(lambda x: "{}-{}".format(x[0][0], x[1][0]))
+    proj_cameras = cameras_geodf.to_crs(utm_crs)
+    cameras = proj_cameras.join(cameras, how = 'inner')
 
-    count_na_direction = len(cameras[pd.isna(cameras.direction)])
+    # Hard bit: merge cameras close by
+    # ---------
+    # First identify merges
+    # ---------
+    # Some roads have multiple cameras, side by side, one for each lane
+    # When this happens, we should merge the nearby cameras, pointing in the
+    # same direction, as a single camera. To do this, we compare the road attr
+    # and compute the distance to every camera with the same road attrs
 
-    if count_na_direction > 0:
-        log(("Could not extract direction for {} cameras. "
-             "Removing cameras {}, otherwise these would cause errors below"
-             "when grouping by direction to merge cameras"
-             "in the same location.")\
-                .format(count_na_direction,
-                        cameras[pd.isna(cameras.direction)]['id']),
-            level = lg.ERROR)
-        cameras = cameras[~pd.isna(cameras.direction)]
+    to_merge = []
+    for index, camera in cameras.iterrows():
+        all_other_cameras = cameras.drop(index = index, axis = 0)
 
-    # Computing new column 'address'
-    if extract_address:
-        if extract_address not in cols:
-            raise ValueError(
-             "Extracting address: column {} is not in the input dataframe"\
-              .format(extract_address))
+        within_distance = filter_by_attr_distance(
+            camera,
+            all_other_cameras,
+            distance_threshold = distance_threshold)
 
-        cameras = cameras.assign(
-            address = cameras[extract_address]\
-                        .str.replace(address_regex, '',regex = True)\
-                            .replace(' +', ' ', regex = True))
+        if len(within_distance) > 0:
+            to_merge.append(
+                frozenset(within_distance.index.values.tolist() + [index]))
 
-        log("Extracting address from '{}'.".format(extract_address),
-            level = lg.INFO)
-    else:
-        log("Skipping extracting address", level = lg.INFO)
+    to_merge = list(map(lambda x: tuple(x), set(to_merge)))
 
+    log("Identified the following camera merges: {}"\
+            .format(to_merge),
+        level = lg.INFO)
 
-    # Computing new column 'road category'
-    if extract_road_category:
-        if extract_road_category not in cols:
-            raise ValueError(
-             "Extracting road category: column {} is not in the input dataframe"\
-              .format(extract_road_category))
-
-        cameras = cameras.assign(
-            road_category = cameras[extract_road_category]\
-                                .str.extract(road_category_regex))
-        cameras = cameras.assign(road_category = cameras.road_category.str[0])
-    else:
-        log("Skipping extracting road category", level = lg.INFO)
-
-    # Merge cameras:
-    #   Combinations of lat/lon should be unique. If not, this may mean that
-    #   we have multiple cameras in the same location. Furthermore, if these
-    #   are pointing in the same direciton we should merge this into
-    #   the same entity, otherwise it will cause problems later on
+    # ---------
+    # Actual merge
+    # ---------
     oldlen = len(cameras)
 
-    groups = cameras.groupby([cameras['lat'].apply(lambda x: round(x,8)),
-                              cameras['lon'].apply(lambda x: round(x,8)),
-                              cameras['direction']
-                             ])
-    ids = groups['id'].apply(lambda x: "-".join(x))\
-                      .reset_index()\
-                      .sort_values(by = ['lat', 'lon', 'direction'])['id']\
-                      .reset_index(drop = True)
+    elements = set(map(lambda x: x[0], to_merge)) & \
+               set(map(lambda x: x[1], to_merge))
 
-    if 'names' in cameras.columns.values:
-        names = groups['name'].apply(lambda x: "-".join(x))\
-                              .reset_index()\
-                              .sort_values(by = ['lat', 'lon', 'direction'])['name']\
-                              .reset_index(drop = True)
+    unaffected_cameras = cameras.drop(index = elements, axis = 0)
 
-    # Really janky way to do this, but I couldn't figure out the right way
-    # to do this. I guess that should be done using the aggregate function.
-    # But it's really unintuitive. Tidyverse is so much better.
-    cameras  = cameras[groups['id'].cumcount() == 0]\
-                    .sort_values(by = ['lat', 'lon', 'direction'])\
-                    .reset_index(drop = True)
+    cameras_list = []
+    for pair in to_merge:
+        c1 = dict(cameras.loc[pair[0]])
+        c2 = dict(cameras.loc[pair[1]])
 
-    if len(ids) != len(cameras):
-        log(("Length of cameras and expected ids is not the same."
-            " Something went wrong here"),
-            level = lg.ERROR)
+        c1['id'] = "{}-{}".format(c1['id'], c2['id'])
+        c1['name'] = "{}-{}".format(c1['name'], c2['name'])
+        # we use one of the geometries. Using the centroid of the 2 points might
+        # not be a good idea as this might negatively impact the merge of
+        # cameras onto the road network
 
-    cameras['id'] = ids
+        # inefficient but works
+        newdf = pd.DataFrame(columns = c1.keys())
+        newdf.loc[pair[0]] = list(c1.values())
+        
+        cameras_list.append(newdf)
 
-    if 'names' in cameras.columns.values:
-        cameras['name'] = names
+    cameras_list.append(unaffected_cameras)
+
+    cameras = pd.concat(cameras_list, axis = 0)
 
     log("Merged {} cameras that were in the same location as other cameras."\
             .format(oldlen - len(cameras)),
         level = lg.INFO)
 
+    # Sorting and resetting index
 
     log("Sorting by {} and resetting index."\
             .format(sort_by),
@@ -281,29 +379,6 @@ def wrangle_cameras(
     # sort and reset_index
     cameras = cameras.sort_values(by=[sort_by])
     cameras.reset_index(drop=True, inplace=True)
-
-    if project_coords:
-        log("Projecting cameras to utm and adding geometry column.",
-            level = lg.INFO)
-
-        camera_points = gpd.GeoSeries(
-            [ geometry.Point(x,y) for x, y in zip(
-                cameras['lon'],
-                cameras['lat'])
-            ])
-
-        cameras_geodf = gpd.GeoDataFrame(index = cameras.index,
-                                         geometry=camera_points)
-        cameras_geodf.crs = {'init' :'epsg:4326'}
-
-        avg_longitude = cameras_geodf['geometry'].unary_union.centroid.x
-        utm_zone = int(math.floor((avg_longitude + 180) / 6.) + 1)
-        utm_crs["zone"] = utm_zone,
-
-        proj_cameras = cameras_geodf.to_crs(utm_crs)
-        cameras = proj_cameras.join(cameras, how = 'inner')
-    else:
-        log("Skipping projecting coordinates to UTM", level = lg.INFO)
 
     log("Wrangled cameras in {:,.3f} seconds. Dropped {} rows, total is {}."\
             .format(time.time()-start_time, nrows - len(cameras), len(cameras)),
@@ -458,7 +533,7 @@ def network_from_cameras(
 def close_up_plots(
     G,
     cameras = None,
-    bbox_distance = 150,
+    bbox_distance = 400,
     **plot_kwargs
 ):
     """
