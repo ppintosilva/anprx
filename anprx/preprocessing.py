@@ -155,7 +155,7 @@ def filter_by_attr_distance(
 
     if len(cdf) == 0:
         log(("Camera {}: no other cameras within {} meters.")\
-                .format(row['id'], oldlen, distance_threshold),
+                .format(row['id'], distance_threshold),
             level = lg.INFO)
     else:
         log(("Camera {}: found {} other cameras that can be merged together\n{}")\
