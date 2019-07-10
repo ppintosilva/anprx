@@ -393,7 +393,7 @@ def wrangle_cameras(
             .format(time.time()-start_time, nrows - len(cameras), len(cameras)),
         level = lg.INFO)
 
-    return cameras
+    return gpd.GeoDataFrame(cameras), to_merge_ids
 
 # ------------------------------------------------------------------------------
 
