@@ -47,8 +47,11 @@ def test_pipeline(plot):
         road_attr_col       = "desc",
         drop_car_park       = True,
         drop_na_direction   = True,
+        distance_threshold  = 50.0,
         sort_by             = "id"
     )
+
+    assert len(cameras) == 6
 
     assert {'1-10', '2', '3', '4', '5', '9'}.issubset(cameras['id'].unique())
 
@@ -57,14 +60,14 @@ def test_pipeline(plot):
     assert cameras[cameras['id'] == '3']['direction'].iloc[0] == "N-S"
     assert cameras[cameras['id'] == '9']['direction'].iloc[0] == "E"
 
-    assert cameras[cameras['id'] == '1-10']['road_category'].iloc[0] == "A"
-    assert cameras[cameras['id'] == '9']['road_category'].iloc[0] == "A"
-    assert cameras[cameras['id'] == '3']['road_category'].iloc[0] == "B"
-    assert cameras[cameras['id'] == '5']['road_category'].iloc[0] == "B"
+    assert cameras[cameras['id'] == '1-10']['ref'].iloc[0] == "A186"
+    assert cameras[cameras['id'] == '9']['ref'].iloc[0] == "A186"
+    assert cameras[cameras['id'] == '2']['ref'].iloc[0] == "A13"
+    assert cameras[cameras['id'] == '3']['ref'].iloc[0] == "B1"
+    assert cameras[cameras['id'] == '4']['ref'].iloc[0] == "A27"
+    assert cameras[cameras['id'] == '5']['ref'].iloc[0] == "B1305"
 
     assert "Condercum Rd" in cameras[cameras['id'] == '5']['address'].iloc[0]
-
-    assert len(cameras) == 6
 
     G = network_from_cameras(
         cameras,

@@ -59,7 +59,8 @@ def infer_road_attr(
     directions_wrangled = directions \
         .dropna() \
         .str.split(directions_separator) \
-        .apply(lambda x: x[0][0] if len(x) == 1 else (x[0][0],x[1][0]))
+        .apply(lambda x: x[0][0] if len(x) == 1 \
+                         else "{}-{}".format(x[0][0], x[1][0]))
 
     directions = pd.concat([directions[directions.isnull()],
                             directions_wrangled])\
@@ -77,10 +78,10 @@ def infer_road_attr(
 
     return pd.DataFrame({
         'direction'      : directions,
-        'both_direction' : both_directions,
+        'both_directions': both_directions,
         'ref'            : road_refs,
         'address'        : addresses,
-        'is_carpark'    : car_parks
+        'is_carpark'     : car_parks
     })
 
 def filter_by_attr_distance(
@@ -272,13 +273,16 @@ def wrangle_cameras(
                 level = lg.INFO)
 
         count_na_direction = len(cameras[pd.isna(cameras.direction)])
-        log(("There are {} cameras (ids = {}) in missing direction.")\
+        log(("There are {} cameras (ids = {}) with missing direction.")\
                 .format(count_na_direction,
                         cameras[pd.isna(cameras.direction)]['id'].tolist()),
             level = lg.WARNING)
 
         if drop_na_direction:
             cameras = cameras[~pd.isna(cameras.direction)]
+            log(("Dropping {} cameras with no direction.")\
+                    .format(count_na_direction),
+                level = lg.WARNING)
 
     if len(cameras) == 0:
         log("No more cameras to process..", level = lg.WARNING)
@@ -340,15 +344,15 @@ def wrangle_cameras(
     # ---------
     oldlen = len(cameras)
 
-    elements = set(map(lambda x: x[0], to_merge)) & \
+    elements = set(map(lambda x: x[0], to_merge)) | \
                set(map(lambda x: x[1], to_merge))
 
     unaffected_cameras = cameras.drop(index = elements, axis = 0)
 
     cameras_list = []
-    for pair in to_merge:
-        c1 = dict(cameras.loc[pair[0]])
-        c2 = dict(cameras.loc[pair[1]])
+    for id1,id2 in to_merge:
+        c1 = dict(cameras.loc[id1])
+        c2 = dict(cameras.loc[id2])
 
         c1['id'] = "{}-{}".format(c1['id'], c2['id'])
         c1['name'] = "{}-{}".format(c1['name'], c2['name'])
@@ -358,12 +362,11 @@ def wrangle_cameras(
 
         # inefficient but works
         newdf = pd.DataFrame(columns = c1.keys())
-        newdf.loc[pair[0]] = list(c1.values())
-        
+        newdf.loc[id1] = list(c1.values())
+
         cameras_list.append(newdf)
 
     cameras_list.append(unaffected_cameras)
-
     cameras = pd.concat(cameras_list, axis = 0)
 
     log("Merged {} cameras that were in the same location as other cameras."\
@@ -936,8 +939,7 @@ def merge_cameras_network(
     else:
         to_merge = cameras
 
-        log("No column 'both_directions' was found, dataframe is unchanged"\
-                .format(len(cameras[both_directions_mask])),
+        log("No column 'both_directions' was found, dataframe is unchanged",
             level = lg.WARNING)
 
     all_untreatable = set()
