@@ -118,7 +118,7 @@ def config(**kwargs):
             clean_logger()
 
         settings[key] = value
-        log('Config: {} = {}'.format(key, value), level = lg.DEBUG)
+        # log('Config: {} = {}'.format(key, value), level = lg.DEBUG)
 
 ###
 ###
