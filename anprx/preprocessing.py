@@ -25,6 +25,7 @@ import networkx             as nx
 import geopandas            as gpd
 import logging              as lg
 import shapely.geometry     as geometry
+from   functools            import reduce
 from   collections          import OrderedDict
 from   itertools            import chain
 from   functools            import reduce
@@ -173,6 +174,7 @@ def wrangle_cameras(
     address_regex         = address_regex,
     road_ref_regex        = road_ref_regex,
     car_park_regex        = car_park_regex,
+    directions_separator  = directions_separator,
     distance_threshold    = 50.0,
     sort_by               = "id",
     utm_crs               = {'datum': 'WGS84',
@@ -278,7 +280,7 @@ def wrangle_cameras(
                         cameras[pd.isna(cameras.direction)]['id'].tolist()),
             level = lg.WARNING)
 
-        if drop_na_direction:
+        if drop_na_direction and count_na_direction > 0:
             cameras = cameras[~pd.isna(cameras.direction)]
             log(("Dropping {} cameras with no direction.")\
                     .format(count_na_direction),
@@ -333,10 +335,15 @@ def wrangle_cameras(
             to_merge.append(
                 frozenset(within_distance.index.values.tolist() + [index]))
 
+    # Remove any repeated tuples
     to_merge = list(map(lambda x: tuple(x), set(to_merge)))
+    all_indices = reduce(lambda x,y: x | y, map(lambda x: set(x), to_merge))
 
-    log("Identified the following camera merges: {}"\
-            .format(to_merge),
+    to_merge_ids = [ tuple(map(lambda x: cameras.loc[x, 'id'], tupl)) \
+                     for tupl in to_merge ]
+
+    log("Identified the following camera merges:\nindices={}\nids={}"\
+            .format(to_merge, to_merge_ids),
         level = lg.INFO)
 
     # ---------
@@ -344,25 +351,26 @@ def wrangle_cameras(
     # ---------
     oldlen = len(cameras)
 
-    elements = set(map(lambda x: x[0], to_merge)) | \
-               set(map(lambda x: x[1], to_merge))
-
-    unaffected_cameras = cameras.drop(index = elements, axis = 0)
+    # Use pandas concat to partition cameras and merge them back again
+    unaffected_cameras = cameras.drop(index = all_indices, axis = 0)
 
     cameras_list = []
-    for id1,id2 in to_merge:
-        c1 = dict(cameras.loc[id1])
-        c2 = dict(cameras.loc[id2])
+    for items in to_merge:
+        ind1 = items[0]
+        c1 = dict(cameras.loc[ind1])
 
-        c1['id'] = "{}-{}".format(c1['id'], c2['id'])
-        c1['name'] = "{}-{}".format(c1['name'], c2['name'])
+        for i in range(1, len(items)):
+            other = dict(cameras.loc[items[i]])
+
+            c1['id'] = "{}-{}".format(c1['id'], other['id'])
+            c1['name'] = "{}-{}".format(c1['name'], other['name'])
         # we use one of the geometries. Using the centroid of the 2 points might
         # not be a good idea as this might negatively impact the merge of
         # cameras onto the road network
 
         # inefficient but works
         newdf = pd.DataFrame(columns = c1.keys())
-        newdf.loc[id1] = list(c1.values())
+        newdf.loc[ind1] = list(c1.values())
 
         cameras_list.append(newdf)
 
@@ -372,8 +380,6 @@ def wrangle_cameras(
     log("Merged {} cameras that were in the same location as other cameras."\
             .format(oldlen - len(cameras)),
         level = lg.INFO)
-
-    # Sorting and resetting index
 
     log("Sorting by {} and resetting index."\
             .format(sort_by),
