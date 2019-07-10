@@ -114,15 +114,19 @@ def filter_by_attr_distance(
         if filter_by_same_ref:
             cdf = cdf[cdf.same_ref == True]
 
-    if len(cdf) == 0:
-        log("Camera {}: No other cameras with the same address and ref."\
-                .format(row['id']),
-            level = lg.INFO)
-        return cdf
+        if len(cdf) == 0:
+            log("Camera {}: No other cameras with the same address and ref."\
+                    .format(row['id']),
+                level = lg.INFO)
+            return cdf
+        else:
+            same_address_ids = list(cdf['id'])
+            log(("Camera {}: Found {} other cameras ({}) with the same "
+                 "address and ref.")\
+                    .format(row['id'], len(same_address_ids), same_address_ids),
+                level = lg.INFO)
 
     # filter by direction
-    oldlen = len(cdf)
-
     if 'direction' in row:
         c_dir = row['direction']
         cdf = cdf.assign(same_dir = cdf.direction\
@@ -131,24 +135,26 @@ def filter_by_attr_distance(
         if filter_by_same_direction:
             cdf = cdf[cdf.same_dir == True]
 
-    if len(cdf) == 0:
-        log(("Camera {}: found {} other cameras with the same address but none "
-             "pointing in the same direction.")\
-                .format(row['id'], oldlen),
-            level = lg.INFO)
-        return cdf
+        if len(cdf) == 0:
+            log(("Camera {}: no other cameras with the same direction")\
+                    .format(row['id'],),
+                level = lg.INFO)
+            return cdf
+        else:
+            shortlist_ids = list(cdf['id'])
+            log(("Camera {}: Shortlist of cameras ({}) with the same "
+                 "address, ref and direction.")\
+                    .format(row['id'], len(shortlist_ids), shortlist_ids),
+                level = lg.INFO)
 
-    oldlen = len(cdf)
-
-    c_p       = row['geometry']
+    c_p = row['geometry']
     cdf = cdf.assign(dist = cdf.geometry.apply(lambda other: c_p.distance(other)))
     cdf = cdf[cdf.dist <= distance_threshold]
 
     log_cols = ['id','address','ref','direction','lat','lon']
 
     if len(cdf) == 0:
-        log(("Camera {}: found {} other cameras with the same address and "
-             "direction, but none within {} meters.")\
+        log(("Camera {}: no other cameras within {} meters.")\
                 .format(row['id'], oldlen, distance_threshold),
             level = lg.INFO)
     else:
@@ -342,8 +348,8 @@ def wrangle_cameras(
     to_merge_ids = [ tuple(map(lambda x: cameras.loc[x, 'id'], tupl)) \
                      for tupl in to_merge ]
 
-    log("Identified the following camera merges:\nindices={}\nids={}"\
-            .format(to_merge, to_merge_ids),
+    log("Identified the following camera merges (ids): {}"\
+            .format(to_merge_ids),
         level = lg.INFO)
 
     # ---------
