@@ -42,7 +42,7 @@ def test_pipeline(plot):
 
     cameras = wrangle_cameras(
         cameras             = raw_cameras_testset_1,
-        test_camera_col     = "name",
+        is_test_col         = "name",
         is_commissioned_col = "is_commissioned",
         road_attr_col       = "desc",
         drop_car_park       = True,
