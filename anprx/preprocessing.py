@@ -35,7 +35,7 @@ from   functools            import reduce
 direction_regex = (r'(East\/West|North\/South|Northbound|Eastbound|'
                     'Southbound|Westbound|Northhbound|Southhbound)')
 address_regex   = (r'(East\/West|North\/South|Northbound|Eastbound|'
-                    'Southbound|Westbound|Site \d|Camera \d|Camera|Site)')
+                    'Southbound|Westbound|Site \d|Camera \d|Camera|Site|L\d+)')
 road_ref_regex  = r'(A\d+|B\d+|C\d+)'
 car_park_regex  = r'(car park)'
 directions_separator = "/|&"
@@ -342,6 +342,7 @@ def wrangle_cameras(
                 frozenset(within_distance.index.values.tolist() + [index]))
 
     # Remove any repeated tuples
+    log("{}".format(to_merge))
     to_merge = list(map(lambda x: tuple(x), set(to_merge)))
     all_indices = reduce(lambda x,y: x | y, map(lambda x: set(x), to_merge))
 
