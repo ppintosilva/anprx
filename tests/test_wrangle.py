@@ -40,7 +40,7 @@ raw_cameras_testset_1 = pd.DataFrame({
 def test_pipeline(plot):
     """Test default behavior."""
 
-    cameras, _ = wrangle_cameras(
+    cameras = wrangle_cameras(
         cameras             = raw_cameras_testset_1,
         test_camera_col     = "name",
         is_commissioned_col = "is_commissioned",
