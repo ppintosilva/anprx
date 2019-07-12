@@ -475,6 +475,9 @@ def wrangle_cameras(
     cameras = cameras.sort_values(by=[sort_by])
     cameras.reset_index(drop=True, inplace=True)
 
+    # convert bool cols to int type to avoid issues with read/write to/from disk
+    cameras['both_directions'] = cameras['both_directions'].astype('int')
+
     log("Wrangled cameras in {:,.3f} seconds. Dropped {} rows, total is {}."\
             .format(time.time()-start_time, nrows - len(cameras), len(cameras)),
         level = lg.INFO)
@@ -1346,8 +1349,11 @@ def map_nodes_cameras(
             .format(time.time()-start_time, nrows - len(nodes), len(nodes)),
         level = lg.INFO)
 
+    wnodes = nodes.assign(camera = camera_map)
+    wnodes['both_directions'] = wnodes['both_directions'].astype('int')
+
     # Return wrangled nodes with 1:1 mapping to cameras
-    return nodes.assign(camera = camera_map)
+    return wnodes
 
 
 # def get_expert_pairs(nodes, links):
