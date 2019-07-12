@@ -250,7 +250,7 @@ def log(message,
         # message at requested level
         logger = get_logger(level=level, name=name, filename=filename)
 
-        complete_message = "{:20} -> {:27} {}"\
+        complete_message = "{:22} -> {:27} {}"\
             .format(
                 os.path.basename(func.co_filename) +
                 ':' + str(func.co_firstlineno),
