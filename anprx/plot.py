@@ -349,6 +349,7 @@ def plot_G(
     bbox            = plot_kwargs.get('bbox', None)
     subdir          = plot_kwargs.get('subdir', None)
     legend          = plot_kwargs.get('legend', False)
+    dpi             = plot_kwargs.get('dpi', 320)
 
     fig, ax = ox.plot_graph(
         G, bbox = bbox, fig_height=fig_height, fig_width=fig_width,
@@ -380,7 +381,7 @@ def plot_G(
 
     if name:
         save_fig(fig, ax, name,
-                 subdir = subdir, file_format = file_format, dpi = 320)
+                 subdir = subdir, file_format = file_format, dpi = dpi)
 
         filename = "{}/{}/{}/{}.{}".format(
                         settings['app_folder'],
