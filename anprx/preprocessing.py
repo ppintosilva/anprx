@@ -91,12 +91,15 @@ def filter_by_attr_distance(
     filter_by_max_common     = True,
     filter_by_same_ref       = True,
     filter_by_same_direction = True,
+    same_direction_filter    = "equals",
     distance_threshold       = 50.0,
     object_name              = ("Camera", "cameras")
 ):
     """
     Hello
     """
+    valid_filters = {"equals", "isin"}
+
     sname = object_name[0]
     snames = object_name[1]
 
@@ -134,8 +137,19 @@ def filter_by_attr_distance(
     # filter by direction
     if 'direction' in row:
         c_dir = row['direction']
-        cdf = cdf.assign(same_dir = cdf.direction\
-                    .apply(lambda other: c_dir == other))
+
+        if same_direction_filter == "equals":
+            cdf = cdf.assign(same_dir = cdf.direction\
+                        .apply(lambda other: c_dir == other))
+
+        elif same_direction_filter == "isin":
+            cdf = cdf.assign(same_dir = cdf.direction\
+                        .apply(lambda other: \
+                            set(c_dir.split("-")).issubset(other.split("-"))))
+
+        else:
+            raise ValueError("Invalid same direction filter. Choose one of {}"\
+                .format(valid_filters))
 
         if filter_by_same_direction:
             cdf = cdf[cdf.same_dir == True]
@@ -149,21 +163,24 @@ def filter_by_attr_distance(
             shortlist_ids = list(cdf['id'])
             log(("{} {}: Shortlist of {} ({}) with the same "
                  "address, ref and direction.")\
-                    .format(row['id'], sname, shortlist_ids, snames),
+                    .format(sname, row['id'], shortlist_ids, snames),
                 level = lg.INFO)
 
     c_p = row['geometry']
-    cdf = cdf.assign(dist = cdf.geometry.apply(lambda other: c_p.distance(other)))
+    cdf = cdf.assign(dist = cdf.geometry\
+                               .apply(lambda other: c_p.distance(other)))
+
+    dists = [ "{:,.2f}".format(dist) for dist in cdf['dist'] ]
     cdf = cdf[cdf.dist <= distance_threshold]
 
-    log_cols = ['id','address','ref','direction','lat','lon']
+    log_cols = ['id','address','ref','direction','lat','lon', 'dist']
 
     if len(cdf) == 0:
-        log(("{} {}: no other {} within {} meters.")\
-                .format(sname, row['id'], snames, distance_threshold),
+        log(("{} {}: no other {} within {} meters ({} meters).")\
+                .format(sname, row['id'], snames, distance_threshold, dists),
             level = lg.INFO)
     else:
-        log(("{} {}: found {} other {} that can be merged together\n{}")\
+        log(("{} {}: found {} matching {}\n{}")\
                 .format(sname, row['id'], len(cdf), snames,
                         pd.concat([ pd.DataFrame(dict(row[log_cols]),
                                                 index = [0]),
@@ -395,6 +412,7 @@ def wrangle_cameras(
             camera,
             all_other_cameras,
             distance_threshold = distance_threshold,
+            same_direction_filter = "equals",
             object_name = names)
 
         if len(within_distance) > 0:
@@ -1240,4 +1258,93 @@ def camera_pairs_from_graph(G):
     return camera_pairs
 
 
-# def nodes_to_cameras(nodes, cameras):
+def map_nodes_cameras(
+    nodes,
+    cameras,
+    is_test_col           = "name",
+    is_commissioned_col   = False,
+    road_attr_col         = "description",
+    drop_car_park         = True,
+    drop_na_direction     = True,
+    direction_regex       = g_direction_regex,
+    address_regex         = g_address_regex,
+    road_ref_regex        = g_road_ref_regex,
+    car_park_regex        = g_car_park_regex,
+    directions_separator  = g_directions_separator,
+    sort_by               = "id",
+    utm_crs               = {'datum': 'WGS84',
+                             'ellps': 'WGS84',
+                             'proj' : 'utm',
+                             'units': 'm'},
+    distance_threshold    = 100
+):
+    """
+    Map 'nodes' to cameras by location, address and direction.
+    """
+    start_time = time.time()
+    nrows = len(nodes)
+    names = ("Node", "nodes")
+
+    # Wrangle nodes: add new cols: address, direction, ref; filter cols:
+    # is_carpark; project lat,lon
+    nodes = wrangle_objects(
+        nodes,
+        is_test_col           = is_test_col,
+        is_commissioned_col   = is_commissioned_col,
+        road_attr_col         = road_attr_col,
+        drop_car_park         = drop_car_park,
+        drop_na_direction     = drop_na_direction,
+        direction_regex       = direction_regex,
+        address_regex         = address_regex,
+        road_ref_regex        = road_ref_regex,
+        car_park_regex        = car_park_regex,
+        directions_separator  = directions_separator,
+        sort_by               = sort_by,
+        utm_crs               = utm_crs,
+        object_name           = names
+    )
+
+    camera_map = pd.Series(index = nodes.index)
+
+    for index, node in nodes.iterrows():
+        id = node['id']
+
+        within_distance = filter_by_attr_distance(
+            node,
+            cameras,
+            same_direction_filter = "isin",
+            distance_threshold = distance_threshold,
+            object_name = ("Node", "cameras"))
+
+        if len(within_distance) > 1:
+            # Pick the top one?
+            chosen_id = within_distance.iloc[0]['id']
+
+            log(("Node {}: There are multiple cameras that can be mapped "
+                 "(ids = {}) to this node. Picking the closest one: {}.")\
+                    .format(id, within_distance['id'], chosen_id),
+                level = lg.WARNING)
+
+        elif len(within_distance) == 1:
+            # We expect this to be the case more often than not
+            chosen_id = within_distance.iloc[0]['id']
+
+            log("Node {}: Mapping to camera {}."\
+                    .format(id, chosen_id),
+                level = lg.INFO)
+
+        else:
+            log("Node {}: Could not find a mapping to any camera."\
+                    .format(id),
+                level = lg.WARNING)
+
+            chosen_id = np.NaN
+
+        camera_map.loc[index] = chosen_id
+
+    log("Wrangled nodes in {:,.3f} seconds. Dropped {} rows, total is {}."\
+            .format(time.time()-start_time, nrows - len(nodes), len(nodes)),
+        level = lg.INFO)
+
+    # Return wrangled nodes with 1:1 mapping to cameras
+    return nodes.assign(camera = camera_map)

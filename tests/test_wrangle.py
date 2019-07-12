@@ -4,6 +4,7 @@ from   anprx.preprocessing import wrangle_cameras
 from   anprx.preprocessing import network_from_cameras
 from   anprx.preprocessing import merge_cameras_network
 from   anprx.preprocessing import camera_pairs_from_graph
+from   anprx.preprocessing import map_nodes_cameras
 
 import os
 import pandas              as     pd
@@ -37,6 +38,16 @@ raw_cameras_testset_1 = pd.DataFrame({
     'is_commissioned' : [1,1,1,1,1,1,0,1,1,1,1]
 })
 
+raw_nodes_testset = pd.DataFrame({
+    'id'   : ['1', '2', '3', '4', '5', '6'],
+    'lat'  : [54.971859, 54.975552, 54.974684, 54.974896, 54.970954, 54.973475],
+    'lon'  : [-1.630304, -1.628980, -1.627947, -1.637061, -1.660613,-1.621355],
+    'name' : ["NA" , "NB" , "NC", "ND", "NE", "NF"],
+    'desc' : ["Westbound A186", "Eastbound Stanhope St A13",
+              "Southbound Diana St B1", "Beaconsfield St Southbound A27",
+              "Northbound B1305 Condercum Rd", "St James Av A98 Northbound"]
+})
+
 def test_pipeline(plot):
     """Test default behavior."""
 
@@ -55,19 +66,40 @@ def test_pipeline(plot):
 
     assert {'1-10', '2', '3', '4', '5', '9'}.issubset(cameras['id'].unique())
 
-    assert cameras[cameras['id'] == '1-10']['direction'].iloc[0] == "W"
-    assert cameras[cameras['id'] == '2']['direction'].iloc[0] == "E-W"
-    assert cameras[cameras['id'] == '3']['direction'].iloc[0] == "N-S"
-    assert cameras[cameras['id'] == '9']['direction'].iloc[0] == "E"
+    assert cameras.loc[cameras.id == '1-10'].iloc[0]['direction'] == "W"
+    assert cameras.loc[cameras.id == '2'].iloc[0]['direction'] == "E-W"
+    assert cameras.loc[cameras.id == '3'].iloc[0]['direction'] == "N-S"
+    assert cameras.loc[cameras.id == '9'].iloc[0]['direction'] == "E"
 
-    assert cameras[cameras['id'] == '1-10']['ref'].iloc[0] == "A186"
-    assert cameras[cameras['id'] == '9']['ref'].iloc[0] == "A186"
-    assert cameras[cameras['id'] == '2']['ref'].iloc[0] == "A13"
-    assert cameras[cameras['id'] == '3']['ref'].iloc[0] == "B1"
-    assert cameras[cameras['id'] == '4']['ref'].iloc[0] == "A27"
-    assert cameras[cameras['id'] == '5']['ref'].iloc[0] == "B1305"
+    assert cameras.loc[cameras.id == '1-10'].iloc[0]['ref'] == "A186"
+    assert cameras.loc[cameras.id == '9'].iloc[0]['ref'] == "A186"
+    assert cameras.loc[cameras.id == '2'].iloc[0]['ref'] == "A13"
+    assert cameras.loc[cameras.id == '3'].iloc[0]['ref'] == "B1"
+    assert cameras.loc[cameras.id == '4'].iloc[0]['ref'] == "A27"
+    assert cameras.loc[cameras.id == '5'].iloc[0]['ref'] == "B1305"
 
     assert "Condercum Rd" in cameras[cameras['id'] == '5']['address'].iloc[0]
+
+    nodes = map_nodes_cameras(
+        raw_nodes_testset,
+        cameras,
+        is_test_col           = "name",
+        is_commissioned_col   = False,
+        road_attr_col         = "desc",
+        drop_car_park         = True,
+        drop_na_direction     = True,
+        distance_threshold    = 100
+    )
+
+    # Same address, direction and within distance
+    assert nodes.loc[nodes.id == '1'].iloc[0]['camera'] == '1-10'
+    assert nodes.loc[nodes.id == '2'].iloc[0]['camera'] == '2'
+    assert nodes.loc[nodes.id == '3'].iloc[0]['camera'] == '3'
+    assert nodes.loc[nodes.id == '4'].iloc[0]['camera'] == '4'
+    # Camera with same address but over distance_threshold
+    assert pd.isna(nodes.loc[nodes.id == '5'].iloc[0]['camera'])
+    # No camera with the same address
+    assert pd.isna(nodes.loc[nodes.id == '6'].iloc[0]['camera'])
 
     G = network_from_cameras(
         cameras,
