@@ -358,7 +358,8 @@ def wrangle_cameras(
                              'ellps': 'WGS84',
                              'proj' : 'utm',
                              'units': 'm'},
-    distance_threshold    = 50.0
+    distance_threshold    = 50.0,
+    merge_cameras         = True
 ):
     """
     Wrangles a raw dataset of ANPR camera data.
@@ -395,75 +396,76 @@ def wrangle_cameras(
         object_name           = names
     )
 
-    # Hard bit: merge cameras close by
-    # ---------
-    # First identify merges
-    # ---------
-    # Some roads have multiple cameras, side by side, one for each lane
-    # When this happens, we should merge the nearby cameras, pointing in the
-    # same direction, as a single camera. To do this, we compare the road attr
-    # and compute the distance to every camera with the same road attrs
+    if merge_cameras:
+        # Hard bit: merge cameras close by
+        # ---------
+        # First identify merges
+        # ---------
+        # Some roads have multiple cameras, side by side, one for each lane
+        # When this happens, we should merge the nearby cameras, pointing in the
+        # same direction, as a single camera. To do this, we compare the road attr
+        # and compute the distance to every camera with the same road attrs
 
-    to_merge = []
-    for index, camera in cameras.iterrows():
-        all_other_cameras = cameras.drop(index = index, axis = 0)
+        to_merge = []
+        for index, camera in cameras.iterrows():
+            all_other_cameras = cameras.drop(index = index, axis = 0)
 
-        within_distance = filter_by_attr_distance(
-            camera,
-            all_other_cameras,
-            distance_threshold = distance_threshold,
-            same_direction_filter = "equals",
-            object_name = names)
+            within_distance = filter_by_attr_distance(
+                camera,
+                all_other_cameras,
+                distance_threshold = distance_threshold,
+                same_direction_filter = "equals",
+                object_name = names)
 
-        if len(within_distance) > 0:
-            to_merge.append(
-                frozenset(within_distance.index.values.tolist() + [index]))
+            if len(within_distance) > 0:
+                to_merge.append(
+                    frozenset(within_distance.index.values.tolist() + [index]))
 
-    # Remove any repeated tuples
-    to_merge = list(map(lambda x: tuple(x), set(to_merge)))
-    all_indices = reduce(lambda x,y: x | y, map(lambda x: set(x), to_merge))
+        # Remove any repeated tuples
+        to_merge = list(map(lambda x: tuple(x), set(to_merge)))
+        all_indices = reduce(lambda x,y: x | y, map(lambda x: set(x), to_merge))
 
-    to_merge_ids = [ tuple(map(lambda x: cameras.loc[x, 'id'], tupl)) \
-                     for tupl in to_merge ]
+        to_merge_ids = [ tuple(map(lambda x: cameras.loc[x, 'id'], tupl)) \
+                         for tupl in to_merge ]
 
-    log("Identified the following camera merges (ids): {}"\
-            .format(to_merge_ids),
-        level = lg.INFO)
+        log("Identified the following camera merges (ids): {}"\
+                .format(to_merge_ids),
+            level = lg.INFO)
 
-    # ---------
-    # Actual merge
-    # ---------
-    oldlen = len(cameras)
+        # ---------
+        # Actual merge
+        # ---------
+        oldlen = len(cameras)
 
-    # Use pandas concat to partition cameras and merge them back again
-    unaffected_cameras = cameras.drop(index = all_indices, axis = 0)
+        # Use pandas concat to partition cameras and merge them back again
+        unaffected_cameras = cameras.drop(index = all_indices, axis = 0)
 
-    cameras_list = []
-    for items in to_merge:
-        ind1 = items[0]
-        c1 = dict(cameras.loc[ind1])
+        cameras_list = []
+        for items in to_merge:
+            ind1 = items[0]
+            c1 = dict(cameras.loc[ind1])
 
-        for i in range(1, len(items)):
-            other = dict(cameras.loc[items[i]])
+            for i in range(1, len(items)):
+                other = dict(cameras.loc[items[i]])
 
-            c1['id'] = "{}-{}".format(c1['id'], other['id'])
-            c1['name'] = "{}-{}".format(c1['name'], other['name'])
-        # we use one of the geometries. Using the centroid of the 2 points might
-        # not be a good idea as this might negatively impact the merge of
-        # cameras onto the road network
+                c1['id'] = "{}-{}".format(c1['id'], other['id'])
+                c1['name'] = "{}-{}".format(c1['name'], other['name'])
+            # we use one of the geometries. Using the centroid of the 2 points might
+            # not be a good idea as this might negatively impact the merge of
+            # cameras onto the road network
 
-        # inefficient but works
-        newdf = pd.DataFrame(columns = c1.keys())
-        newdf.loc[ind1] = list(c1.values())
+            # inefficient but works
+            newdf = pd.DataFrame(columns = c1.keys())
+            newdf.loc[ind1] = list(c1.values())
 
-        cameras_list.append(newdf)
+            cameras_list.append(newdf)
 
-    cameras_list.append(unaffected_cameras)
-    cameras = pd.concat(cameras_list, axis = 0)
+        cameras_list.append(unaffected_cameras)
+        cameras = pd.concat(cameras_list, axis = 0)
 
-    log("Merged {} cameras that were in the same location as other cameras."\
-            .format(oldlen - len(cameras)),
-        level = lg.INFO)
+        log("Merged {} cameras that were in the same location as other cameras."\
+                .format(oldlen - len(cameras)),
+            level = lg.INFO)
 
     log("Sorting by {} and resetting index."\
             .format(sort_by),
@@ -641,7 +643,7 @@ def close_up_plots(
 
     if cameras is None:
         merged = True
-        subdir = "cameras/merged"
+        subdir = plot_kwargs.get('subdir', default = "cameras/merged")
         points = ([d['x'] for _, d in G.nodes(data = True) if d['is_camera']],
                   [d['y'] for _, d in G.nodes(data = True) if d['is_camera']])
 
@@ -657,7 +659,7 @@ def close_up_plots(
         cameras = pd.DataFrame(camera_nodes).assign(node = node_ids)
     else:
         merged = False
-        subdir = "cameras/unmerged"
+        subdir = plot_kwargs.get('subdir', default = "cameras/unmerged")
         points = ([p.x for p in cameras['geometry']],
                   [p.y for p in cameras['geometry']])
         ids    = cameras['id'].tolist()
@@ -848,9 +850,9 @@ def identify_cameras_merge(
 
         # If there was no suitable candidate
         if len(valid_candidates) == 0:
-            log(("({}) - Camera {} has 0 valid candidate edges pointing in the same "
-                 "direction as the camera. Flagging as untreatable.")\
-                    .format(index, id),
+            log(("({}) - Camera {} has 0 valid candidate edges pointing in the "
+                 "same direction {} as the camera. Flagging as untreatable.")\
+                    .format(index, id, row['direction']),
                 level = lg.ERROR)
             untreatable.append(index)
             continue
