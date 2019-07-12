@@ -36,7 +36,7 @@ g_direction_regex = (r'(East\/West|North\/South|Northbound|Eastbound|'
                     'Southbound|Westbound|Northhbound|Southhbound)')
 g_address_regex = (r'(East\/West|North\/South|Northbound|Eastbound|'
                     'Southbound|Westbound|Site \d|Camera \d|Camera|Site|L\d+|'
-                    'Lane \d)')
+                    'Lane \d|LT|RT|AH|&)')
 g_road_ref_regex  = r'(A\d+|B\d+|C\d+)'
 g_car_park_regex  = r'(car park)'
 g_directions_separator = "/|&"
