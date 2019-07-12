@@ -79,10 +79,10 @@ def infer_road_attr(
 
     return pd.DataFrame({
         'direction'      : directions,
-        'both_directions': both_directions.astype('bool'),
+        'both_directions': both_directions.astype('int').astype('bool'),
         'ref'            : road_refs,
         'address'        : addresses,
-        'is_carpark'     : car_parks.astype('bool')
+        'is_carpark'     : car_parks.astype('int').astype('bool')
     })
 
 def filter_by_attr_distance(
