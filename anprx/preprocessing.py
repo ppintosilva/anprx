@@ -79,10 +79,10 @@ def infer_road_attr(
 
     return pd.DataFrame({
         'direction'      : directions,
-        'both_directions': both_directions,
+        'both_directions': both_directions.astype('bool'),
         'ref'            : road_refs,
         'address'        : addresses,
-        'is_carpark'     : car_parks
+        'is_carpark'     : car_parks.astype('bool')
     })
 
 def filter_by_attr_distance(
@@ -1014,10 +1014,8 @@ def merge_cameras_network(
 
         tmp = cameras[both_directions_mask]
 
-        tmp1 = tmp.assign(direction = tmp.direction.str\
-                                         .split(pat = "-").str[0])
-        tmp2 = tmp.assign(direction = tmp.direction.str\
-                                         .split(pat = "-").str[1])
+        tmp1 = tmp.assign(direction = tmp.direction.str.split("-").str[0])
+        tmp2 = tmp.assign(direction = tmp.direction.str.split("-").str[1])
 
         to_merge = pd.concat([tmp1, tmp2, cameras[~both_directions_mask]])\
                      .reset_index(drop = True)
@@ -1348,3 +1346,7 @@ def map_nodes_cameras(
 
     # Return wrangled nodes with 1:1 mapping to cameras
     return nodes.assign(camera = camera_map)
+
+
+# def get_expert_pairs(nodes, links):
+#
