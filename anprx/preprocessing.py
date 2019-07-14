@@ -429,6 +429,18 @@ def wrangle_cameras(
         to_merge_ids = [ tuple(map(lambda x: cameras.loc[x, 'id'], tupl)) \
                          for tupl in to_merge ]
 
+        # Remove combinations that are subsets of larger combinations
+        duplicates = []
+
+        # there's probably a more efficient way, but this is
+        # good enough for now
+        for i,tupl in enumerate(to_merge_ids):
+            for j,other in enumerate(to_merge_ids):
+                if i != j and set(tupl).issubset(set(other)):
+                    duplicates.append(tupl)
+
+        to_merge_ids = list(set(to_merge_ids) -  set(duplicates))
+
         log("Identified the following camera merges (ids): {}"\
                 .format(to_merge_ids),
             level = lg.INFO)
