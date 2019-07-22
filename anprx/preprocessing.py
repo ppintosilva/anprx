@@ -34,7 +34,8 @@ from   functools            import reduce
 
 g_direction_regex = (r'(East\/West|North\/South|Northbound|Eastbound|'
                     'Southbound|Westbound|Northhbound|Southhbound)')
-g_address_regex = (r'(East\/West|North\/South|Northbound|Eastbound|'
+g_address_regex = (r'(East\/West|North\/South|Northbound \d|Eastbound \d|'
+                    'Southbound \d|Westbound \d|Northbound|Eastbound|'
                     'Southbound|Westbound|Site \d|Camera \d|Camera|Site|L\d+|'
                     'Lane \d|LT|RT|AH|&)')
 g_road_ref_regex  = r'(A\d+|B\d+|C\d+)'
@@ -119,7 +120,8 @@ def filter_by_attr_distance(
             max_common = cdf['common_address_words'].max()
             cdf        = cdf[cdf.common_address_words == max_common]
 
-        if filter_by_same_ref:
+        # beware if ref is na
+        if filter_by_same_ref and not pd.isna(c_ref):
             cdf = cdf[cdf.same_ref == True]
 
         if len(cdf) == 0:
@@ -685,7 +687,7 @@ def close_up_plots(
 
         if 'subdir' not in plot_kwargs:
             plot_kwargs['subdir'] = "cameras/unmerged"
-        
+
         points = ([p.x for p in cameras['geometry']],
                   [p.y for p in cameras['geometry']])
         ids    = cameras['id'].tolist()
