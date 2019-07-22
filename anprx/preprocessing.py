@@ -624,7 +624,7 @@ def network_from_cameras(
         if 'geometry' in cameras.columns:
 
             plot_kwargs['label'] = 'cameras'
-            plot_kwargs['legend'] = True            
+            plot_kwargs['legend'] = True
 
             _, _, filename = plot_G(
                 G,
@@ -663,7 +663,10 @@ def close_up_plots(
 
     if cameras is None:
         merged = True
-        subdir = plot_kwargs.get('subdir', "cameras/merged")
+
+        if 'subdir' not in plot_kwargs:
+            plot_kwargs['subdir'] = "cameras/merged"
+
         points = ([d['x'] for _, d in G.nodes(data = True) if d['is_camera']],
                   [d['y'] for _, d in G.nodes(data = True) if d['is_camera']])
 
@@ -679,7 +682,10 @@ def close_up_plots(
         cameras = pd.DataFrame(camera_nodes).assign(node = node_ids)
     else:
         merged = False
-        subdir = plot_kwargs.get('subdir', "cameras/unmerged")
+
+        if 'subdir' not in plot_kwargs:
+            plot_kwargs['subdir'] = "cameras/unmerged"
+        
         points = ([p.x for p in cameras['geometry']],
                   [p.y for p in cameras['geometry']])
         ids    = cameras['id'].tolist()
@@ -710,7 +716,6 @@ def close_up_plots(
 
         _, _, filename = plot_G(
             G,
-            subdir = subdir,
             name = row['id'],
             points = subpoints,
             bbox = bbox,
