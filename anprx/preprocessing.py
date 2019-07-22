@@ -94,7 +94,7 @@ def filter_by_attr_distance(
     filter_by_same_ref       = True,
     filter_by_same_direction = True,
     same_direction_filter    = "equals",
-    distance_threshold       = 50.0,
+    distance_threshold       = 100.0,
     object_name              = ("Camera", "cameras")
 ):
     """
@@ -1236,8 +1236,8 @@ def camera_pairs_from_graph(G):
             #         .format(s, t, distance),
             #     level = lg.DEBUG)
 
-            if distance < 50:
-                log(("Distance between cameras {} and {} is less than 50 "
+            if distance < 100.0:
+                log(("Distance between cameras {} and {} is less than 100 "
                      "meters. Are these two cameras mergeable into one?")
                         .format(s,t),
                     level = lg.WARNING)
@@ -1303,7 +1303,7 @@ def map_nodes_cameras(
                              'ellps': 'WGS84',
                              'proj' : 'utm',
                              'units': 'm'},
-    distance_threshold    = 100
+    distance_threshold    = 150.0
 ):
     """
     Map 'nodes' to cameras by location, address and direction.
