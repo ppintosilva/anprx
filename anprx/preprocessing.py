@@ -423,23 +423,27 @@ def wrangle_cameras(
                     frozenset(within_distance.index.values.tolist() + [index]))
 
         # Remove any repeated tuples
+        # list of indices
         to_merge = list(map(lambda x: tuple(x), set(to_merge)))
-        all_indices = reduce(lambda x,y: x | y, map(lambda x: set(x), to_merge))
-
-        to_merge_ids = [ tuple(map(lambda x: cameras.loc[x, 'id'], tupl)) \
-                         for tupl in to_merge ]
 
         # Remove combinations that are subsets of larger combinations
         duplicates = []
 
         # there's probably a more efficient way, but this is
         # good enough for now
-        for i,tupl in enumerate(to_merge_ids):
-            for j,other in enumerate(to_merge_ids):
+        for i,tupl in enumerate(to_merge):
+            for j,other in enumerate(to_merge):
                 if i != j and set(tupl).issubset(set(other)):
                     duplicates.append(tupl)
 
-        to_merge_ids = list(set(to_merge_ids) -  set(duplicates))
+        to_merge = list(set(to_merge) -  set(duplicates))
+
+        # reduce list of tuples to a single list (without duplicate ) of indices
+        all_indices = reduce(lambda x,y: x | y, map(lambda x: set(x), to_merge))
+
+        # list of ids
+        to_merge_ids = [ tuple(map(lambda x: cameras.loc[x, 'id'], tupl)) \
+                         for tupl in to_merge ]
 
         log("Identified the following camera merges (ids): {}"\
                 .format(to_merge_ids),
@@ -620,7 +624,7 @@ def network_from_cameras(
         if 'geometry' in cameras.columns:
 
             plot_kwargs['label'] = 'cameras'
-            plot_kwargs['legend'] = True
+            plot_kwargs['legend'] = True            
 
             _, _, filename = plot_G(
                 G,
@@ -659,7 +663,7 @@ def close_up_plots(
 
     if cameras is None:
         merged = True
-        subdir = plot_kwargs.get('subdir', default = "cameras/merged")
+        subdir = plot_kwargs.get('subdir', "cameras/merged")
         points = ([d['x'] for _, d in G.nodes(data = True) if d['is_camera']],
                   [d['y'] for _, d in G.nodes(data = True) if d['is_camera']])
 
@@ -675,7 +679,7 @@ def close_up_plots(
         cameras = pd.DataFrame(camera_nodes).assign(node = node_ids)
     else:
         merged = False
-        subdir = plot_kwargs.get('subdir', default = "cameras/unmerged")
+        subdir = plot_kwargs.get('subdir', "cameras/unmerged")
         points = ([p.x for p in cameras['geometry']],
                   [p.y for p in cameras['geometry']])
         ids    = cameras['id'].tolist()
