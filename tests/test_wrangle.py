@@ -5,6 +5,7 @@ from   anprx.preprocessing import network_from_cameras
 from   anprx.preprocessing import merge_cameras_network
 from   anprx.preprocessing import camera_pairs_from_graph
 from   anprx.preprocessing import map_nodes_cameras
+from   anprx.preprocessing import wrangle_raw_anpr
 
 import os
 import pandas              as     pd
@@ -46,6 +47,13 @@ raw_nodes_testset = pd.DataFrame({
     'desc' : ["Westbound A186", "Eastbound Stanhope St A13",
               "Southbound Diana St B1", "Beaconsfield St Southbound A27",
               "Northbound B1305 Condercum Rd", "St James Av A98 Northbound"]
+})
+
+raw_anpr_testset = pd.DataFrame({
+    'vehicle'    : ['AA00AAA', 'AA11AAA', 'AA00AAA', 'AA11AAA', 'AA22AAA', 'AA22AAA'],
+    'camera'     : ['1', '3', '4', '10', '2', '4'],
+    'timestamp'  : [1, 1, 2, 2, 3, 4],
+    'confidence' : [90 , 85 , 84, 91, 34, 72]
 })
 
 def test_pipeline(plot):
@@ -124,3 +132,32 @@ def test_pipeline(plot):
     pairs = camera_pairs_from_graph(G)
 
     assert len(pairs) < len(cameras) ** 2
+
+
+def test_wrangle_raw_anpr():
+
+    cameras = wrangle_cameras(
+        cameras             = raw_cameras_testset_1,
+        is_test_col         = "name",
+        is_commissioned_col = "is_commissioned",
+        road_attr_col       = "desc",
+        drop_car_park       = True,
+        drop_na_direction   = True,
+        distance_threshold  = 50.0,
+        sort_by             = "id"
+    )
+
+    wrangled_anpr = wrangle_raw_anpr(
+        raw_anpr_testset,
+        cameras = cameras,
+        filter_low_confidence = True,
+        confidence_threshold = 70,
+        anonymise = True,
+        digest_size = 10,
+        digest_salt = b"ABC"
+    )
+
+    assert len(wrangled_anpr) == 5
+    assert '1' not in wrangled_anpr['camera'].values
+    assert '10' not in wrangled_anpr['camera'].values
+    assert '1-10' in wrangled_anpr['camera'].values

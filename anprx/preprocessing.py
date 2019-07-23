@@ -15,6 +15,7 @@ from   .core                import Point
 from   .core                import RelativeMargins
 from   .core                import bbox_from_points
 
+import os
 import re
 import math
 import time
@@ -25,6 +26,8 @@ import networkx             as nx
 import geopandas            as gpd
 import logging              as lg
 import shapely.geometry     as geometry
+
+from   hashlib              import blake2b
 from   functools            import reduce
 from   collections          import OrderedDict
 from   itertools            import chain
@@ -41,6 +44,12 @@ g_address_regex = (r'(East\/West|North\/South|Northbound \d|Eastbound \d|'
 g_road_ref_regex  = r'(A\d+|B\d+|C\d+)'
 g_car_park_regex  = r'(car park)'
 g_directions_separator = "/|&"
+g_np_regex = ("^(([A-Za-z]{1,2}[ ]?[0-9]{1,4})|([A-Za-z]{3}[ ]?[0-9]{1,3})|"
+              "([0-9]{1,3}[ ]?[A-Za-z]{3})|([0-9]{1,4}[ ]?[A-Za-z]{1,2})|"
+              "([A-Za-z]{3}[ ]?[0-9]{1,3}[ ]?[A-Za-z])|"
+              "([A-Za-z][ ]?[0-9]{1,3}[ ]?[A-Za-z]{3})|"
+              "([A-Za-z]{2}[ ]?[0-9]{2}[ ]?[A-Za-z]{3})|"
+              "([A-Za-z]{3}[ ]?[0-9]{4}))$")
 
 def infer_road_attr(
     descriptions,
@@ -1379,6 +1388,103 @@ def map_nodes_cameras(
     # Return wrangled nodes with 1:1 mapping to cameras
     return wnodes
 
+def wrangle_raw_anpr(
+    df,
+    cameras = None,
+    np_regex = g_np_regex,
+    filter_low_confidence = True,
+    confidence_threshold = 0.70,
+    anonymise = True,
+    digest_size = 10,
+    digest_salt = os.urandom(10)
+):
+    """
+    Wrangle raw anpr:
 
-# def get_expert_pairs(nodes, links):
-#
+        a. Filter bad number plates
+        b. Remove all sightings with confidence < 0.80
+        c. Sort by Timestamp
+        g. Anonymise
+    """
+    start_time = time.time()
+    nrows = len(df)
+
+    log("Wrangling raw ANPR dataset with {} rows and colnames: {}."\
+            .format(nrows, ",".join(df.columns.values)),
+        level = lg.INFO)
+
+    mandatory_columns = {'vehicle', 'camera', 'timestamp'}
+
+    log("Checking if input dataframe contains mandatory columns {}."\
+            .format(mandatory_columns),
+         level = lg.INFO)
+
+    cols = set(df.columns.values)
+
+    assert mandatory_columns.issubset(cols)
+
+    # Filter number plates that don't match regex
+    df = df[df.vehicle.str.contains(np_regex)]
+
+    frows = nrows - len(df)
+    log("Filtered {} rows ({:,.2f} %) containing a badly formatted plate number."\
+            .format(frows, frows/nrows*100),
+        level = lg.INFO)
+
+    cur_nrows = len(df)
+
+    if cur_nrows == 0:
+        return df
+
+    # Filter low confidence observations
+    if filter_low_confidence:
+        df = df[df.confidence >= confidence_threshold]
+        frows = cur_nrows - len(df)
+
+        log("Filtered {} rows ({:,.2f} %) with low confidence."\
+                .format(frows, frows/cur_nrows*100),
+            level = lg.INFO)
+
+    # Anonymise
+    if anonymise:
+        df['vehicle'] = df['vehicle']\
+            .apply(lambda x: blake2b(x.encode(),
+                                     key = digest_salt,
+                                     digest_size = digest_size)\
+                            .hexdigest())
+
+        log("Anonymised plate numbers.", level = lg.INFO)
+
+    # Sort by timestamp
+    df = df.sort_values(by = ['timestamp'])
+
+    # Change camera column values to merged camera value
+    if cameras is not None:
+        merged_rows = cameras['id'].str.contains("-")
+        merged_cameras = cameras[merged_rows]['id']
+
+        unmerged_to_merged = {}
+        for merged_camera in merged_cameras:
+            original_cameras = merged_camera.split('-')
+            for ocamera in original_cameras:
+                unmerged_to_merged[ocamera] = merged_camera
+
+        original_cameras = list(unmerged_to_merged.keys())
+
+        is_merged_mask = (df['camera'].isin(original_cameras))
+        is_merged_df = df[is_merged_mask]
+
+        df.loc[is_merged_mask, 'camera'] = is_merged_df['camera']\
+            .apply(lambda x: unmerged_to_merged[x])
+
+        log(("Wrangled 'camera' column to new (merged) camera ids "
+            "(affected {} rows)")\
+                .format(len(is_merged_df)),
+            level = lg.INFO)
+
+    log(("Wrangled raw anpr dataset in {:,.3f} seconds. "
+         "Dropped {} rows, total is {}.")\
+            .format(time.time()-start_time, nrows - len(df), len(df)),
+        level = lg.INFO)
+
+    return df
