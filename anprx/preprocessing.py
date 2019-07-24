@@ -1270,26 +1270,57 @@ def camera_pairs_from_graph(G):
     assert len(source) == len(target) == len(distances) == \
            len(paths) == len(directions)
 
-    camera_pairs = pd.DataFrame(
+    valid_camera_pairs = pd.DataFrame(
         data = {
             # dont write the preffix 'c_' to file
             'origin' : source.apply(lambda x: x[2:]).tolist(),
             'destination' : target.apply(lambda x: x[2:]).tolist(),
             'distance' : distances,
             'direction' : directions,
-            'path' : paths}
+            'path' : paths,
+            'valid' : np.ones(len(source), dtype = int)}
     )
 
-    # drop rows with path = None
-    camera_pairs = camera_pairs.drop(
-        camera_pairs.loc[pd.isna(camera_pairs.path)].index.values.tolist()
+    # annotate as invalid rows with path = None
+    is_path_na_mask = (valid_camera_pairs['path'].isna())
+    valid_camera_pairs.loc[is_path_na_mask, 'valid'] = 0
+
+    log(("Adding invalid camera pairs for completeness."),
+        level = lg.INFO)
+
+    # Select invalid camera pairs
+    source_idx, target_idx = np.where(D == 0)
+
+    source = cameras.iloc[source_idx]['node']
+    target = cameras.iloc[target_idx]['node']
+
+    directions = list(zip(cameras.iloc[source_idx]['direction'],
+                          cameras.iloc[target_idx]['direction']))
+
+    nans = np.empty(len(source))
+    nans[:] = np.nan
+
+    invalid_camera_pairs = pd.DataFrame(
+        data = {
+            # dont write the preffix 'c_' to file
+            'origin' : source.apply(lambda x: x[2:]).tolist(),
+            'destination' : target.apply(lambda x: x[2:]).tolist(),
+            'distance' : nans,
+            'direction' : directions,
+            'path' : nans,
+            'valid' : np.zeros(len(source), dtype = int)}
     )
 
-    total_combinations = len(cameras) ** 2
-    log(("Out of {} possible camera pairs, {} were filtered out, resulting in a "
-         "total of {} valid camera pairs.")\
-            .format(total_combinations, total_combinations - len(camera_pairs),
-                    len(camera_pairs)),
+    camera_pairs = pd.concat([valid_camera_pairs, invalid_camera_pairs], axis=0)
+
+    total_pairs = len(cameras) ** 2
+    assert len(camera_pairs) == total_pairs
+
+    total_valid = len(camera_pairs[camera_pairs.valid == 1])
+
+    log(("Out of {} possible camera pairs, {} were labelled as invalid, "
+         "resulting in a total of {} valid camera pairs.")\
+            .format(total_pairs,  total_pairs - total_valid, total_valid),
         level = lg.INFO)
 
     return camera_pairs

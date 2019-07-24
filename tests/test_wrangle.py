@@ -136,7 +136,7 @@ def test_pipeline(plot):
     for origin in pairs['origin']:
         assert origin[0:1] != 'c_'
 
-    assert len(pairs) < len(cameras) ** 2
+    assert len(pairs) == len(cameras) ** 2
 
 
 def test_wrangle_raw_anpr():
