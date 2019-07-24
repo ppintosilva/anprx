@@ -1423,11 +1423,20 @@ def wrangle_raw_anpr(
 
     assert mandatory_columns.issubset(cols)
 
+    # Check if vehicle has any missing data (should not)
+    na_vehicles = df['vehicle'].isna().sum()
+    if na_vehicles > 0:
+        log("Found {} na values in 'vehicle' column. Filtering these out."\
+                .format(na_vehicles),
+            level = lg.WARNING)
+        df.dropna(axis = 0, subset = ['vehicle'], inplace = True)
+
     # Filter number plates that don't match regex
     df = df[df.vehicle.str.contains(np_regex)]
 
     frows = nrows - len(df)
-    log("Filtered {} rows ({:,.2f} %) containing a badly formatted plate number."\
+    log(("Filtered {} rows ({:,.2f} %) containing a badly "
+         "formatted plate number.")\
             .format(frows, frows/nrows*100),
         level = lg.INFO)
 

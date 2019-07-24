@@ -8,6 +8,7 @@ from   anprx.preprocessing import map_nodes_cameras
 from   anprx.preprocessing import wrangle_raw_anpr
 
 import os
+import numpy               as     np
 import pandas              as     pd
 
 """
@@ -50,10 +51,11 @@ raw_nodes_testset = pd.DataFrame({
 })
 
 raw_anpr_testset = pd.DataFrame({
-    'vehicle'    : ['AA00AAA', 'AA11AAA', 'AA00AAA', 'AA11AAA', 'AA22AAA', 'AA22AAA'],
-    'camera'     : ['1', '3', '4', '10', '2', '4'],
-    'timestamp'  : [1, 1, 2, 2, 3, 4],
-    'confidence' : [90 , 85 , 84, 91, 34, 72]
+    'vehicle'    : ['AA00AAA', 'AA11AAA', 'AA00AAA', 'AA11AAA',
+                    'AA22AAA', 'AA22AAA', np.nan],
+    'camera'     : ['1', '3', '4', '10', '2', '4', '2'],
+    'timestamp'  : [1, 1, 2, 2, 3, 4, 0],
+    'confidence' : [90 , 85 , 84, 91, 34, 72, 0]
 })
 
 def test_pipeline(plot):
