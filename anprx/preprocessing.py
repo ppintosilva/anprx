@@ -1272,8 +1272,9 @@ def camera_pairs_from_graph(G):
 
     camera_pairs = pd.DataFrame(
         data = {
-            'origin' : np.array(source),
-            'destination' : np.array(target),
+            # dont write the preffix 'c_' to file
+            'origin' : source.apply(lambda x: x[2:]).tolist(),
+            'destination' : target.apply(lambda x: x[2:]).tolist(),
             'distance' : distances,
             'direction' : directions,
             'path' : paths}

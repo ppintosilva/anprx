@@ -133,6 +133,9 @@ def test_pipeline(plot):
 
     pairs = camera_pairs_from_graph(G)
 
+    for origin in pairs['origin']:
+        assert origin[0:1] != 'c_'
+
     assert len(pairs) < len(cameras) ** 2
 
 
