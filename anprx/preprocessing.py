@@ -1426,8 +1426,8 @@ def wrangle_raw_anpr(
     # Check if vehicle has any missing data (should not)
     na_vehicles = df['vehicle'].isna().sum()
     if na_vehicles > 0:
-        log("Found {} na values in 'vehicle' column. Filtering these out."\
-                .format(na_vehicles),
+        log("Filtering {} na values in 'vehicle' column. Unique: {}."\
+                .format(na_vehicles, df[df.vehicle.isna()]['vehicle'].unique()),
             level = lg.WARNING)
         df.dropna(axis = 0, subset = ['vehicle'], inplace = True)
 
@@ -1454,6 +1454,11 @@ def wrangle_raw_anpr(
                 .format(frows, frows/cur_nrows*100),
             level = lg.INFO)
 
+    cur_nrows = len(df)
+
+    if cur_nrows == 0:
+        return df
+
     # Anonymise
     if anonymise:
         df['vehicle'] = df['vehicle']\
@@ -1467,8 +1472,9 @@ def wrangle_raw_anpr(
     # Sort by timestamp
     df = df.sort_values(by = ['timestamp'])
 
-    # Change camera column values to merged camera value
+    # Camera id checks
     if cameras is not None:
+        # Change camera column values to merged camera value
         merged_rows = cameras['id'].str.contains("-")
         merged_cameras = cameras[merged_rows]['id']
 
@@ -1480,6 +1486,9 @@ def wrangle_raw_anpr(
 
         original_cameras = list(unmerged_to_merged.keys())
 
+        log(("UNMERGED TO MERGED: {}").format(unmerged_to_merged), level = lg.INFO)
+        log(("UNIQUE CAMERAS IN ANPR: {}").format(set(df['camera'].unique())), level = lg.INFO)
+
         is_merged_mask = (df['camera'].isin(original_cameras))
         is_merged_df = df[is_merged_mask]
 
@@ -1487,9 +1496,31 @@ def wrangle_raw_anpr(
             .apply(lambda x: unmerged_to_merged[x])
 
         log(("Wrangled 'camera' column to new (merged) camera ids "
-            "(affected {} rows)")\
+            "(affected {} rows).")\
                 .format(len(is_merged_df)),
             level = lg.INFO)
+
+        # Check if camera ids match in anpr and cameras dataframes
+        unique_in_anpr = set(df['camera'].unique())
+        unique_in_cameras = set(cameras['id'].unique())
+
+        only_in_anpr = unique_in_anpr - unique_in_cameras
+
+        if len(only_in_anpr) > 0:
+            df = df[~df.camera.isin(only_in_anpr)]
+            frows = cur_nrows - len(df)
+
+            log(("Cameras {} show up in anpr data but not in cameras dataframe."
+                 " Removing {} rows ({:,.2f} %) with these cameras.")\
+                    .format(only_in_anpr, frows, frows/cur_nrows*100),
+                level = lg.WARNING)
+
+        only_in_cameras = unique_in_cameras - unique_in_anpr
+
+        if len(only_in_cameras):
+            log(("Cameras {} never show up in anpr data.")\
+                    .format(only_in_cameras),
+                level = lg.WARNING)
 
     log(("Wrangled raw anpr dataset in {:,.3f} seconds. "
          "Dropped {} rows, total is {}.")\
