@@ -1486,9 +1486,6 @@ def wrangle_raw_anpr(
 
         original_cameras = list(unmerged_to_merged.keys())
 
-        log(("UNMERGED TO MERGED: {}").format(unmerged_to_merged), level = lg.INFO)
-        log(("UNIQUE CAMERAS IN ANPR: {}").format(set(df['camera'].unique())), level = lg.INFO)
-
         is_merged_mask = (df['camera'].isin(original_cameras))
         is_merged_df = df[is_merged_mask]
 
