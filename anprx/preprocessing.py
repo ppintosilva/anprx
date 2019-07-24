@@ -1519,9 +1519,10 @@ def wrangle_raw_anpr(
                     .format(only_in_cameras),
                 level = lg.WARNING)
 
+    frows = nrows - len(df)
     log(("Wrangled raw anpr dataset in {:,.3f} seconds. "
-         "Dropped {} rows, total is {}.")\
-            .format(time.time()-start_time, nrows - len(df), len(df)),
+         "Dropped {} rows ({:,.2f} %), total is {}.")\
+            .format(time.time()-start_time, frows, frows/len(df)*100, len(df)),
         level = lg.INFO)
 
     return df
