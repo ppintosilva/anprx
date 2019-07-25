@@ -1215,11 +1215,9 @@ def camera_pairs_from_graph(G):
     # Select the valid camera pairs
     source_idx, target_idx = np.where(D == 1)
 
+    # Using iloc because np.where returns position rather than pandas index
     source = cameras.iloc[source_idx]['node']
     target = cameras.iloc[target_idx]['node']
-
-    directions = list(zip(cameras.iloc[source_idx]['direction'],
-                          cameras.iloc[target_idx]['direction']))
 
     log(("Computing shortest paths for each valid camera pair. "
          "This may take a while."),
@@ -1267,18 +1265,17 @@ def camera_pairs_from_graph(G):
         level = lg.INFO)
 
     # This should always be True unless I've coded something wrong
-    assert len(source) == len(target) == len(distances) == \
-           len(paths) == len(directions)
+    assert len(source) == len(target) == len(distances) == len(paths)
 
-    valid_camera_pairs = pd.DataFrame(
-        data = {
-            # dont write the preffix 'c_' to file
-            'origin' : source.apply(lambda x: x[2:]).tolist(),
-            'destination' : target.apply(lambda x: x[2:]).tolist(),
-            'distance' : distances,
-            'direction' : directions,
-            'path' : paths,
-            'valid' : np.ones(len(source), dtype = int)}
+    valid_camera_pairs = pd.DataFrame(data = {
+        # dont write the preffix 'c_' to file
+        'origin'               : source.apply(lambda x: x[2:]).tolist(),
+        'destination'          : target.apply(lambda x: x[2:]).tolist(),
+        'distance'             : distances,
+        'direction_origin'     : cameras.iloc[source_idx]['direction'].tolist(),
+        'direction_destination': cameras.iloc[target_idx]['direction'].tolist(),
+        'path'                 : paths,
+        'valid'                : np.ones(len(source), dtype = int)}
     )
 
     # annotate as invalid rows with path = None
@@ -1294,21 +1291,18 @@ def camera_pairs_from_graph(G):
     source = cameras.iloc[source_idx]['node']
     target = cameras.iloc[target_idx]['node']
 
-    directions = list(zip(cameras.iloc[source_idx]['direction'],
-                          cameras.iloc[target_idx]['direction']))
-
     nans = np.empty(len(source))
     nans[:] = np.nan
 
-    invalid_camera_pairs = pd.DataFrame(
-        data = {
-            # dont write the preffix 'c_' to file
-            'origin' : source.apply(lambda x: x[2:]).tolist(),
-            'destination' : target.apply(lambda x: x[2:]).tolist(),
-            'distance' : nans,
-            'direction' : directions,
-            'path' : nans,
-            'valid' : np.zeros(len(source), dtype = int)}
+    invalid_camera_pairs = pd.DataFrame(data = {
+        # dont write the preffix 'c_' to file
+        'origin'               : source.apply(lambda x: x[2:]).tolist(),
+        'destination'          : target.apply(lambda x: x[2:]).tolist(),
+        'distance'             : nans,
+        'direction_origin'     : cameras.iloc[source_idx]['direction'].tolist(),
+        'direction_destination': cameras.iloc[target_idx]['direction'].tolist(),
+        'path'                 : nans,
+        'valid'                : np.zeros(len(source), dtype = int)}
     )
 
     camera_pairs = pd.concat([valid_camera_pairs, invalid_camera_pairs], axis=0)

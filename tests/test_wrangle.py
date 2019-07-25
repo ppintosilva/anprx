@@ -138,6 +138,21 @@ def test_pipeline(plot):
 
     assert len(pairs) == len(cameras) ** 2
 
+    assert pairs.loc[(pairs.origin == '1-10') & (pairs.destination == '2')]\
+                .iloc[0]['valid'] == 1
+
+    assert pairs.loc[(pairs.origin == '1-10') & (pairs.destination == '3')]\
+                .iloc[0]['valid'] == 1
+
+    assert pairs.loc[(pairs.origin == '4') & (pairs.destination == '5')]\
+                .iloc[0]['valid'] == 0
+
+    assert pairs.loc[(pairs.origin == '5') & (pairs.destination == '4')]\
+                .iloc[0]['valid'] == 0
+
+    assert pairs.loc[(pairs.origin == '5') & (pairs.destination == '5')]\
+                .iloc[0]['valid'] == 0
+
 
 def test_wrangle_raw_anpr():
 
