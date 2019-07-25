@@ -58,19 +58,86 @@ raw_anpr_testset = pd.DataFrame({
     'confidence' : [90 , 85 , 84, 91, 34, 72, 0]
 })
 
-def test_pipeline(plot):
-    """Test default behavior."""
+expected_trips = pd.DataFrame({
+    'vehicle'  : ['']
+})
 
-    cameras = wrangle_cameras(
-        cameras             = raw_cameras_testset_1,
-        is_test_col         = "name",
-        is_commissioned_col = "is_commissioned",
-        road_attr_col       = "desc",
-        drop_car_park       = True,
-        drop_na_direction   = True,
-        distance_threshold  = 50.0,
-        sort_by             = "id"
-    )
+# Using global variables to avoid having to compute the same stuff twice
+
+wrangled_cameras = None
+raw_G = None
+merged_G = None
+camera_pairs = None
+
+### ----------------------------------------------------------------------------
+### ----------------------------------------------------------------------------
+### ----------------------------------------------------------------------------
+
+def get_wrangled_cameras():
+    global wrangled_cameras
+
+    if wrangled_cameras is None:
+        wrangled_cameras = wrangle_cameras(
+            cameras             = raw_cameras_testset_1,
+            is_test_col         = "name",
+            is_commissioned_col = "is_commissioned",
+            road_attr_col       = "desc",
+            drop_car_park       = True,
+            drop_na_direction   = True,
+            distance_threshold  = 50.0,
+            sort_by             = "id")
+
+    return wrangled_cameras
+
+
+def get_wrangled_network(plot = False):
+    global raw_G
+
+    if raw_G is None:
+        raw_G = network_from_cameras(
+            cameras = get_wrangled_cameras(),
+            filter_residential = False,
+            clean_intersections = True,
+            tolerance = 5,
+            plot = plot,
+            file_format = 'png',
+            fig_height = 12,
+            fig_width = 12
+        )
+
+    return raw_G
+
+def get_merged_network(plot = False):
+    global merged_G
+
+    if merged_G is None:
+        merged_G = merge_cameras_network(
+            G = get_wrangled_network(plot),
+            cameras = get_wrangled_cameras(),
+            plot = plot,
+            file_format = 'png',
+            fig_height = 12,
+            fig_width = 12
+        )
+
+    return merged_G
+
+def get_camera_pairs():
+    global camera_pairs
+
+    if camera_pairs is None:
+        G = get_merged_network()
+        camera_pairs = camera_pairs_from_graph(G)
+
+    return camera_pairs
+
+
+### ----------------------------------------------------------------------------
+### ----------------------------------------------------------------------------
+### ----------------------------------------------------------------------------
+
+def test_wrangle_cameras():
+    cameras = get_wrangled_cameras()
 
     assert len(cameras) == 6
 
@@ -89,6 +156,10 @@ def test_pipeline(plot):
     assert cameras.loc[cameras.id == '5'].iloc[0]['ref'] == "B1305"
 
     assert "Condercum Rd" in cameras[cameras['id'] == '5']['address'].iloc[0]
+
+
+def test_wrangle_nodes():
+    cameras = get_wrangled_cameras()
 
     nodes = map_nodes_cameras(
         raw_nodes_testset,
@@ -111,27 +182,11 @@ def test_pipeline(plot):
     # No camera with the same address
     assert pd.isna(nodes.loc[nodes.id == '6'].iloc[0]['camera'])
 
-    G = network_from_cameras(
-        cameras,
-        filter_residential = False,
-        clean_intersections = True,
-        tolerance = 5,
-        plot = plot,
-        file_format = 'png',
-        fig_height = 12,
-        fig_width = 12
-    )
+def test_wrangle_network_pairs(plot):
+    """Test default behavior."""
 
-    G = merge_cameras_network(
-        G,
-        cameras,
-        plot = plot,
-        file_format = 'png',
-        fig_height = 12,
-        fig_width = 12
-    )
-
-    pairs = camera_pairs_from_graph(G)
+    cameras = get_wrangled_cameras()
+    pairs = get_camera_pairs()
 
     for origin in pairs['origin']:
         assert origin[0:1] != 'c_'
@@ -156,16 +211,7 @@ def test_pipeline(plot):
 
 def test_wrangle_raw_anpr():
 
-    cameras = wrangle_cameras(
-        cameras             = raw_cameras_testset_1,
-        is_test_col         = "name",
-        is_commissioned_col = "is_commissioned",
-        road_attr_col       = "desc",
-        drop_car_park       = True,
-        drop_na_direction   = True,
-        distance_threshold  = 50.0,
-        sort_by             = "id"
-    )
+    cameras = get_wrangled_cameras()
 
     wrangled_anpr = wrangle_raw_anpr(
         raw_anpr_testset,
