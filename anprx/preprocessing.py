@@ -22,6 +22,7 @@ import time
 import numpy                as np
 import osmnx                as ox
 import pandas               as pd
+import pandas.api.types     as ptypes
 import networkx             as nx
 import geopandas            as gpd
 import logging              as lg
@@ -1439,15 +1440,19 @@ def wrangle_raw_anpr(
             .format(nrows, ",".join(df.columns.values)),
         level = lg.INFO)
 
-    mandatory_columns = {'vehicle', 'camera', 'timestamp'}
+    # Assert dtypes
+    str_cols = ['vehicle', 'camera']
+    num_cols = ['confidence']
+    dt_cols  = ['timestamp']
 
-    log("Checking if input dataframe contains mandatory columns {}."\
-            .format(mandatory_columns),
+    log(("Checking if input dataframe contains mandatory columns {} "
+         "and expected types.")\
+            .format(str_cols + num_cols + dt_cols),
          level = lg.INFO)
 
-    cols = set(df.columns.values)
-
-    assert mandatory_columns.issubset(cols)
+    assert all(ptypes.is_string_dtype(df[col]) for col in str_cols)
+    assert all(ptypes.is_numeric_dtype(df[col]) for col in num_cols)
+    assert all(ptypes.is_datetime64_any_dtype(df[col]) for col in dt_cols)
 
     # Check if vehicle has any missing data (should not)
     na_vehicles = df['vehicle'].isna().sum()

@@ -6,6 +6,7 @@ from   anprx.preprocessing import merge_cameras_network
 from   anprx.preprocessing import camera_pairs_from_graph
 from   anprx.preprocessing import map_nodes_cameras
 from   anprx.preprocessing import wrangle_raw_anpr
+# from   anprx.compute       import trip_identification
 
 import os
 import numpy               as     np
@@ -50,24 +51,100 @@ raw_nodes_testset = pd.DataFrame({
               "Northbound B1305 Condercum Rd", "St James Av A98 Northbound"]
 })
 
-raw_anpr_testset = pd.DataFrame({
-    'vehicle'    : ['AA00AAA', 'AA11AAA', 'AA00AAA', 'AA11AAA',
-                    'AA22AAA', 'AA22AAA', np.nan],
-    'camera'     : ['1', '3', '4', '10', '2', '4', '2'],
-    'timestamp'  : [1, 1, 2, 2, 3, 4, 0],
-    'confidence' : [90 , 85 , 84, 91, 34, 72, 0]
+#   Test raw ANPR dataset
+#
+#   vehicle | camera | timestamp | confidence
+#   ------------------------------------------
+#   AA00AAA |   1    |     0     |    90        (Camera 1 shd change to 1-10)
+#   AA00AAA |   1    |     5     |    92        (duplicate)
+#   AA00AAA |   2    |     90    |    84        (valid step)
+#   AA00AAA |   1    |    1e6    |    83        (new trip)
+#   AA00AAA |   2    |  1e6 +90  |    98        (valid step)
+#   ------------------------------------------
+#   AA11AAA |   3    |     0     |    82        (ok)
+#   AA11AAA |   10   |     100   |    96        (valid step, camera 10 -> 1-10)
+#   AA11AAA |   5    |     101   |    84        (too fast, should be filtered)
+#   ------------------------------------------
+#   AA22AAA |   4    |     0     |    90        (ok)
+#   AA22AAA |   4    |    1500   |    92        (new trip, same camera)
+#   AA22AAA |   3    |    1600   |    84        (valid step)
+#   AA22AAA |   3    |    1601   |    83        (duplicate)
+#   AA22AAA |   2    |    1700   |    35        (low confidence)
+#   ------------------------------------------
+#   np.nan  |   2    |     0     |    75        (nan license plate)
+
+baseline_date = pd.to_datetime('21000101', format='%Y%m%d', errors='coerce')
+
+raw_anpr_testset_v1 = pd.DataFrame({
+    'vehicle'    : ['AA00AAA'] * 5,
+    'camera'     : ['1', '1', '2', '1', '2'],
+    'timestamp'  : [0.0, 5.0, 90.0, 1e6, 1e6 + 90],
+    'confidence' : [90 , 92, 84 , 83, 98]
 })
 
-expected_trips = pd.DataFrame({
-    'vehicle'  : ['']
+raw_anpr_testset_v2 = pd.DataFrame({
+    'vehicle'    : ['AA11AAA'] * 3,
+    'camera'     : ['3', '10', '5'],
+    'timestamp'  : [0.0, 100.0, 101.0],
+    'confidence' : [82 , 96, 84]
+})
+
+raw_anpr_testset_v3 = pd.DataFrame({
+    'vehicle'    : ['AA22AAA'] * 5,
+    'camera'     : ['4', '4', '3', '3', '2'],
+    'timestamp'  : [0.0, 1500.0, 1600.0, 1601.0, 1700.0],
+    'confidence' : [90 , 92, 84 , 83, 35]
+})
+
+raw_anpr_testset_v4 = pd.DataFrame({
+    'vehicle'    : [np.nan],
+    'camera'     : ['2'],
+    'timestamp'  : [0.0],
+    'confidence' : [75.0]
+})
+
+raw_anpr_testset = pd.concat([raw_anpr_testset_v1, raw_anpr_testset_v2,
+                              raw_anpr_testset_v3, raw_anpr_testset_v4],
+                             axis = 0)
+#
+raw_anpr_testset['timestamp'] = raw_anpr_testset['timestamp']\
+    .apply(lambda x: baseline_date + pd.to_timedelta(x, unit = 's'))
+
+#   Expected Trips
+#
+#   vehicle | ori | dst | to | td | tt | d_ori | d_dst | trip | step | trip_len
+#   ----------------------------------------------------------------------------
+#   AA00AAA | NA  |  1  | NA | 0  | NA | NA    | W     |  1   |  1   |    3
+#   AA00AAA | 1   |  2  | 0  | 90 | 90 | W     | N-S   |  1   |  2   |    3
+#   AA00AAA | 2   |  NA | 90 | NA | NA | N-S   | NA    |  1   |  3   |    3
+#   ----------------------------------------------------------------------------
+#   AA00AAA | NA  |  1  | NA | 1e6| NA | NA    | W     |  2   |  1   |    3
+#   AA00AAA | 1   |  2  | 0  |1e6+90|90| W     | N-S   |  2   |  2   |    3
+#   AA00AAA | 2   |  NA |1e6+90|NA |NA | N-S   | NA    |  2   |  3   |    3
+#
+
+expected_trips_v1 = pd.DataFrame({
+    'vehicle'               : ['AA00AAA'] * 6,
+    'origin'                : [np.nan, '1', '2'] * 2,
+    'destination'           : ['1', '2', np.nan] * 2,
+    't_origin'              : [pd.NaT, 0, 90, pd.NaT, 1e6, 1e6 + 90.0],
+    't_destination'         : [0, 90.0, pd.NaT, 1e6, 1e6 + 90.0, pd.NaT],
+    'travel_time'           : [pd.NaT, 90.0, pd.NaT] * 2,
+    'direction_origin'      : [np.nan, 'W', 'N-S'] * 2,
+    'direction_destination' : ['W', 'N-S', np.nan] * 2,
+    'trip'                  : [1] * 3 + [2] * 3,
+    'trip_step'             : [1,2,3] * 2,
+    'trip_length'           : [3] * 6,
 })
 
 # Using global variables to avoid having to compute the same stuff twice
 
 wrangled_cameras = None
-raw_G = None
-merged_G = None
-camera_pairs = None
+raw_G            = None
+merged_G         = None
+camera_pairs     = None
+wrangled_anpr    = None
+trips            = None
 
 ### ----------------------------------------------------------------------------
 ### ----------------------------------------------------------------------------
@@ -131,6 +208,36 @@ def get_camera_pairs():
 
     return camera_pairs
 
+
+def get_wrangled_anpr(anonymise = True):
+    global wrangled_anpr
+
+    if wrangled_anpr is None:
+        wrangled_anpr = wrangle_raw_anpr(
+            raw_anpr_testset,
+            cameras = get_wrangled_cameras(),
+            filter_low_confidence = True,
+            confidence_threshold = 70,
+            anonymise = anonymise,
+            digest_size = 10,
+            digest_salt = b"ABC"
+        )
+
+    return wrangled_anpr
+
+# def get_trips():
+#     global trips
+#
+#     if trips is None:
+#         trips = trip_identification(
+#             anpr = get_wrangled_anpr(anonymise = False),
+#             camera_pairs = get_camera_pairs(),
+#             speed_threshold = 3.0, # km/h : 3 km/h = 1 km/20h
+#             duplicate_threshold = 60.0,
+#             maximum_av_speed = 90.0
+#         )
+#
+#     return trips
 
 ### ----------------------------------------------------------------------------
 ### ----------------------------------------------------------------------------
@@ -223,7 +330,18 @@ def test_wrangle_raw_anpr():
         digest_salt = b"ABC"
     )
 
-    assert len(wrangled_anpr) == 5
+    assert len(wrangled_anpr) == 12 # including two duplicates
     assert '1' not in wrangled_anpr['camera'].values
     assert '10' not in wrangled_anpr['camera'].values
     assert '1-10' in wrangled_anpr['camera'].values
+
+
+# def test_trips():
+#     cols = expected_trips_v1.columns.values
+#
+#     trips = get_trips()
+#     trips_v1 = trips.loc[trips.vehicle == "AA00AAA", cols]
+#
+#     pd.testing.assert_frame_equal(
+#         trips_v1, expected_trips_v1,
+#         check_dtype = True)
