@@ -25,13 +25,18 @@ def transform_anpr(anpr, od_separator = '_'):
     """
     start_time = time.time()
 
-    anpr['destination'  ]   = anpr.groupby('vehicle')['camera'].shift(-1)
-    anpr['t_destination']   = anpr.groupby('vehicle')['timestamp'].shift(-1)
-    anpr['travel_time'  ]   = anpr.t_destination - anpr.timestamp
+    anpr = anpr.assign(destination   = \
+        anpr.groupby('vehicle')['camera'].shift(-1))
+
+    anpr = anpr.assign(t_destination = \
+        anpr.groupby('vehicle')['timestamp'].shift(-1))
+
+    anpr = anpr.assign(travel_time   = \
+        anpr.t_destination - anpr.timestamp)
 
     # Rename columns
     anpr = anpr.rename(index=str,
-                     columns = {
+                       columns = {
                         "camera":"origin",
                         "timestamp":"t_origin"})
 
@@ -41,6 +46,15 @@ def transform_anpr(anpr, od_separator = '_'):
 
     # Computing 'od' column useful to merge with camera pairs dataframe
     anpr['od'] = anpr['origin'] + od_separator + anpr['destination']
+
+    # Sort by vehicle, t_origin: (necessary for cumulative operations)
+    anpr = anpr.sort_values(by = ['vehicle','t_origin'])\
+               .reset_index(drop = True)
+
+    # # Cumulative observations
+    # trips = trips.assign(observation = \
+    #     trips.assign(observation = True)\
+    #          .groupby('vehicle')['observation'].cumsum().astype('uint16'))
 
     # Reorder columns
     anpr = anpr.reindex(columns =
@@ -121,43 +135,28 @@ def trip_identification(
     camera_pairs = camera_pairs[['od', 'distance', 'valid',
                                  'direction_origin', 'direction_destination']]
 
-    camera_pairs['valid'] = camera_pairs['valid'].astype('bool')
-
     # Merge with camera pairs df to get distance, direction and validness
     trips = trips.merge(camera_pairs, how = "left", on = "od")
 
-    # Fill NaNs that were left out by left join
-    # (cases where destination was null as a result of the shift)
+    # replace 'NA' in destination with np.nan
+    trips = trips.replace("NA", np.nan)
 
+    # bit of a dirty hack for now because camera-pairs does not include invalid
+    # pairs with missing destination: 'CAMERA-NA'
+    origin_directions = {
+        x[0] : x[1] for x in trips.loc[~pd.isnull(trips.direction_origin)]\
+                                  .groupby(['origin', 'direction_origin'])\
+                                  .groups.keys()
+    }
 
-    # trips.loc[trips['direction_origin'].isnull(), 'direction_origin']\
-    #     = np.nan
-    #
-    # trips.loc[trips['direction_destination'].isnull(), 'direction_destination']\
-    #     = np.nan
-    #
-    # trips.loc[trips['od'].isnull(), 'od']\
-    #     = trips.loc[trips['od'].isnull(), 'origin'] + "-NA"
+    # direction origin for cases with destination = NULL
+    trips.loc[trips['destination'].isnull(), 'direction_origin'] = \
+        trips.loc[trips['destination'].isnull(), 'origin']\
+               .apply(lambda x: origin_directions[x])
 
     # And compute average speed in km/h
     trips['av_speed'] = \
         (trips.distance * 0.001)/(trips.travel_time / np.timedelta64(1, 'h'))
-
-    # Drop observations whose average speed is greater than "physically" possible
-    # caused probably by camera errors.
-    nrows = len(trips)
-    trips = trips.drop(trips.loc[trips['av_speed'] > maximum_av_speed].index)
-
-    if len(trips) == 0:
-        log("No more rows, after filtering unfeasible observations.",
-            level = lg.WARNING)
-        return trips
-
-    frows = nrows - len(trips)
-    log(("Filtered {}/{} ({:,.2f} %) observations labelled as unfeasible. "
-         "Total: {}")\
-            .format(frows, nrows, frows/nrows*100, len(trips)),
-        level = lg.INFO)
 
     # Duplicates
     # ----------------------------------------------------------------------
@@ -190,8 +189,48 @@ def trip_identification(
         (trips.origin == trips.destination) & \
         (trips['travel_time'].dt.total_seconds() < duplicate_threshold)
 
-    with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-        log("{}".format(trips))
+    # tricky bit: correct the timestamp 't_origin' of the
+    #             next valid observation of that vehicle
+    # ---
+    # index+1 is guaranteed to return a row for the exact same vehicle,
+    # because the last observation of any group of observations in the dataset
+    # always have NA as destination, where the dataset is grouped by vehicle
+    # ---
+    # This becomes extra tricky when working with several duplicates in a row
+    # If there was only one duplicate at a time, the fix would be:
+    #
+    #   trips.loc[trips[trips.duplicate].index+1, 't_origin'] = \
+    #       trips.loc[trips.duplicate, 't_origin'].values
+    # ---
+
+    # But we know that there are many [True -> False] transitions as there
+    # are [False -> True]. I.e. for a given duplicate, there is always a
+    # subsequent non-duplicate observation. By finding these transitions,
+    # we are effectively finding the first duplicates and then the corresponding
+    # valid observation.
+    # ASSUMPTION: trips are sorted by vehicle and timestamp
+    # (otherwise, this won't work)
+
+    v = trips['duplicate'].astype(np.uint8)
+    transitions = v - v.shift(1).fillna(0)
+
+    # Transition True to False means the first valid observation after a
+    # sequence of duplicates
+    duplicate_reset_ind  = np.where(transitions == -1)[0]
+    # Transition False -> True means the first duplicate after a sequence of
+    # valid observations
+    first_duplicates_ind = np.where(transitions == 1)[0]
+
+    trips.loc[duplicate_reset_ind, 't_origin'] = \
+        trips.loc[first_duplicates_ind, 't_origin'].values
+
+    trips.loc[duplicate_reset_ind, 'travel_time'] = \
+        trips.loc[duplicate_reset_ind, 't_destination'] - \
+        trips.loc[duplicate_reset_ind, 't_origin']
+
+    trips.loc[duplicate_reset_ind, 'av_speed'] = \
+        (trips.loc[duplicate_reset_ind, 'distance'] * 0.001) / \
+        (trips.loc[duplicate_reset_ind, 'travel_time'] / np.timedelta64(1, 'h'))
 
     log("Identified {} duplicates using temporal threshold = {:,.1f} sec"\
             .format(len(trips.loc[trips.duplicate == True]),
@@ -218,7 +257,70 @@ def trip_identification(
             .format(frows, nrows, frows/nrows*100, len(trips)),
         level = lg.INFO)
 
-    # ====nrows
+    # Unfeasible observations
+    # --------------------------------------------------------------------------
+    # Drop observations whose average speed is greater than "physically"
+    # possible. Caused probably by camera errors.
+    #
+    # Care must be taken when removing rows that are in edge format, otherwise
+    # the following observation will have an incorrect origin or destination
+    #
+    #   vehicle | origin | destination | travel time | duplicate
+    #   -------   ------   -----------   -----------   ---------
+    #       A       33          34          90.0 sec      False
+    #       A       34          34          0.5 sec       True
+    #       A       34          102         3 hours       False
+
+    nrows = len(trips)
+
+    # we use the same strategy as above (duplicates)
+    # we want to modify the origin/t_origin field of the first valid
+    # observation after a sequence of invalid observations
+    v = (trips['av_speed'] > maximum_av_speed).astype(np.uint8)
+
+    transitions = (v - v.shift(1).fillna(0))
+
+    reset_ind  = transitions == -1
+    first_ind  = transitions == 1
+
+    trips.loc[reset_ind, 'origin'] = \
+        trips.loc[first_ind, 'origin'].values
+
+    trips.loc[reset_ind, 't_origin'] = \
+        trips.loc[first_ind, 't_origin'].values
+
+    trips.loc[reset_ind, 'od'] = \
+        trips.loc[reset_ind, 'origin'] + od_separator + \
+        trips.loc[reset_ind, 'destination']
+
+    trips.loc[reset_ind, 'travel_time'] = \
+        trips.loc[reset_ind, 't_destination'] - \
+        trips.loc[reset_ind, 't_origin']
+
+    trips.loc[reset_ind] = \
+        trips.loc[reset_ind,
+                  ['vehicle','origin','destination','od',
+                   'travel_time','t_origin','t_destination','confidence']]\
+             .merge(camera_pairs, how = "left", on = "od")\
+             .set_index(trips.loc[reset_ind].index)
+
+    trips.loc[reset_ind, 'av_speed'] = \
+        (trips.loc[reset_ind, 'distance'] * 0.001) / \
+        (trips.loc[reset_ind, 'travel_time'] / np.timedelta64(1, 'h'))
+
+    trips = trips.drop(trips.loc[trips['av_speed'] > maximum_av_speed].index)
+
+    if len(trips) == 0:
+        log("No more rows, after filtering unfeasible observations.",
+            level = lg.WARNING)
+        return trips
+
+    frows = nrows - len(trips)
+    log(("Filtered {}/{} ({:,.2f} %) observations labelled as unfeasible. "
+         "Total: {}")\
+            .format(frows, nrows, frows/nrows*100, len(trips)),
+        level = lg.INFO)
+
     # Trip Identification:
     #   Currently based on average speed: if the average speed of the vehicle
     #   travelling the shortest path between origin and destination is lower than
@@ -240,9 +342,6 @@ def trip_identification(
     #       A       102         33          4 min         2
     #
     # ====
-    # Sort by vehicle, t_origin: (necessary for cumulative operations)
-    trips = trips.sort_values(by = ['vehicle','t_origin'])\
-                 .reset_index(drop = True)
 
     trips['trip'] = \
         (trips['av_speed'] < speed_threshold) | \
@@ -252,18 +351,18 @@ def trip_identification(
     trips['trip'] = trips.groupby('vehicle')['trip'].shift(1).fillna(False)
     # trips start at index 1
     trips['trip'] = trips.groupby('vehicle')['trip'].cumsum()\
-                         .astype('uint16') + 1
+                         .astype('uint64')+1
 
     # Add origin=NA first dummy observation to every trip
     fdf = trips.groupby(['vehicle', 'trip']).nth(0).reset_index()
     fdf['destination'  ]  = fdf['origin']
     fdf['origin'       ]  = np.nan
-    fdf['rest_time'    ]  = fdf['travel_time']
+    fdf['rest_time'    ]  = np.nan
     fdf['travel_time'  ]  = pd.NaT
     fdf['t_destination']  = fdf['t_origin']
     fdf['t_origin'     ]  = pd.NaT
     fdf['confidence'   ]  = np.nan
-    fdf['od'           ]  = "NA-" + fdf['destination']
+    fdf['od'           ]  = "NA" + od_separator + fdf['destination']
     fdf['distance'     ]  = np.nan
     fdf['av_speed'     ]  = np.nan
     fdf['valid'        ]  = np.nan
@@ -289,12 +388,20 @@ def trip_identification(
 
     # Adding info cols about trips
     trips['trip_length'] = trips.groupby(['vehicle','trip'])['origin']\
-                                .transform('size')
+                                .transform('size').astype('uint16')
 
-    trips['trip_step'  ] = trips.groupby(['vehicle','trip']).cumcount()+1
+    trips['trip_step'  ] = trips.groupby(['vehicle','trip'])\
+                                .cumcount().astype('uint16')+1
 
-    # sort by vehicle, trip and trip_step
-    # df = df.sort_values(by = ['vehicle', 'trip', 'trip_step'])
+    # rest time
+    ntrips = dict(trips.groupby(['vehicle'])['trip'].unique().apply(lambda x: len(x)))
+    trips['ntrips'] = trips.vehicle.apply(lambda x: ntrips[x])
+
+    trips.loc[(trips.trip > 1) & (trips.trip_step == 1), 'rest_time'] = \
+        trips.loc[(trips.trip < trips.ntrips) & \
+                  (trips.trip_step == trips.trip_length), 'travel_time'].values
+
+    trips['rest_time'] = trips['rest_time'].astype('timedelta64[ns]')
 
     # Add nans and NaTs for appropriate variables at the last step of each group
     trips.loc[trips.trip_step == trips.trip_length,
@@ -304,21 +411,16 @@ def trip_identification(
     trips.loc[trips.trip_step == trips.trip_length,
       ['t_destination', 'travel_time']] = pd.NaT
 
+    # trips.loc[trips.trip_step == trips.trip_length,'direction_origin'] = \
+    #     trips.loc[trips.trip_step == (trips.trip_length-1),'direction_destination']
+
     trips.loc[trips.trip_step == trips.trip_length, 'od'] = \
-        trips[trips.trip_step == trips.trip_length]['od'].str.split(pat="-")\
-                                                         .str[0] + "-NA"
-
-    # Fix dtypes
-    trips['distance'] = trips['distance'].fillna(np.nan).astype('Float64')
-    trips['av_speed'] = trips['av_speed'].fillna(np.nan).astype('Float64')
-
+        trips[trips.trip_step == trips.trip_length]['od']\
+             .str.split(pat=od_separator).str[0] + od_separator + "NA"
 
     log("Identified trips from raw anpr data in {:,.2f} sec"\
             .format(time.time() - start_time),
         level = lg.INFO)
-
-    with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-        log("{}".format(trips))
 
     return trips
 
