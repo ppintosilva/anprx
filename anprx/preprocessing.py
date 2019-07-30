@@ -1556,4 +1556,4 @@ def wrangle_raw_anpr(
             .format(time.time()-start_time, frows, frows/len(df)*100, len(df)),
         level = lg.INFO)
 
-    return df
+    return df.reset_index(drop = True)
