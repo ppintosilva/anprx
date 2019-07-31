@@ -846,7 +846,7 @@ def camera_candidate_edges(
 def identify_cameras_merge(
     G,
     cameras,
-    camera_range = 40.0
+    camera_range = 45.0
 ):
     """
     Identify camera merges
@@ -1033,7 +1033,7 @@ def merge_cameras_network(
     G,
     cameras,
     passes = 3,
-    camera_range = 40.0,
+    camera_range = 45.0,
     plot = True,
     **plot_kwargs
 ):
