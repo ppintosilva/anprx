@@ -773,6 +773,9 @@ def camera_candidate_edges(
     candidate_edges = nedges[in_range_slice]
 
     if len(candidate_edges) == 0:
+        log("No edges in range of camera {}. Closeste edge {} at {:,.2f} m"\
+                .format(camera['id'], nedges[0][0], distances[0]),
+            level = level.WARNING)
         return candidate_edges
 
     # filter out candidates not pointing in same direction and re-arrange
@@ -872,7 +875,7 @@ def identify_cameras_merge(
                  "Appending to untreatable list.")\
                     .format(index, id, camera_range),
                 level = lg.WARNING)
-            untreatable.append(index)
+            untreatable.append(id)
             continue
 
         # filter candidates not same dir and arrange by same address
@@ -891,7 +894,7 @@ def identify_cameras_merge(
                  "same direction {} as the camera. Flagging as untreatable.")\
                     .format(index, id, row['direction']),
                 level = lg.ERROR)
-            untreatable.append(index)
+            untreatable.append(id)
             continue
 
         log(("({}) - Camera {} has {}/{} edges pointing in the same direction "
@@ -1136,12 +1139,10 @@ def merge_cameras_network(
         log(("{} cameras ({}) were flagged as 'untreatable' because there were "
              "no edges nearby that fit the distance and direction requirements."
              "Because of this they were not merged.")\
-            .format(len(all_untreatable),
-                    cameras.loc[all_untreatable]['id'].tolist()),
+            .format(len(all_untreatable), all_untreatable),
         level = lg.WARNING)
     else:
-        log(("No cameras were flagged as 'untreatable'.")\
-                .format(i+1, passes, len(untreated)),
+        log(("No cameras were flagged as 'untreatable'."),
             level = lg.INFO)
 
     if len(to_merge) > 0:
