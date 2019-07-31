@@ -775,7 +775,7 @@ def camera_candidate_edges(
     if len(candidate_edges) == 0:
         log("No edges in range of camera {}. Closeste edge {} at {:,.2f} m"\
                 .format(camera['id'], nedges[0][0], distances[0]),
-            level = level.WARNING)
+            level = lg.WARNING)
         return candidate_edges
 
     # filter out candidates not pointing in same direction and re-arrange
