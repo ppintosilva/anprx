@@ -119,12 +119,28 @@ def trip_identification(
     num_cols = ['confidence']
     dt_cols  = ['timestamp']
 
+    log("Running asserts and checks...", level = lg.INFO)
+
     assert all(ptypes.is_string_dtype(anpr[col]) for col in str_cols)
     assert all(ptypes.is_numeric_dtype(anpr[col]) for col in num_cols)
     assert all(ptypes.is_datetime64_any_dtype(anpr[col]) for col in dt_cols)
 
+    camera_diff = set(anpr['camera'].unique()) - \
+                  set(camera_pairs['origin'].unique())
+
+    if len(camera_diff) > 0:
+        log(("There are cameras in the anpr dataset that are not present in "
+            "the camera-pairs dataset: {}.")\
+                .format(camera_diff),
+            level = lg.ERROR)
+        assert len(camera_diff) == 0
+
+    log("Transforming anpr data into edge format.", level = lg.INFO)
+
     # Transform raw anpr data to edge format
     trips = transform_anpr(anpr, od_separator)
+
+    partial_time = time.time()
 
     # Preparing Camera Pairs for merge
     ## adding 'od' column
@@ -137,6 +153,12 @@ def trip_identification(
 
     # Merge with camera pairs df to get distance, direction and validness
     trips = trips.merge(camera_pairs, how = "left", on = "od")
+
+    log(("Merged anpr with camera pairs to gain distance and direction data "
+         "in {:,.2f} sec").format(time.time() - partial_time),
+        level = lg.INFO)
+
+    partial_time = time.time()
 
     # replace 'NA' in destination with np.nan
     trips = trips.replace("NA", np.nan)
@@ -153,6 +175,12 @@ def trip_identification(
     trips.loc[trips['destination'].isnull(), 'direction_origin'] = \
         trips.loc[trips['destination'].isnull(), 'origin']\
                .apply(lambda x: origin_directions[x])
+
+    log(("Fixed direction origin for cases with destination = nan "
+         "in {:,.2f} sec").format(time.time() - partial_time),
+        level = lg.INFO)
+
+    partial_time = time.time()
 
     # And compute average speed in km/h
     trips['av_speed'] = \
@@ -252,10 +280,13 @@ def trip_identification(
         return trips
 
     frows = nrows - len(trips)
-    log(("Filtered {}/{} ({:,.2f} %) observations labelled as duplicates. "
-        "Total: {}")\
-            .format(frows, nrows, frows/nrows*100, len(trips)),
+    log(("Filtered {}/{} ({:,.2f} %) observations labelled as duplicates "
+        "in {:,.2f} sec. Total: {}")\
+            .format(frows, nrows, frows/nrows*100,
+                    time.time() - partial_time, len(trips)),
         level = lg.INFO)
+
+    partial_time = time.time()
 
     # Unfeasible observations
     # --------------------------------------------------------------------------
@@ -316,10 +347,14 @@ def trip_identification(
         return trips
 
     frows = nrows - len(trips)
-    log(("Filtered {}/{} ({:,.2f} %) observations labelled as unfeasible. "
-         "Total: {}")\
-            .format(frows, nrows, frows/nrows*100, len(trips)),
+    log(("Filtered {}/{} ({:,.2f} %) observations labelled as unfeasible "
+         "(when a vehicle moves unrealistically fast between two cameras) "
+         "in {:,.2f} sec. Total: {}")\
+            .format(frows, nrows, frows/nrows*100,
+                    time.time() - partial_time, len(trips)),
         level = lg.INFO)
+
+    partial_time = time.time()
 
     # Trip Identification:
     #   Currently based on average speed: if the average speed of the vehicle
@@ -417,6 +452,10 @@ def trip_identification(
     trips.loc[trips.trip_step == trips.trip_length, 'od'] = \
         trips[trips.trip_step == trips.trip_length]['od']\
              .str.split(pat=od_separator).str[0] + od_separator + "NA"
+
+    log(("Added trips to each vehicle and fixed the corresponding first/last "
+         "steps in {:,.2f} sec").format(time.time() - partial_time),
+        level = lg.INFO)
 
     log("Identified trips from raw anpr data in {:,.2f} sec"\
             .format(time.time() - start_time),
