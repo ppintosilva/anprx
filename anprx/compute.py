@@ -162,10 +162,10 @@ def trip_identification(
     partial_time = time.time()
 
     # replace 'NA' in destination with np.nan
-    trips = trips.replace("NA", np.nan)
+    trips.loc[trips.destination == "NA", 'destination'] = np.nan
 
-    log(("Fixed direction origin for cases with destination = nan "
-         "in {:,.2f} sec").format(time.time() - partial_time),
+    log(("Replaced 'NA' with nan in destination column in {:,.2f} sec")\
+            .format(time.time() - partial_time),
         level = lg.INFO)
 
     partial_time = time.time()
@@ -417,7 +417,9 @@ def trip_identification(
                                 .cumcount().astype('uint16')+1
 
     # rest time
-    ntrips = dict(trips.groupby(['vehicle'])['trip'].unique().apply(lambda x: len(x)))
+    ntrips = dict(trips.groupby(['vehicle'])['trip']\
+                       .unique().apply(lambda x: len(x)))
+
     trips['ntrips'] = trips.vehicle.apply(lambda x: ntrips[x])
 
     trips.loc[(trips.trip > 1) & (trips.trip_step == 1), 'rest_time'] = \
