@@ -144,6 +144,8 @@ def trip_identification(
     partial_time = time.time()
 
     # Preparing Camera Pairs for merge
+    camera_pairs = camera_pairs.fillna({'destination' : 'NA'})
+
     ## adding 'od' column
     camera_pairs['od'] = camera_pairs['origin'] + od_separator + \
                          camera_pairs['destination']
