@@ -4,6 +4,7 @@
 from   .utils               import log
 
 import os
+import ray
 import math
 import time
 import numpy                as np
@@ -450,103 +451,94 @@ def trip_identification(
 
     return trips
 
-# def all_ods_displacement(
-#     df,
-#     buffer_size = 200,
-#     parallel = True,
-#     shutdown_ray = True,
-#     origin_col = 'origin',
-#     destination_col = 'destination',
-#     t1_col = 't_origin',
-#     t2_col = 't_destination'
-#
-# ):
-#     """
-#     Calculate displacement for all origin-destination pairs in dataframe.
-#     """
-#
-#     dfs = []
-#
-#     if parallel:
-#         jobs = []
-#         # janky initialisation but go for it
-#         import ray
-#         if not ray.is_initialized():
-#             ray.init()
-#
-#     groups = df.groupby([origin_col, destination_col])
-#
-#     for group, group_df in groups:
-#
-#         if parallel:
-#             job_id = rdisplacement.remote(group_df, buffer_size, t1_col, t2_col)
-#             obs.append(job_id)
-#         else:
-#             newdf = displacement(group_df, buffer_size, t1_col, t2_col)
-#             dfs.append(newdf)
-#
-#     if parallel:
-#         dfs = ray.get(jobs)
-#         if shutdown_ray:
-#             ray.shutdown()
-#
-#     return pd.concat(dfs).sort_index()
-#
-# def displacement(
-#     df,
-#     buffer_size = 200,
-#     t1_col = "t_origin",
-#     t2_col = "t_destination"
-# ):
-#     """
-#     Calculate displacement of vehicles travelling from A to B.
-#     """
-#     newdf = df.reset_index()
-#     size = len(newdf)
-#
-#     dps = np.zeros([size], dtype = np.uint16)
-#     dns = np.zeros([size], dtype = np.uint16)
-#
-#     for i, row in newdf.iterrows():
-#         # bound df so that we don't run expensive query on the entire group dataframe
-#         # pandas doesn't throw out of bounds error so it's alright to use out of bound indexes in either direction
-#         wdf = newdf.loc[(i - buffer_size):(i + buffer_size)]
-#
-#         dps[i] = np.sum((wdf.to > row[t1_col]) & (wdf.td < row[t2_col]))
-#         dns[i] = np.sum((wdf.to < row[t1_col]) & (wdf.td > row[t2_col]))
-#
-#     newdf = newdf.assign(dp = dps)
-#     newdf = newdf.assign(dn = dns)
-#     newdf = newdf.set_index('index')
-#
-#     return newdf
-#
-# @ray.remote
-# def rdisplacement(
-#     df,
-#     buffer_size = 200,
-#     t1_col = "t_origin",
-#     t2_col = "t_destination"
-# ):
-#     """
-#     Calculate displacement of vehicles travelling from A to B.
-#     """
-#     newdf = df.reset_index()
-#     size = len(newdf)
-#
-#     dps = np.zeros([size], dtype = np.uint16)
-#     dns = np.zeros([size], dtype = np.uint16)
-#
-#     for i, row in newdf.iterrows():
-#         # bound df so that we don't run expensive query on the entire group dataframe
-#         # pandas doesn't throw out of bounds error so it's alright to use out of bound indexes in either direction
-#         wdf = newdf.loc[(i - buffer_size):(i + buffer_size)]
-#
-#         dps[i] = np.sum((wdf.to > row[t1_col]) & (wdf.td < row[t2_col]))
-#         dns[i] = np.sum((wdf.to < row[t1_col]) & (wdf.td > row[t2_col]))
-#
-#     newdf = newdf.assign(dp = dps)
-#     newdf = newdf.assign(dn = dns)
-#     newdf = newdf.set_index('index')
-#
-#     return newdf
+def all_ods_displacement(
+    df,
+    buffer_size = 200,
+    parallel = True,
+    shutdown_ray = True
+):
+    """
+    Calculate displacement for all origin-destination pairs in dataframe.
+    """
+
+    dfs = []
+
+    if parallel:
+        jobs = []
+        # janky initialisation but go for it
+        import ray
+        if not ray.is_initialized():
+            ray.init()
+
+    groups = df.groupby(['origin', 'destination'])
+
+    for group, group_df in groups:
+
+        if parallel:
+            job_id = rdisplacement.remote(group_df, buffer_size)
+            obs.append(job_id)
+        else:
+            newdf = displacement(group_df, buffer_size)
+            dfs.append(newdf)
+
+    if parallel:
+        dfs = ray.get(jobs)
+        if shutdown_ray:
+            ray.shutdown()
+
+    return pd.concat(dfs).sort_index()
+
+def displacement(df, buffer_size = 200):
+    """
+    Calculate displacement of vehicles travelling from A to B.
+    """
+    newdf = df.reset_index(drop = False)
+    size = len(newdf)
+
+    dps = np.zeros([size], dtype = np.uint16)
+    dns = np.zeros([size], dtype = np.uint16)
+
+    for i, row in newdf.iterrows():
+        # bound df so that we don't run expensive query on the entire group dataframe
+        # pandas doesn't throw out of bounds error so it's alright to use out of bound indexes in either direction
+        wdf = newdf.loc[(i - buffer_size):(i + buffer_size)]
+
+        dps[i] = np.sum((wdf.to > row["t_origin"]) & \
+                        (wdf.td < row["t_destination"]))
+
+        dns[i] = np.sum((wdf.to < row["t_origin"]) & \
+                        (wdf.td > row["t_destination"]))
+
+    newdf = newdf.assign(dp = dps)
+    newdf = newdf.assign(dn = dns)
+    newdf = newdf.set_index('index')
+
+    return newdf
+
+@ray.remote
+def rdisplacement(df, buffer_size = 200):
+    """
+    Calculate displacement of vehicles travelling from A to B.
+    """
+    newdf = df.reset_index(drop = False)
+    size = len(newdf)
+
+    dps = np.zeros([size], dtype = np.uint16)
+    dns = np.zeros([size], dtype = np.uint16)
+
+    for i, row in newdf.iterrows():
+        # bound df so that we don't run expensive query on the entire group dataframe
+        # pandas doesn't throw out of bounds error so it's alright to use out of bound indexes in either direction
+        wdf = newdf.loc[(i - buffer_size):(i + buffer_size)]
+
+        dps[i] = np.sum((wdf.to > row["t_origin"]) & \
+                        (wdf.td < row["t_destination"]))
+
+        dns[i] = np.sum((wdf.to < row["t_origin"]) & \
+                        (wdf.td > row["t_destination"]))
+
+    newdf = newdf.assign(dp = dps)
+    newdf = newdf.assign(dn = dns)
+    newdf = newdf.set_index('index')
+
+    return newdf

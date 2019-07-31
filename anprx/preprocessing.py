@@ -1314,7 +1314,7 @@ def camera_pairs_from_graph(G):
         'direction_origin'     : cameras['direction'],
         'direction_destination': [np.nan] * len(cameras),
         'path'                 : [np.nan] * len(cameras),
-        'valid'                : [np.nan] * len(cameras)}
+        'valid'                : np.zeros(len(cameras), dtype = int)}
     )
 
     camera_pairs = pd.concat([valid_camera_pairs,
