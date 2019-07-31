@@ -163,19 +163,6 @@ def trip_identification(
     # replace 'NA' in destination with np.nan
     trips = trips.replace("NA", np.nan)
 
-    # bit of a dirty hack for now because camera-pairs does not include invalid
-    # pairs with missing destination: 'CAMERA-NA'
-    origin_directions = {
-        x[0] : x[1] for x in trips.loc[~pd.isnull(trips.direction_origin)]\
-                                  .groupby(['origin', 'direction_origin'])\
-                                  .groups.keys()
-    }
-
-    # direction origin for cases with destination = NULL
-    trips.loc[trips['destination'].isnull(), 'direction_origin'] = \
-        trips.loc[trips['destination'].isnull(), 'origin']\
-               .apply(lambda x: origin_directions[x])
-
     log(("Fixed direction origin for cases with destination = nan "
          "in {:,.2f} sec").format(time.time() - partial_time),
         level = lg.INFO)

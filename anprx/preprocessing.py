@@ -1307,10 +1307,22 @@ def camera_pairs_from_graph(G):
         'valid'                : np.zeros(len(source), dtype = int)}
     )
 
-    camera_pairs = pd.concat([valid_camera_pairs, invalid_camera_pairs], axis=0)
+    null_dest_camera_pairs = pd.DataFrame(data = {
+        'origin'               : cameras['id'],
+        'destination'          : ['NA'] * len(cameras),
+        'distance'             : [np.nan] * len(cameras),
+        'direction_origin'     : cameras['direction'],
+        'direction_destination': [np.nan] * len(cameras),
+        'path'                 : [np.nan] * len(cameras),
+        'valid'                : [np.nan] * len(cameras)}
+    )
+
+    camera_pairs = pd.concat([valid_camera_pairs,
+                              invalid_camera_pairs,
+                              null_dest_camera_pairs], axis=0)
 
     total_pairs = len(cameras) ** 2
-    assert len(camera_pairs) == total_pairs
+    assert len(camera_pairs) == (total_pairs + len(cameras))
 
     total_valid = len(camera_pairs[camera_pairs.valid == 1])
 
