@@ -1087,7 +1087,7 @@ def merge_cameras_network(
             level = lg.INFO)
 
         cameras_to_add, edges_to_remove, edges_to_add, untreated, untreatable =\
-            identify_cameras_merge(G, to_merge)
+            identify_cameras_merge(G, to_merge, camera_range)
 
         all_untreatable.update(untreatable)
 
