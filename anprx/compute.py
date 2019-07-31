@@ -457,7 +457,7 @@ def trip_identification(
 
 def all_ods_displacement(
     df,
-    buffer_size = 200,
+    buffer_size = 100,
     parallel = True,
     shutdown_ray = True
 ):
@@ -480,7 +480,7 @@ def all_ods_displacement(
 
         if parallel:
             job_id = rdisplacement.remote(group_df, buffer_size)
-            obs.append(job_id)
+            jobs.append(job_id)
         else:
             newdf = displacement(group_df, buffer_size)
             dfs.append(newdf)
@@ -492,7 +492,7 @@ def all_ods_displacement(
 
     return pd.concat(dfs).sort_index()
 
-def displacement(df, buffer_size = 200):
+def displacement(df, buffer_size = 100):
     """
     Calculate displacement of vehicles travelling from A to B.
     """
@@ -504,14 +504,15 @@ def displacement(df, buffer_size = 200):
 
     for i, row in newdf.iterrows():
         # bound df so that we don't run expensive query on the entire group dataframe
-        # pandas doesn't throw out of bounds error so it's alright to use out of bound indexes in either direction
+        # pandas doesn't throw out of bounds error so it's alright
+        # to use out of bound indexes in either direction
         wdf = newdf.loc[(i - buffer_size):(i + buffer_size)]
 
-        dps[i] = np.sum((wdf.to > row["t_origin"]) & \
-                        (wdf.td < row["t_destination"]))
+        dps[i] = np.sum((wdf.t_origin      > row["t_origin"]) & \
+                        (wdf.t_destination < row["t_destination"]))
 
-        dns[i] = np.sum((wdf.to < row["t_origin"]) & \
-                        (wdf.td > row["t_destination"]))
+        dns[i] = np.sum((wdf.t_origin      < row["t_origin"]) & \
+                        (wdf.t_destination > row["t_destination"]))
 
     newdf = newdf.assign(dp = dps)
     newdf = newdf.assign(dn = dns)
@@ -520,7 +521,7 @@ def displacement(df, buffer_size = 200):
     return newdf
 
 @ray.remote
-def rdisplacement(df, buffer_size = 200):
+def rdisplacement(df, buffer_size = 100):
     """
     Calculate displacement of vehicles travelling from A to B.
     """
@@ -535,11 +536,11 @@ def rdisplacement(df, buffer_size = 200):
         # pandas doesn't throw out of bounds error so it's alright to use out of bound indexes in either direction
         wdf = newdf.loc[(i - buffer_size):(i + buffer_size)]
 
-        dps[i] = np.sum((wdf.to > row["t_origin"]) & \
-                        (wdf.td < row["t_destination"]))
+        dps[i] = np.sum((wdf.t_origin      > row["t_origin"]) & \
+                        (wdf.t_destination < row["t_destination"]))
 
-        dns[i] = np.sum((wdf.to < row["t_origin"]) & \
-                        (wdf.td > row["t_destination"]))
+        dns[i] = np.sum((wdf.t_origin     < row["t_origin"]) & \
+                        (wdf.t_destination > row["t_destination"]))
 
     newdf = newdf.assign(dp = dps)
     newdf = newdf.assign(dn = dns)
