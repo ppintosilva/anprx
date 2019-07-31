@@ -747,7 +747,7 @@ def close_up_plots(
 def camera_candidate_edges(
     G,
     camera,
-    camera_range = 40.0
+    camera_range = 45.0
 ):
     """
     Identify valid candidate edges
@@ -774,7 +774,7 @@ def camera_candidate_edges(
 
     if len(candidate_edges) == 0:
         log("No edges in range of camera {}. Closeste edge {} at {:,.2f} m"\
-                .format(camera['id'], nedges[0][0], distances[0]),
+                .format(camera['id'], tuple(nedges[0][0][1:]), distances[0]),
             level = lg.WARNING)
         return candidate_edges
 
@@ -1138,7 +1138,7 @@ def merge_cameras_network(
     if len(all_untreatable) > 0:
         log(("{} cameras ({}) were flagged as 'untreatable' because there were "
              "no edges nearby that fit the distance and direction requirements."
-             "Because of this they were not merged.")\
+             " Because of this they were not merged.")\
             .format(len(all_untreatable), all_untreatable),
         level = lg.WARNING)
     else:
