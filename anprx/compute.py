@@ -623,17 +623,10 @@ def discretise_time(trips, freq):
     else:
         trips = tmp2
 
-    trips['period'] = trips['period'].apply(lambda x: pd.Period(x, freq))
+    # trips['period'] = trips['period'].apply(lambda x: pd.Period(x, freq))
 
     log("Discretised time in {:,.2f} sec. Added {} rows. Total rows = {}."\
             .format(time.time() - start_time, len(trips) - nrows, len(trips)),
         level = lg.INFO)
 
     return trips
-
-
-def flows(trips, freq):
-    """
-    Aggregate trip data to compute flows.
-    """
-    pass
