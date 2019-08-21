@@ -532,8 +532,9 @@ def rdisplacement(df, buffer_size = 100):
     dns = np.zeros([size], dtype = np.uint16)
 
     for i, row in newdf.iterrows():
-        # bound df so that we don't run expensive query on the entire group dataframe
-        # pandas doesn't throw out of bounds error so it's alright to use out of bound indexes in either direction
+        # bound df so that we don't run expensive query on the entire group
+        # dataframe pandas doesn't throw out of bounds error so it's alright
+        # to use out of bound indexes in either direction
         wdf = newdf.loc[(i - buffer_size):(i + buffer_size)]
 
         dps[i] = np.sum((wdf.t_origin      > row["t_origin"]) & \
@@ -547,3 +548,92 @@ def rdisplacement(df, buffer_size = 100):
     newdf = newdf.set_index('index')
 
     return newdf
+
+def discretise_time(trips, freq):
+    start_time = time.time()
+    nrows = len(trips)
+
+    log("Discretising time of trips (len = {}) into {} periods"\
+            .format(len(trips), freq),
+        level = lg.INFO)
+
+    sorted_time = trips['t_destination'].dropna()
+
+    periods = pd.date_range(start = sorted_time.min(),
+                            end   = sorted_time.max(),
+                            freq  = freq)
+
+    trips = trips.assign(
+            period_o = trips.t_origin.dt.floor(freq),
+            period_d = trips.t_destination.dt.ceil(freq)
+        )
+
+    # Cases where origin is NA, we want the floor of period_d instead of ceiling
+    trips.loc[trips.trip_step == 1, 'period_d'] = \
+        trips.loc[trips.trip_step == 1, 't_destination'].dt.floor(freq)
+
+    # To handle trip steps that span several time intervals, we augment
+    # the original dataframe by adding as many rows per trip step as many
+    # intervals it spans
+    # E.g:
+    # ----------------------------------------------------------------
+    # INPUT
+    # ----------------------------------------------------------------
+    # vehicle origin destination trip trip_step o_time    d_time
+    # AAA     33     34          1    2         00:00:00  00:15:00
+    # ----------------------------------------------------------------
+    # OUTPUT
+    # ----------------------------------------------------------------
+    # vehicle origin destination trip trip_step t
+    # AAA     33     34          1    2         00:05:00
+    # AAA     33     34          1    2         00:10:00
+    # AAA     33     34          1    2         00:15:00
+    # ----------------------------------------------------------------
+    # The intuition being that we see the vehicle travelling that route
+    # during those 3 time periods, so it counts +1 towards the flow
+    # of vehicles (and towards other summary statistics, e.g. mean_avspeed)
+    # for those 3 distinct time steps
+
+    to_expand = (trips.trip_step > 1) & \
+                (trips.trip_step < trips.trip_length) & \
+                (trips.period_o != trips.period_d)
+
+    tmp  = trips[to_expand]
+
+    tmp2_step1 = trips[(~to_expand) & (trips.trip_step == 1)]\
+                .rename(columns = {'period_d' : 'period'})\
+                .drop(columns=['period_o'])
+    tmp2_others = trips[(~to_expand) & (trips.trip_step != 1)]\
+                .rename(columns = {'period_o' : 'period'})\
+                .drop(columns=['period_d'])
+    tmp2 = pd.concat([tmp2_step1, tmp2_others])
+
+    if len(tmp) > 0:
+        dfs =[ tmp[(tmp.period_o <= p) & \
+                   (tmp.period_d > p)]\
+                  .assign(period = p) for p in periods]
+
+        tmp = pd.concat(dfs).drop(columns=['period_o','period_d'])
+
+        trips = pd.concat([tmp, tmp2])
+        # sort?
+        trips = trips.sort_values(['vehicle','trip','trip_step','period'])\
+                     .reset_index(drop = True)
+
+    else:
+        trips = tmp2
+
+    trips['period'] = trips['period'].apply(lambda x: pd.Period(x, freq))
+
+    log("Discretised time in {:,.2f} sec. Added {} rows. Total rows = {}."\
+            .format(time.time() - start_time, len(trips) - nrows, len(trips)),
+        level = lg.INFO)
+
+    return trips
+
+
+def flows(trips, freq):
+    """
+    Aggregate trip data to compute flows.
+    """
+    pass

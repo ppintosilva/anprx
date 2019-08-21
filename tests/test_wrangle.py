@@ -7,6 +7,7 @@ from   anprx.preprocessing import camera_pairs_from_graph
 from   anprx.preprocessing import map_nodes_cameras
 from   anprx.preprocessing import wrangle_raw_anpr
 from   anprx.compute       import trip_identification
+from   anprx.compute       import discretise_time
 
 import os
 import numpy               as     np
@@ -82,7 +83,7 @@ baseline_date = pd.to_datetime('21000101', format='%Y%m%d', errors='coerce')
 raw_anpr_testset_v1 = pd.DataFrame({
     'vehicle'    : ['AA00AAA'] * 6,
     'camera'     : ['1', '1', '1', '2', '1', '2'],
-    'timestamp'  : [0.0, 5.0, 6.0, 90.0, 1e6, 1e6 + 90],
+    'timestamp'  : [0.0, 5.0, 6.0, 90.0, 1e5/2, 1e5/2 + 90],
     'confidence' : [90 , 92, 91, 84 , 83, 98]
 })
 
@@ -124,8 +125,8 @@ raw_anpr_testset['timestamp'] = raw_anpr_testset['timestamp']\
 #   AA00AAA | 2   |  NA | 90 | NA | NA | N-S   | NA    |  1   |  3   |    3
 #   ----------------------------------------------------------------------------
 #   AA00AAA | NA  | 1-10| NA | 1e6| NA | NA    | W     |  2   |  1   |    3
-#   AA00AAA | 1-10|  2  | 0  |1e6+90|90| W     | N-S   |  2   |  2   |    3
-#   AA00AAA | 2   |  NA |1e6+90|NA |NA | N-S   | NA    |  2   |  3   |    3
+#   AA00AAA | 1-10|  2  | 1e5/2|1e5/2+90|90| W     | N-S   |  2   |  2   |    3
+#   AA00AAA | 2   |  NA |1e5/2+90|NA |NA | N-S   | NA    |  2   |  3   |    3
 #
 
 expected_trips_v1 = pd.DataFrame({
@@ -133,8 +134,8 @@ expected_trips_v1 = pd.DataFrame({
     'origin'                : [np.nan, '1-10', '2'] * 2,
     'destination'           : ['1-10', '2', np.nan] * 2,
     'od'                    : ['NA_1-10', '1-10_2', '2_NA'] * 2,
-    't_origin'              : [pd.NaT, 0, 90, pd.NaT, 1e6, 1e6 + 90.0],
-    't_destination'         : [0, 90.0, pd.NaT, 1e6, 1e6 + 90.0, pd.NaT],
+    't_origin'              : [pd.NaT, 0, 90, pd.NaT, 1e5/2, 1e5/2 + 90.0],
+    't_destination'         : [0, 90.0, pd.NaT, 1e5/2, 1e5/2 + 90.0, pd.NaT],
     'travel_time'           : [pd.NaT, 90.0, pd.NaT] * 2,
     'direction_origin'      : [np.nan, 'W', 'E-W'] * 2,
     'direction_destination' : ['W', 'E-W', np.nan] * 2,
@@ -142,7 +143,7 @@ expected_trips_v1 = pd.DataFrame({
     'trip_step'             : np.array([1,2,3] * 2, dtype=np.uint16),
     'trip_length'           : np.array([3] * 6, dtype = np.uint16),
     'valid'                 : np.array([np.nan,1.0,np.nan]*2, dtype=np.float64),
-    'rest_time'             : [pd.NaT] * 3 + [1e6-90.0, pd.NaT, pd.NaT]
+    'rest_time'             : [pd.NaT] * 3 + [1e5/2-90.0, pd.NaT, pd.NaT]
 })
 
 #   Expected Trips - Vehicle 2: 'AA11AAA'
@@ -151,11 +152,11 @@ expected_trips_v1 = pd.DataFrame({
 #   ----------------------------------------------------------------------------
 #   AA11AAA | NA  |  3 | NA | 0  | NA  | NA    | N-S   |  1   |  1   |    4
 #   AA11AAA | 3   |1-10| 0  | 100| 100 | N-S   | W     |  1   |  2   |    4
-#   AA11AAA | 1-10|  4 | 90 | NA | NA  | W     | S     |  1   |  3   |    4
-#   AA11AAA | 4   | NA | 90 | NA | NA  | S     | NA    |  1   |  4   |    4
+#   AA11AAA | 1-10|  4 | 100| 200| 100 | W     | S     |  1   |  3   |    4
+#   AA11AAA | 4   | NA | 200| NA | NA  | S     | NA    |  1   |  4   |    4
 #   ----------------------------------------------------------------------------
 #   AA00AAA | NA  | 3  | NA | 1e5| NA | NA    | N-S    |  2   |  1   |    2
-#   AA00AAA | 3   | NA |1e5+100|NA |NA | N-S   | NA    |  2   |  2   |    2
+#   AA00AAA | 3   | NA |1e5 | NA |NA | N-S   | NA    |  2   |  2   |    2
 #
 
 expected_trips_v2 = pd.DataFrame({
@@ -189,6 +190,87 @@ expected_trips['travel_time'] = expected_trips['travel_time']\
 expected_trips['rest_time'] = expected_trips['rest_time']\
     .apply(lambda x: pd.to_timedelta(x, unit = 's'))
 
+
+#   Expected Discretised Trips - Vehicle 1: 'AA00AAA', freq = 30S
+#
+#   vehicle | ori | dst | to   | td   | period
+#   ----------------------------------------------
+#   AA00AAA | NA  | 1-10| NA   | 0    | 0
+#   AA00AAA | 1-10|  2  | 0    | 90   | 0
+#   AA00AAA | 1-10|  2  | 0    | 90   | 30
+#   AA00AAA | 1-10|  2  | 0    | 90   | 60
+#   AA00AAA | 2   |  NA | 90   | NA   | 90
+#   ----------------------------------------------------------------------------
+#   AA00AAA | NA  | 1-10| NA   | 1e5/2  | 1e5/2-20
+#   AA00AAA | 1-10|  2  | 1e5/2|1e5/2+90| 1e5/2-20
+#   AA00AAA | 1-10|  2  | 1e5/2|1e5/2+90| 1e5/2+10
+#   AA00AAA | 1-10|  2  | 1e5/2|1e5/2+90| 1e5/2+ 40
+#   AA00AAA | 1-10|  2  | 1e5/2|1e5/2+90| 1e5/2+ 70
+#   AA00AAA | 2   |  NA |1e5/2+90| NA   | 1e5/2+ 70
+#
+
+expected_dtrips_v1 = pd.DataFrame({
+    'vehicle'               : ['AA00AAA'] * 11,
+    'origin'                : [np.nan, '1-10', '1-10', '1-10', '2',
+                               np.nan, '1-10', '1-10', '1-10', '1-10', '2'],
+    'destination'           : ['1-10', '2', '2', '2', np.nan,
+                               '1-10', '2', '2', '2','2', np.nan],
+    't_origin'              : [pd.NaT, 0, 0, 0, 90, pd.NaT, 1e5/2,
+                               1e5/2, 1e5/2, 1e5/2, 1e5/2+90.0],
+    't_destination'         : [0, 90.0, 90.0, 90.0, pd.NaT, 1e5/2, 1e5/2+90.0,
+                               1e5/2+90.0, 1e5/2+90.0, 1e5/2+90.0, pd.NaT],
+    'period'                : [0.0, 0.0, 30.0, 60.0, 90.0, 1e5/2-20, 1e5/2-20,
+                               1e5/2+10, 1e5/2+40, 1e5/2+70, 1e5/2+70]
+})
+
+
+#   Expected Discretised Trips - Vehicle 2: 'AA11AAA', freq = 30S
+#
+#   vehicle | ori | dst | to     | td     | period
+#   ----------------------------------------------
+#   AA11AAA | NA  |  3 | NA      | 0      | 0
+#   AA11AAA | 3   |1-10| 0       | 100    | 0
+#   AA11AAA | 3   |1-10| 0       | 100    | 30
+#   AA11AAA | 3   |1-10| 0       | 100    | 60
+#   AA11AAA | 3   |1-10| 0       | 100    | 90
+#   AA11AAA | 1-10|  4 | 100     | 200    | 90
+#   AA11AAA | 1-10|  4 | 100     | 200    | 120
+#   AA11AAA | 1-10|  4 | 100     | 200    | 150
+#   AA11AAA | 1-10|  4 | 100     | 200    | 180
+#   AA11AAA | 4   | NA | 200     | NA     | 180
+#   ----------------------------------------------------------------------------
+#   AA00AAA | NA  | 3  | NA      | 1e5    | 1e5-10
+#   AA00AAA | 3   | NA |1e5      | NA     | 1e5-10
+#
+
+expected_dtrips_v2 = pd.DataFrame({
+    'vehicle'               : ['AA11AAA'] * 12,
+    'origin'                : [np.nan, '3', '3', '3', '3', '1-10',
+                               '1-10', '1-10', '1-10', '4', np.nan, '3'],
+    'destination'           : ['3', '1-10', '1-10', '1-10', '1-10', '4',
+                               '4', '4', '4', np.nan, '3', np.nan],
+    't_origin'              : [pd.NaT, 0, 0, 0, 0, 100.0,
+                               100.0, 100.0, 100.0, 200.0, pd.NaT, 1e5],
+    't_destination'         : [0, 100.0, 100.0, 100.0, 100.0, 200.0,
+                               200.0, 200.0, 200.0, pd.NaT, 1e5, pd.NaT],
+    'period'                : [0,0,30,60,90,90,120,150,180,180,1e5-10,1e5-10],
+})
+
+dtrips_freq = '30S'
+
+expected_dtrips = pd.concat(
+    [expected_dtrips_v1, expected_dtrips_v2], axis = 0)\
+    .reset_index(drop = True)
+
+# Correcting datetime, timedelta dtypes
+expected_dtrips['t_origin'] = expected_dtrips['t_origin']\
+    .apply(lambda x: baseline_date + pd.to_timedelta(x, unit = 's'))
+expected_dtrips['t_destination'] = expected_dtrips['t_destination']\
+    .apply(lambda x: baseline_date + pd.to_timedelta(x, unit = 's'))
+expected_dtrips['period'] = expected_dtrips['period']\
+    .apply(lambda x: pd.Period(baseline_date + pd.to_timedelta(x, unit = 's'),
+                               freq=dtrips_freq))
+
 # Using global variables to avoid having to compute the same stuff twice
 
 wrangled_cameras = None
@@ -197,6 +279,7 @@ merged_G         = None
 camera_pairs     = None
 wrangled_anpr    = None
 trips            = None
+dtrips           = None
 
 ### ----------------------------------------------------------------------------
 ### ----------------------------------------------------------------------------
@@ -290,6 +373,17 @@ def get_trips():
         )
 
     return trips
+
+def get_dtrips():
+    global dtrips
+
+    if dtrips is None:
+        dtrips = discretise_time(
+            trips = get_trips(),
+            freq = dtrips_freq
+        )
+
+    return dtrips
 
 ### ----------------------------------------------------------------------------
 ### ----------------------------------------------------------------------------
@@ -385,9 +479,6 @@ def test_trips():
 
     trips = get_trips()
 
-    print(trips['rest_time'])
-    print(expected_trips['rest_time'])
-
     pd.testing.assert_frame_equal(
         trips.loc[trips.vehicle == "AA00AAA", cols],
         expected_trips.loc[expected_trips.vehicle == "AA00AAA", cols],
@@ -396,4 +487,17 @@ def test_trips():
     pd.testing.assert_frame_equal(
         trips.loc[trips.vehicle == "AA11AAA", cols],
         expected_trips.loc[expected_trips.vehicle == "AA11AAA", cols],
+        check_dtype = True)
+
+def test_discretise_time():
+
+    dtrips = get_dtrips()
+
+    dtrips = dtrips.loc[dtrips.vehicle.isin(['AA00AAA','AA11AAA']),
+    ['vehicle','origin','destination', 't_origin','t_destination','period']]
+
+    print(dtrips)
+    pd.testing.assert_frame_equal(
+        dtrips,
+        expected_dtrips,
         check_dtype = True)
