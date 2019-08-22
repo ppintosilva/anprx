@@ -559,8 +559,8 @@ def discretise_time(trips, freq):
 
     sorted_time = trips['t_destination'].dropna()
 
-    periods = pd.date_range(start = sorted_time.min(),
-                            end   = sorted_time.max(),
+    periods = pd.date_range(start = sorted_time.min().floor(freq),
+                            end   = sorted_time.max().ceil(freq),
                             freq  = freq)
 
     trips = trips.assign(
