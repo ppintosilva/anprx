@@ -549,6 +549,14 @@ def rdisplacement(df, buffer_size = 100):
 
     return newdf
 
+def get_periods(trips, freq):
+    start_period = trips['t_origin'].dropna().min().floor(freq)
+    end_period = trips['t_destination'].dropna().max().ceil(freq)
+
+    return pd.date_range(start = start_period,
+                         end   = end_period,
+                         freq  = freq)
+
 def discretise_time(trips, freq):
     start_time = time.time()
     nrows = len(trips)
@@ -557,11 +565,14 @@ def discretise_time(trips, freq):
             .format(len(trips), freq),
         level = lg.INFO)
 
-    sorted_time = trips['t_destination'].dropna()
+    start_period = trips['t_origin'].dropna().min().floor(freq)
+    end_period = trips['t_destination'].dropna().max().ceil(freq)
 
-    periods = pd.date_range(start = sorted_time.min().floor(freq),
-                            end   = sorted_time.max().ceil(freq),
-                            freq  = freq)
+    log("Start period = {}, end period = {}"\
+            .format(start_period, end_period),
+        level = lg.INFO)
+
+    periods = get_periods(trips, freq)
 
     trips = trips.assign(
             period_o = trips.t_origin.dt.floor(freq),
@@ -630,3 +641,96 @@ def discretise_time(trips, freq):
         level = lg.INFO)
 
     return trips
+
+
+def get_flows(trips, freq, agg_displacement = False,
+              remove_na = False, try_discretise = True):
+    """
+    Aggregate trip data to compute flows.
+    """
+    start_time = time.time()
+
+    log("Aggregating trips into flows: column 'period' in trips : {}"\
+            .format('period' in trips.columns),
+        level = lg.INFO)
+
+    if 'period' not in trips.columns and try_discretise:
+        trips = discretise_time(trips, freq)
+
+    aggregator = {
+        'flow'         : ('av_speed', 'count'),
+        'density'      : ('distance', 'first'),
+        'mean_avspeed' : ('av_speed', np.mean),
+        'sd_avspeed'   : ('av_speed', np.std ),
+        'mean_tt'      : ('travel_time', np.mean),
+        'sd_tt'        : ('travel_time', np.std )
+   }
+
+    if agg_displacement:
+       aggregator['mean_displacement'] = ('displacement', np.mean)
+       aggregator['sd_displacement']   = ('displacement', np.std)
+
+    # Whether to remove steps with missing origin and destination
+    if remove_na:
+        na_od = (trips.trip_step == 1) | (trips.trip_step == trip_length)
+        trips = trips.drop(na_od)
+    else:
+        trips['origin'] = trips['origin'].fillna('NA')
+        trips['destination'] = trips['destination'].fillna('NA')
+
+    trips['travel_time'] = trips['travel_time'].dt.total_seconds()
+
+    flows = trips\
+            .groupby(['origin', 'destination', 'period'])\
+            .agg(**aggregator)
+
+    flows['density'] = flows['flow']/(flows['density']/1000)
+
+    # Remove last period as the interval is open and does not include the
+    # final period
+    periods = get_periods(trips, freq)[:-1]
+
+    unique_ods = trips.groupby(['origin','destination']).groups
+    expected_nrows = len(periods) * len(unique_ods)
+
+    # We want every combination of origin,destination,period to show up in the
+    # flows, even if the flow is zero. This is useful later, for calculations
+    # and makes 'missing' data explicit.
+
+    # Cartesian product of unique values of 'origin', 'destination' and 'period'
+    mux = pd.MultiIndex.from_product(
+        [flows.index.levels[0],
+         flows.index.levels[1],
+         periods])
+
+    # remove combinations of same origin and destination
+    mux2 = pd.MultiIndex.from_tuples(
+        list(filter(lambda x: x[0] != x[1], mux)),
+        names=['origin','destination', 'period']
+    )
+
+    # reindex and fill with np.nan
+    flows = flows.reindex(mux2, fill_value=np.NaN)\
+                 .fillna({'flow' : 0, 'density' : 0})\
+                 .reset_index()
+
+    flows['flow'] = flows['flow'].astype(np.uint32)
+
+    assert len(flows) == expected_nrows
+
+    flow_d = flows.groupby(['destination','period'])['flow']\
+                  .agg(flow_destination = ('flow', 'sum'))\
+                  .reset_index()
+
+    flows = pd.merge(flows, flow_d,
+                     on = ['destination', 'period'], how = 'left')
+
+    flows['rate'] = flows['flow']/flows['flow_destination']
+
+    log(("Aggregated trips into flows in {:,.2f} sec. Total periods = {}."
+         "Total ods = {}. Total rows = {}.")\
+            .format(time.time() - start_time, len(periods),
+                    len(unique_ods), len(flows)),
+        level = lg.INFO)
+
+    return flows
