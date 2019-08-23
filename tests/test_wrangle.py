@@ -268,8 +268,7 @@ expected_dtrips['t_origin'] = expected_dtrips['t_origin']\
 expected_dtrips['t_destination'] = expected_dtrips['t_destination']\
     .apply(lambda x: baseline_date + pd.to_timedelta(x, unit = 's'))
 expected_dtrips['period'] = expected_dtrips['period']\
-    .apply(lambda x: pd.Period(baseline_date + pd.to_timedelta(x, unit = 's'),
-                               freq=dtrips_freq))
+    .apply(lambda x: baseline_date + pd.to_timedelta(x, unit = 's'))
 
 # Using global variables to avoid having to compute the same stuff twice
 
@@ -496,7 +495,6 @@ def test_discretise_time():
     dtrips = dtrips.loc[dtrips.vehicle.isin(['AA00AAA','AA11AAA']),
     ['vehicle','origin','destination', 't_origin','t_destination','period']]
 
-    print(dtrips)
     pd.testing.assert_frame_equal(
         dtrips,
         expected_dtrips,
