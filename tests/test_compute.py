@@ -96,13 +96,14 @@ def test_displacement_all_pairs():
     tdf = pd.concat([df1,df2], axis = 0)
 
     ndf = all_ods_displacement(tdf, parallel = False)
-    ndf2 = all_ods_displacement(tdf, parallel = True)
 
     for name, group in ndf.groupby(['origin', 'destination']):
         pd.testing.assert_series_equal(group['dp'].reset_index(drop = True),
                                        expected_dp, check_names = False)
         pd.testing.assert_series_equal(group['dn'].reset_index(drop = True),
                                        expected_dn, check_names = False)
+
+    ndf2 = all_ods_displacement(tdf, parallel = True)
 
     for name, group in ndf2.groupby(['origin', 'destination']):
         pd.testing.assert_series_equal(group['dp'].reset_index(drop = True),
@@ -114,21 +115,21 @@ def test_displacement_all_pairs():
 
 # Trips:
 # ------
+#   vehicle | origin | dest | to   | td   | tt  | av_speed | distance | dp | dn
+#   ----------------------------------------------------------------------------
+#       1   |  A     |   B  |  0   |  90  |  90 | 45.0     | 1125     | 0  | 0
+#       2   |  A     |   B  |  10  |  110 |  90 | 40.5     | 1125     | 0  | 0
+#       3   |  A     |   B  |  15  |  135 |  120| 33.75    | 1125     | 1  | 0
+#       4   |  A     |   B  |  5   |  95  |  95 | 45.0     | 1125     | 0  | 0
+#       5   |  A     |   B  | 32   |  122 |  90 | 45.0     | 1125     | 0  | 1
+#   ----------------------------------------------------------------------------
 #   vehicle | origin | dest | to   | td   | tt  | av_speed | distance
 #   ----------------------------------------------------------------------------
-#       1   |  A     |   B  |  0   |  90  |  90 | 45.0     | 1125
-#       2   |  A     |   B  |  10  |  110 |  90 | 40.5     | 1125
-#       3   |  A     |   B  |  15  |  135 |  120| 33.75    | 1125
-#       4   |  A     |   B  |  5   |  95  |  95 | 45.0     | 1125
-#       5   |  A     |   B  | 32   |  122 |  90 | 45.0     | 1125
-#   ----------------------------------------------------------------------------
-#   vehicle | origin | dest | to   | td   | tt  | av_speed | distance
-#   ----------------------------------------------------------------------------
-#       6   |  C     |   B  |  0   |  200 | 200 |   54     | 3000
-#       7   |  C     |   B  | 35   |  195 | 160 |  67.5    | 3000
-#       8   |  C     |   B  | 12   |  262 | 250 |  43.2    | 3000
-#       9   |  C     |   B  |  73  |  298 | 225 |  48.0    | 3000
-#       10  |  C     |   B  | 5    | 185  | 180 |  60.0    | 3000
+#       6   |  C     |   B  |  0   |  200 | 200 |   54     | 3000     | 2  | 0
+#       7   |  C     |   B  | 35   |  195 | 160 |  67.5    | 3000     | 0  | 2
+#       8   |  C     |   B  | 12   |  262 | 250 |  43.2    | 3000     | 1  | 0
+#       9   |  C     |   B  |  73  |  298 | 225 |  48.0    | 3000     | 0  | 0
+#       10  |  C     |   B  | 5    | 185  | 180 |  60.0    | 3000     | 0  | 1
 #   ----------------------------------------------------------------------------
 
 baseline_date = pd.to_datetime('21000101', format='%Y%m%d', errors='coerce')
@@ -221,6 +222,21 @@ expected_flows['density'] = expected_flows['flow'] \
                             / (expected_flows['distance']/1000)
 
 expected_flows = expected_flows.drop(columns = ['avspeed', 'distance'])
+
+
+def test_displacement_trips():
+    disp_trips = all_ods_displacement(fake_trips, parallel = False)
+
+    expected_dp_l = pd.Series([0, 0, 1, 0, 0,
+                               2, 0, 1, 0, 0], dtype = np.float64)
+    expected_dn_l = pd.Series([0, 0, 0, 0, 1,
+                               0, 2, 0, 0, 1], dtype = np.float64)
+
+    pd.testing.assert_series_equal(disp_trips['dp'].reset_index(drop = True),
+                                   expected_dp_l, check_names = False)
+    pd.testing.assert_series_equal(disp_trips['dn'].reset_index(drop = True),
+                                   expected_dn_l, check_names = False)
+
 
 
 def test_flows():

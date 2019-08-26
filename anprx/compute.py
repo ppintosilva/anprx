@@ -460,33 +460,92 @@ def all_ods_displacement(
     """
     Calculate displacement for all origin-destination pairs in dataframe.
     """
+    start_time = time.time()
 
     dfs = []
 
     if parallel:
+        j = 0
         jobs = []
         # janky initialisation but go for it
         import ray
         if not ray.is_initialized():
             ray.init()
 
-    groups = df.groupby(['origin', 'destination'])
+    has_trips = 'trip' in df.columns
+    if has_trips:
+        # remove first and last steps of every trip step
+        time_na = (df.trip_step == 1) | (df.trip_step == df.trip_length)
+        to_keep = df[time_na]
+        to_compute = df[~time_na]
+        dfs.append(to_keep)
 
+    else:
+        to_compute = df
+
+    groups = to_compute.groupby(['origin', 'destination'])
+    ngroups = len(groups.groups)
+    checkpoints =  np.unique(np.linspace(1, ngroups,10)\
+                               .round().astype(np.int32))
+
+    log(("Calculating displacement for {} groups and {} observations. "
+         "Checkpoints = {}. Parallelize = {}. Has trips = {}. "
+         "This may take a while.")\
+            .format(ngroups, len(to_compute), len(checkpoints),
+                    parallel, has_trips),
+        level = lg.INFO)
+
+    # group counter
+    j = 0
+
+    # Main loop, split anpr/trips into groups
     for group, group_df in groups:
+        # Progress update
+        j += 1
+        log_progress = (j in checkpoints)
 
         if parallel:
-            job_id = rdisplacement.remote(group_df, buffer_size)
+            log_data = {}
+
+            if log_progress:
+                log_data['log'             ] = True
+                log_data['groups_processed'] = j
+                log_data['groups_total'    ] = ngroups
+                log_data['checkpoint'      ] = np.argwhere(checkpoints==j)[0][0]
+            else:
+                log_data['log'] = False
+
+            # the actual job submission
+            job_id = rdisplacement.remote(group_df,
+                                          log_data,
+                                          buffer_size)
             jobs.append(job_id)
         else:
+            # the actual computation
             newdf = displacement(group_df, buffer_size)
             dfs.append(newdf)
 
+            if log_progress:
+                log("Checkpoint {}: {}/{} groups processed (~{}%)."\
+                        .format(np.argwhere(checkpoints==j)[0][0],
+                                j, ngroups, j/ngroups*100),
+                    level = lg.INFO)
+
+
     if parallel:
-        dfs = ray.get(jobs)
+        # the actual computation
+        dfs.extend(ray.get(jobs))
+        # shutdown
         if shutdown_ray:
             ray.shutdown()
 
-    return pd.concat(dfs).sort_index()
+    displacements = pd.concat(dfs).sort_index()
+
+    log("Computed displacements for all observations in {:,.2f} sec"\
+            .format(time.time() - start_time),
+        level = lg.INFO)
+
+    return displacements
 
 def displacement(df, buffer_size = 100):
     """
@@ -517,7 +576,7 @@ def displacement(df, buffer_size = 100):
     return newdf
 
 @ray.remote
-def rdisplacement(df, buffer_size = 100):
+def rdisplacement(df, log_data, buffer_size = 100):
     """
     Calculate displacement of vehicles travelling from A to B.
     """
@@ -542,6 +601,15 @@ def rdisplacement(df, buffer_size = 100):
     newdf = newdf.assign(dp = dps)
     newdf = newdf.assign(dn = dns)
     newdf = newdf.set_index('index')
+
+    if log_data['log']:
+            q = log_data['groups_processed']/log_data['groups_total']*100
+            log("Checkpoint {}: {}/{} groups processed (~{}%)."\
+                    .format(log_data['checkpoint'],
+                            log_data['groups_processed'],
+                            log_data['groups_total'],
+                            q),
+                level = lg.INFO)
 
     return newdf
 
@@ -760,10 +828,8 @@ def get_flows(trips, freq,
             flows[col] = flows[col].astype(np.float32)
 
 
-    log(("Aggregated trips into flows in {:,.2f} sec. Total periods = {}."
-         "Total ods = {}. Total rows = {}.")\
-            .format(time.time() - start_time, len(periods),
-                    len(unique_ods), len(flows)),
+    log(("Aggregated trips into flows in {:,.2f} sec.")\
+            .format(time.time() - start_time),
         level = lg.INFO)
 
     return flows
