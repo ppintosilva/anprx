@@ -643,7 +643,8 @@ def get_flows(trips, freq,
               agg_displacement = False,
               remove_na = False,
               try_discretise = True,
-              od_separator = '_'):
+              od_separator = '_',
+              single_precision = False):
     """
     Aggregate trip data to compute flows.
     """
@@ -686,7 +687,7 @@ def get_flows(trips, freq,
                 .format(frows, frows/nrows*100, len(trips)),
             level = lg.INFO)
 
-    trips['travel_time'] = trips['travel_time'].dt.total_seconds()
+    trips['travel_time'] = pd.to_numeric(trips['travel_time'])
 
     flows = trips\
             .groupby(['od', 'period'])\
@@ -726,7 +727,12 @@ def get_flows(trips, freq,
     flows['flow'] = flows['flow'].astype(np.uint32)
 
     # Retrieve 'origin' and 'destination' back from 'od'
-    flows['origin'], flows['destination'] = flows['od'].str.split('_', 1).str
+    flows['origin'], flows['destination'] = \
+        flows['od'].str.split(od_separator, 1).str
+
+    # Move 'origin' and 'destination' columns to the front
+    cols = flows.columns.tolist()
+    flows = flows[cols[-2:] + cols[:-2]]
 
     log(("Expected rows: {} (nperiods . unique_ods = {} . {}). "
          "Observed rows: {}.")\
@@ -745,6 +751,14 @@ def get_flows(trips, freq,
                      on = ['destination', 'period'], how = 'left')
 
     flows['rate'] = flows['flow']/flows['flow_destination']
+
+    if single_precision:
+        non_float_cols = ['origin', 'destination', 'period', 'od',
+                          'flow', 'flow_destination']
+        float_cols = set(flows.columns.tolist()) - set(non_float_cols)
+        for col in float_cols:
+            flows[col] = flows[col].astype(np.float32)
+
 
     log(("Aggregated trips into flows in {:,.2f} sec. Total periods = {}."
          "Total ods = {}. Total rows = {}.")\
