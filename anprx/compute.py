@@ -639,8 +639,11 @@ def discretise_time(trips, freq):
     return trips
 
 
-def get_flows(trips, freq, agg_displacement = False,
-              remove_na = False, try_discretise = True):
+def get_flows(trips, freq,
+              agg_displacement = False,
+              remove_na = False,
+              try_discretise = True,
+              od_separator = '_'):
     """
     Aggregate trip data to compute flows.
     """
@@ -656,7 +659,7 @@ def get_flows(trips, freq, agg_displacement = False,
     log("Preparing to aggregate trips into flows.", level = lg.INFO)
 
     aggregator = {
-        'flow'         : ('av_speed', 'count'),
+        'flow'         : ('av_speed', 'size'),
         'density'      : ('distance', 'first'),
         'mean_avspeed' : ('av_speed', np.mean),
         'sd_avspeed'   : ('av_speed', np.std ),
@@ -682,14 +685,11 @@ def get_flows(trips, freq, agg_displacement = False,
             "Total = {}.")\
                 .format(frows, frows/nrows*100, len(trips)),
             level = lg.INFO)
-    else:
-        trips['origin'] = trips['origin'].fillna('NA')
-        trips['destination'] = trips['destination'].fillna('NA')
 
     trips['travel_time'] = trips['travel_time'].dt.total_seconds()
 
     flows = trips\
-            .groupby(['origin', 'destination', 'period'])\
+            .groupby(['od', 'period'])\
             .agg(**aggregator)
 
     flows['density'] = flows['flow']/(flows['density']/1000)
@@ -698,34 +698,35 @@ def get_flows(trips, freq, agg_displacement = False,
     # final period
     periods = get_periods(trips, freq)[:-1]
 
-    unique_ods = trips.groupby(['origin','destination']).groups
+    unique_ods = flows.index.levels[0]
     expected_nrows = len(periods) * len(unique_ods)
-
 
     # We want every combination of origin,destination,period to show up in the
     # flows, even if the flow is zero. This is useful later, for calculations
     # and makes 'missing' data explicit.
-    log("Filling missing combinations of (o,d,period) with zero flows.",
+    log("Filling missing combinations of (od,period) with zero flows.",
         level = lg.INFO)
 
-    # Cartesian product of unique values of 'origin', 'destination' and 'period'
-    mux = pd.MultiIndex.from_product(
-        [flows.index.levels[0],
-         flows.index.levels[1],
-         periods])
-
-    # remove combinations of same origin and destination
-    mux2 = pd.MultiIndex.from_tuples(
-        list(filter(lambda x: x[0] != x[1], mux)),
-        names=['origin','destination', 'period']
-    )
+    # Cartesian product of unique values of 'od', and 'period'
+    # Using 'od' instead of 'origin' and 'destination' prevents od combinations
+    # that don't show up in the data to be included in the cartesian product
+    mux = pd.MultiIndex.from_product([flows.index.levels[0], periods],
+                                     names = ['od', 'period'])
 
     # reindex and fill with np.nan
-    flows = flows.reindex(mux2, fill_value=np.NaN)\
-                 .fillna({'flow' : 0, 'density' : 0})\
+    flows = flows.reindex(mux, fill_value=np.NaN)\
+                 .fillna({'flow' : 0})\
                  .reset_index()
 
+    # Not using fillna, because of cases that should remain with na:
+    # od pairs for which there is no distance and therefore no speed and density
+    flows.loc[flows.flow == 0, 'density'] = 0
+
+    # making sure flow is of type int
     flows['flow'] = flows['flow'].astype(np.uint32)
+
+    # Retrieve 'origin' and 'destination' back from 'od'
+    flows['origin'], flows['destination'] = flows['od'].str.split('_', 1).str
 
     log(("Expected rows: {} (nperiods . unique_ods = {} . {}). "
          "Observed rows: {}.")\

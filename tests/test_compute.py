@@ -146,6 +146,7 @@ fake_trips = pd.DataFrame({
     'trip_length'   : np.repeat(3,10)
 })
 
+fake_trips["od"] = fake_trips["origin"] + "_" + fake_trips["destination"]
 
 fake_trips['t_origin'] = fake_trips['t_origin']\
     .apply(lambda x: baseline_date + pd.to_timedelta(x, unit = 's'))
@@ -204,6 +205,9 @@ expected_flows = pd.DataFrame({
                        3/7, 4/9, 1/2, 5/9, 5/7, 1,1,1,1,1]
 })
 
+expected_flows["od"] = expected_flows["origin"] + "_" + \
+                       expected_flows["destination"]
+
 expected_flows['period'] = expected_flows['period']\
     .apply(lambda x: baseline_date + pd.to_timedelta(x, unit = 's'))
 
@@ -222,8 +226,8 @@ expected_flows = expected_flows.drop(columns = ['avspeed', 'distance'])
 def test_flows():
     observed_flows = get_flows(fake_trips, freq)
 
-    names =['origin', 'destination', 'period', 'flow', 'flow_destination', 'rate',
-            'mean_avspeed', 'sd_avspeed', 'density']
+    names =['od', 'origin', 'destination', 'period', 'flow', 'flow_destination',
+            'rate', 'mean_avspeed', 'sd_avspeed', 'density']
 
     pd.testing.assert_frame_equal(
         observed_flows.drop(columns = ['mean_tt', 'sd_tt'])[names],
