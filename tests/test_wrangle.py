@@ -137,12 +137,9 @@ expected_trips_v1 = pd.DataFrame({
     't_origin'              : [pd.NaT, 0, 90, pd.NaT, 1e5/2, 1e5/2 + 90.0],
     't_destination'         : [0, 90.0, pd.NaT, 1e5/2, 1e5/2 + 90.0, pd.NaT],
     'travel_time'           : [pd.NaT, 90.0, pd.NaT] * 2,
-    'direction_origin'      : [np.nan, 'W', 'E-W'] * 2,
-    'direction_destination' : ['W', 'E-W', np.nan] * 2,
     'trip'                  : np.array([1] * 3 + [2] * 3, dtype=np.uint64),
     'trip_step'             : np.array([1,2,3] * 2, dtype=np.uint16),
     'trip_length'           : np.array([3] * 6, dtype = np.uint16),
-    'valid'                 : np.array([np.nan,1.0,np.nan]*2, dtype=np.float64),
     'rest_time'             : [pd.NaT] * 3 + [1e5/2-90.0, pd.NaT, pd.NaT]
 })
 
@@ -167,13 +164,9 @@ expected_trips_v2 = pd.DataFrame({
     't_origin'              : [pd.NaT, 0, 100.0, 200.0, pd.NaT, 1e5],
     't_destination'         : [0, 100.0, 200.0, pd.NaT, 1e5, pd.NaT],
     'travel_time'           : [pd.NaT, 100.0, 100.0, pd.NaT, pd.NaT, pd.NaT],
-    'direction_origin'      : [np.nan, 'N-S', 'W', 'S', np.nan, 'N-S'],
-    'direction_destination' : ['N-S', 'W', 'S', np.nan, 'N-S', np.nan],
     'trip'                  : np.array([1] * 4 + [2] * 2, dtype=np.uint64),
     'trip_step'             : np.array([1,2,3,4] + [1,2], dtype=np.uint16),
     'trip_length'           : np.array([4] * 4 + [2] * 2, dtype=np.uint16),
-    'valid'                 : np.array([np.nan,True,True,np.nan,np.nan,np.nan],
-                                       dtype=np.float64),
     'rest_time'             : [pd.NaT] * 4 + [1e5-200.0, pd.NaT]
 })
 

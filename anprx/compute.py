@@ -150,9 +150,12 @@ def trip_identification(
     camera_pairs['od'] = camera_pairs['origin'] + od_separator + \
                          camera_pairs['destination']
 
-    ## dropping any unused columns (e.g. 'path', 'origin', 'destination')
-    camera_pairs = camera_pairs[['od', 'distance', 'valid',
-                                 'direction_origin', 'direction_destination']]
+    ## dropping any unused columns (e.g. 'path', 'origin', 'destination',
+    ## 'direction_origin', 'direction_destination', 'valid'). This avoids
+    ## storing unecessary information that will be lost anyway when aggregating
+
+    ## It can always be obtained by merging with camera pairs again.
+    camera_pairs = camera_pairs[['od', 'distance']]
 
     # Merge with camera pairs df to get distance, direction and validness
     trips = trips.merge(camera_pairs, how = "left", on = "od")
@@ -390,9 +393,6 @@ def trip_identification(
     fdf['od'           ]  = "NA" + od_separator + fdf['destination']
     fdf['distance'     ]  = np.nan
     fdf['av_speed'     ]  = np.nan
-    fdf['valid'        ]  = np.nan
-    fdf['direction_destination'] = fdf['direction_origin' ]
-    fdf['direction_origin' ]  = np.nan
 
     nrows = len(trips)
 
@@ -432,14 +432,10 @@ def trip_identification(
 
     # Add nans and NaTs for appropriate variables at the last step of each group
     trips.loc[trips.trip_step == trips.trip_length,
-      ['destination', 'distance', 'av_speed',
-       'direction_destination', 'valid']] = np.nan
+      ['destination', 'distance', 'av_speed']] = np.nan
 
     trips.loc[trips.trip_step == trips.trip_length,
       ['t_destination', 'travel_time']] = pd.NaT
-
-    # trips.loc[trips.trip_step == trips.trip_length,'direction_origin'] = \
-    #     trips.loc[trips.trip_step == (trips.trip_length-1),'direction_destination']
 
     trips.loc[trips.trip_step == trips.trip_length, 'od'] = \
         trips[trips.trip_step == trips.trip_length]['od']\
