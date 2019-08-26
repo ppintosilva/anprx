@@ -653,6 +653,8 @@ def get_flows(trips, freq, agg_displacement = False,
     if 'period' not in trips.columns and try_discretise:
         trips = discretise_time(trips, freq)
 
+    log("Preparing to aggregate trips into flows.", level = lg.INFO)
+
     aggregator = {
         'flow'         : ('av_speed', 'count'),
         'density'      : ('distance', 'first'),
@@ -663,13 +665,23 @@ def get_flows(trips, freq, agg_displacement = False,
    }
 
     if agg_displacement:
-       aggregator['mean_displacement'] = ('displacement', np.mean)
-       aggregator['sd_displacement']   = ('displacement', np.std)
+        log("Including displacement in aggregated metrics", level = lg.INFO)
+        aggregator['mean_displacement'] = ('displacement', np.mean)
+        aggregator['sd_displacement']   = ('displacement', np.std)
 
     # Whether to remove steps with missing origin and destination
     if remove_na:
+        nrows = len(trips)
+
         na_od = (trips.trip_step == 1) | (trips.trip_step == trip_length)
         trips = trips.drop(na_od)
+
+        frows = nrows - len(trips)
+        log(("Removing first (origin = na) and last (dest = na) steps of "
+            "every trip, before aggregating. Removed {} rows ({}%). "
+            "Total = {}.")\
+                .format(frows, frows/nrows*100, len(trips)),
+            level = lg.INFO)
     else:
         trips['origin'] = trips['origin'].fillna('NA')
         trips['destination'] = trips['destination'].fillna('NA')
@@ -689,9 +701,12 @@ def get_flows(trips, freq, agg_displacement = False,
     unique_ods = trips.groupby(['origin','destination']).groups
     expected_nrows = len(periods) * len(unique_ods)
 
+
     # We want every combination of origin,destination,period to show up in the
     # flows, even if the flow is zero. This is useful later, for calculations
     # and makes 'missing' data explicit.
+    log("Filling missing combinations of (o,d,period) with zero flows.",
+        level = lg.INFO)
 
     # Cartesian product of unique values of 'origin', 'destination' and 'period'
     mux = pd.MultiIndex.from_product(
@@ -712,7 +727,14 @@ def get_flows(trips, freq, agg_displacement = False,
 
     flows['flow'] = flows['flow'].astype(np.uint32)
 
+    log(("Expected rows: {} (nperiods . unique_ods = {} . {}). "
+         "Observed rows: {}.")\
+            .format(expected_nrows, len(periods), len(unique_ods), len(flows)),
+        level = lg.INFO)
+
     assert len(flows) == expected_nrows
+
+    log("Computing rates and flows at destination.", level = lg.INFO)
 
     flow_d = flows.groupby(['destination','period'])['flow']\
                   .agg(flow_destination = ('flow', 'sum'))\
