@@ -434,9 +434,9 @@ def test_wrangle_network_pairs(plot):
     pairs = get_camera_pairs()
 
     for origin in pairs['origin']:
-        assert origin[0:1] != 'c_'
+        assert origin[0:2] != 'c_'
 
-    assert len(pairs) == (len(cameras) ** 2 + len(cameras))
+    assert len(pairs) == (len(cameras) + 1) ** 2
 
     assert pairs.loc[(pairs.origin == '1-10') & (pairs.destination == '2')]\
                 .iloc[0]['valid'] == 1

@@ -1185,153 +1185,119 @@ def camera_pairs_from_graph(G):
     node_ids = [ node for node, data in G.nodes(data = True)\
                  if data['is_camera'] ]
 
-    cameras = pd.DataFrame(camera_nodes).assign(node = node_ids)
+    cameras = pd.DataFrame(camera_nodes)\
+                .assign(node = node_ids)\
+                .set_index('id')
 
-    log("Computing valid pairs of cameras from {} possible combinations"
-            .format(len(cameras) ** 2),
+    log(("Computing shortest paths and distances for {} + 1 cameras, total of "
+         "{} pairs of cameras (including 1 dummy).")
+            .format(len(cameras), (len(cameras) + 1) ** 2),
         level = lg.INFO)
 
-    d = cameras['direction']
+    # Camera ids to serve as index
+    cameras_id = cameras.index.tolist()
+    # Add node to represent unknown origin/destination
+    cameras_id.append("NA")
 
-    N = np.array(d == 'N', dtype = int, ndmin = 2)
-    S = np.array(d == 'S', dtype = int, ndmin = 2)
-    E = np.array(d == 'E', dtype = int, ndmin = 2)
-    W = np.array(d == 'W', dtype = int, ndmin = 2)
-    NS = np.array((d == 'N-S') | (d == 'S-N'), dtype = int, ndmin = 2)
-    EW = np.array((d == 'E-W') | (d == 'W-E'), dtype = int, ndmin = 2)
+    # direction series
+    direction = cameras['direction']
 
-    not_N = np.array(d != 'N', dtype = int, ndmin = 2)
-    not_S = np.array(d != 'S', dtype = int, ndmin = 2)
-    not_E = np.array(d != 'E', dtype = int, ndmin = 2)
-    not_W = np.array(d != 'W', dtype = int, ndmin = 2)
+    # camera_pairs from cartesian product
+    camera_pairs = pd.MultiIndex\
+        .from_product([cameras_id, cameras_id],
+                  names = ['origin', 'destination'])\
+        .to_frame(index = False)\
+        .merge(direction, how = 'left',
+               left_on = 'origin', right_index = True)\
+        .merge(direction, how = 'left',
+               left_on = 'destination', right_index = True)\
+        .rename(columns = {'direction_x' : 'direction_origin',
+                           'direction_y' : 'direction_destination'})\
+        .set_index(['origin', 'destination'], verify_integrity = True)\
+        .sort_index()
 
-    # Don't allow camera pairs of cameras pointing in opposite directions
-    # Camera pointing in both directions can pair with any other camera
-    D = (N.T * not_S) + (S.T * not_N) + (E.T * not_W) + (W.T * not_E) + \
-        (NS.T * np.ones(shape = (len(d),1), dtype = int)) + \
-        (EW.T * np.ones(shape = (len(d),1), dtype = int))
-
-    # Don't allow camera pairs with the same origin and destination
-    np.fill_diagonal(D, 0)
-
-    # Select the valid camera pairs
-    source_idx, target_idx = np.where(D == 1)
-
-    # Using iloc because np.where returns position rather than pandas index
-    source = cameras.iloc[source_idx]['node']
-    target = cameras.iloc[target_idx]['node']
-
-    log(("Computing shortest paths for each valid camera pair. "
-         "This may take a while."),
+    log(("Running shortest path algorithm. This may take a while."),
         level = lg.INFO)
 
-    # shortest paths for these pairs (split by direction later for plotting?)
+    camera_pairs['valid'] = 1
+    # invalid if opposite_directions
+    camera_pairs.loc[\
+        ((camera_pairs.direction_origin == 'N') & \
+            (camera_pairs.direction_destination == 'S')) | \
+        ((camera_pairs.direction_origin == 'S') & \
+            (camera_pairs.direction_destination == 'N')) | \
+        ((camera_pairs.direction_origin == 'E') & \
+            (camera_pairs.direction_destination == 'W')) | \
+        ((camera_pairs.direction_origin == 'W') & \
+            (camera_pairs.direction_destination == 'E')), 'valid'] = 0
+
+    # invalid if same origin and destination
+    camera_pairs.loc[camera_pairs.index.get_level_values('origin') == \
+                     camera_pairs.index.get_level_values('destination'),\
+                    'valid'] = 0
+
+    # invalid if unknown origin or destination
+    camera_pairs.loc[(camera_pairs.index.get_level_values('origin')=="NA") |\
+                     (camera_pairs.index.get_level_values('destination')=="NA"),\
+                    'valid'] = 0
+
+    # Now we iterate through every row and run shortest path algorithm
     paths = []
     distances = []
 
-    # Takes ~30 seconds
+    for origin, destination in camera_pairs.index:
+        # corner cases
+        if origin == destination or origin == "NA" or destination == "NA":
+            spath = np.nan
+            distance = np.nan
 
-    start_time = time.time()
+        else:
+            try:
+                spath = nx.shortest_path(G, "c_" + origin, "c_" + destination,
+                                         weight = 'length')
 
-    for s, t in zip(source, target):
-        try:
-            spath = nx.shortest_path(G, s, t, weight = 'length')
+                edges = [(u,v) for u,v in zip(spath, spath[1:])]
+                lengths = [ G.edges[u,v,0]['length'] for u,v in edges ]
+                distance = reduce(lambda x,y: x+y, lengths)
 
-            edges = [(u,v) for u,v in zip(spath, spath[1:])]
-            lengths = [ G.edges[u,v,0]['length'] for u,v in edges ]
-            distance = reduce(lambda x,y: x+y, lengths)
+                is_valid = camera_pairs.loc[(origin, destination), 'valid']
 
-            # log(("Found a path between {} and {} of length {} meters.")
-            #         .format(s, t, distance),
-            #     level = lg.DEBUG)
+                if distance < 100.0 and is_valid == 1:
+                    log(("Distance between cameras {} and {} is less than 100 "
+                         "meters. Are these two cameras mergeable into one?")
+                            .format(origin, destination),
+                        level = lg.WARNING)
 
-            if distance < 100.0:
-                log(("Distance between cameras {} and {} is less than 100 "
-                     "meters. Are these two cameras mergeable into one?")
-                        .format(s,t),
-                    level = lg.WARNING)
-
-        except nx.NetworkXNoPath:
-            spath = None
-            edges = []
-            distance = -1
-            log(("Could not find a path between {} and {}.")
-                    .format(s,t),
-                level = lg.ERROR)
+            except nx.NetworkXNoPath:
+                spath = np.nan
+                distance = np.inf
+                camera_pairs.loc[(origin, destination), 'valid'] = 0
+                log(("Could not find a path between {} and {}.")
+                        .format(origin, destination),
+                    level = lg.ERROR)
 
         paths.append(spath)
         distances.append(distance)
 
-    log("Computed paths in {:,.1f} minutes"\
-            .format((time.time() - start_time)/60.0),
-        level = lg.INFO)
+    camera_pairs = camera_pairs.assign(distance = distances, path = paths)
+    expected_pairs = (len(cameras) + 1) ** 2
 
     # This should always be True unless I've coded something wrong
-    assert len(source) == len(target) == len(distances) == len(paths)
-
-    valid_camera_pairs = pd.DataFrame(data = {
-        # dont write the preffix 'c_' to file
-        'origin'               : source.apply(lambda x: x[2:]).tolist(),
-        'destination'          : target.apply(lambda x: x[2:]).tolist(),
-        'distance'             : distances,
-        'direction_origin'     : cameras.iloc[source_idx]['direction'].tolist(),
-        'direction_destination': cameras.iloc[target_idx]['direction'].tolist(),
-        'path'                 : paths,
-        'valid'                : np.ones(len(source), dtype = int)}
-    )
-
-    # annotate as invalid rows with path = None
-    is_path_na_mask = (valid_camera_pairs['path'].isna())
-    valid_camera_pairs.loc[is_path_na_mask, 'valid'] = 0
-
-    log(("Adding invalid camera pairs for completeness."),
-        level = lg.INFO)
-
-    # Select invalid camera pairs
-    source_idx, target_idx = np.where(D == 0)
-
-    source = cameras.iloc[source_idx]['node']
-    target = cameras.iloc[target_idx]['node']
-
-    nans = np.empty(len(source))
-    nans[:] = np.nan
-
-    invalid_camera_pairs = pd.DataFrame(data = {
-        # dont write the preffix 'c_' to file
-        'origin'               : source.apply(lambda x: x[2:]).tolist(),
-        'destination'          : target.apply(lambda x: x[2:]).tolist(),
-        'distance'             : nans,
-        'direction_origin'     : cameras.iloc[source_idx]['direction'].tolist(),
-        'direction_destination': cameras.iloc[target_idx]['direction'].tolist(),
-        'path'                 : nans,
-        'valid'                : np.zeros(len(source), dtype = int)}
-    )
-
-    null_dest_camera_pairs = pd.DataFrame(data = {
-        'origin'               : cameras['id'],
-        'destination'          : ['NA'] * len(cameras),
-        'distance'             : [np.nan] * len(cameras),
-        'direction_origin'     : cameras['direction'],
-        'direction_destination': [np.nan] * len(cameras),
-        'path'                 : [np.nan] * len(cameras),
-        'valid'                : np.zeros(len(cameras), dtype = int)}
-    )
-
-    camera_pairs = pd.concat([valid_camera_pairs,
-                              invalid_camera_pairs,
-                              null_dest_camera_pairs], axis=0)
-
-    total_pairs = len(cameras) ** 2
-    assert len(camera_pairs) == (total_pairs + len(cameras))
+    assert len(camera_pairs) == len(paths) == len(distances)
+    assert len(camera_pairs) == expected_pairs
 
     total_valid = len(camera_pairs[camera_pairs.valid == 1])
 
     log(("Out of {} possible camera pairs, {} were labelled as invalid, "
          "resulting in a total of {} valid camera pairs.")\
-            .format(total_pairs,  total_pairs - total_valid, total_valid),
+            .format(expected_pairs, expected_pairs - total_valid, total_valid),
         level = lg.INFO)
 
-    return camera_pairs
+    log("Computed paths in {:,.1f} minutes"\
+            .format((time.time() - start_time)/60.0),
+        level = lg.INFO)
+
+    return camera_pairs.reset_index()
 
 
 def map_nodes_cameras(
