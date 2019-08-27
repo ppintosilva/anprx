@@ -144,7 +144,7 @@ def trip_identification(
     partial_time = time.time()
 
     # Preparing Camera Pairs for merge
-    camera_pairs = camera_pairs.fillna({'destination' : 'NA'})
+    camera_pairs = camera_pairs.fillna({'origin' : 'NA' ,'destination' : 'NA'})
 
     ## adding 'od' column
     camera_pairs['od'] = camera_pairs['origin'] + od_separator + \
@@ -539,7 +539,9 @@ def all_ods_displacement(
         if shutdown_ray:
             ray.shutdown()
 
-    displacements = pd.concat(dfs).sort_index()
+    # not all dfs have the same columns
+    # (to_keep does not have the new displacement columns)
+    displacements = pd.concat(dfs, sort = False).sort_index()
 
     log("Computed displacements for all observations in {:,.2f} sec"\
             .format(time.time() - start_time),
