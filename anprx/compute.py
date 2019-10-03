@@ -467,8 +467,7 @@ def all_ods_displacement(
     if parallel:
         j = 0
         jobs = []
-        # janky initialisation but go for it
-        import ray
+    
         if not ray.is_initialized():
             ray.init()
 
