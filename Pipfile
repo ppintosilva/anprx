@@ -4,20 +4,8 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-pytest = "*"
-sphinx = "*"
-sphinx-rtd-theme = "*"
-jupyter = "*"
 
 [packages]
-adjusttext = "*"
-progress = "*"
-ray = "*"
-psutil = "*"
-setproctitle = "*"
-osmnx = {git = "https://github.com/ppintosilva/osmnx.git",ref = "master"}
-scikit-learn = "*"
-e1839a8 = {editable = true,path = "."}
 anprx = {editable = true,path = "."}
 
 [requires]
