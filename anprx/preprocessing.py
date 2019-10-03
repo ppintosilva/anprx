@@ -37,20 +37,20 @@ from   functools            import reduce
 # ------------------------------------------------------------------------------
 
 g_direction_regex = (r'(East\/West|North\/South|Northbound|Eastbound|'
-                    'Southbound|Westbound|Northhbound|Southhbound)')
+                     r'Southbound|Westbound|Northhbound|Southhbound)')
 g_address_regex = (r'(East\/West|North\/South|Northbound \d|Eastbound \d|'
-                    'Southbound \d|Westbound \d|Northbound|Eastbound|'
-                    'Southbound|Westbound|Site \d|Camera \d|Camera|Site|L\d+|'
-                    'Lane \d|LT|RT|AH|&)')
+                   r'Southbound \d|Westbound \d|Northbound|Eastbound|'
+                   r'Southbound|Westbound|Site \d|Camera \d|Camera|Site|L\d+|'
+                   r'Lane \d|LT|RT|AH|&)')
 g_road_ref_regex  = r'(A\d+|B\d+|C\d+)'
 g_car_park_regex  = r'(car park)'
 g_directions_separator = "/|&"
-g_np_regex = ("^(([A-Za-z]{1,2}[ ]?[0-9]{1,4})|([A-Za-z]{3}[ ]?[0-9]{1,3})|"
-              "([0-9]{1,3}[ ]?[A-Za-z]{3})|([0-9]{1,4}[ ]?[A-Za-z]{1,2})|"
-              "([A-Za-z]{3}[ ]?[0-9]{1,3}[ ]?[A-Za-z])|"
-              "([A-Za-z][ ]?[0-9]{1,3}[ ]?[A-Za-z]{3})|"
-              "([A-Za-z]{2}[ ]?[0-9]{2}[ ]?[A-Za-z]{3})|"
-              "([A-Za-z]{3}[ ]?[0-9]{4}))$")
+g_np_regex = (r'^(([A-Za-z]{1,2}[ ]?[0-9]{1,4})|([A-Za-z]{3}[ ]?[0-9]{1,3})|'
+              r'([0-9]{1,3}[ ]?[A-Za-z]{3})|([0-9]{1,4}[ ]?[A-Za-z]{1,2})|'
+              r'([A-Za-z]{3}[ ]?[0-9]{1,3}[ ]?[A-Za-z])|'
+              r'([A-Za-z][ ]?[0-9]{1,3}[ ]?[A-Za-z]{3})|'
+              r'([A-Za-z]{2}[ ]?[0-9]{2}[ ]?[A-Za-z]{3})|'
+              r'([A-Za-z]{3}[ ]?[0-9]{4}))$')
 
 def infer_road_attr(
     descriptions,

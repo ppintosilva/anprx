@@ -1,6 +1,6 @@
 """A series of helper methods that are useful in a variety of contexts."""
 
-import  collections
+import  collections.abc
 import  numpy                   as np
 import  osmnx                   as ox
 import  pandas                  as pd
@@ -29,7 +29,7 @@ def flatten(list_):
     generator
     """
     for el in list_:
-        if isinstance(el, collections.Iterable) and not isinstance(el, (str, bytes)):
+        if isinstance(el, collections.abc.Iterable) and not isinstance(el, (str, bytes)):
             yield from flatten(el)
         else:
             yield el
