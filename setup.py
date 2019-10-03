@@ -21,28 +21,27 @@ classifiers = ['Development Status :: 3 - Alpha',
                'Programming Language :: Python :: 3.7']
 
 install_requires = [
-    'statistics >= 1.0.3',
-    'osmnx >= 0.8.1',
-    'scikit-learn >= 0.20.0',
-    'adjustText >= 0.7.3',
-    'progress >= 1.4',
-    'ray >= 0.7.3',
-    'psutil >= 5.6.3',
-    'setproctitle >= 1.1.10',
-    'scikit-learn >= 0.21.3'
+    'statistics',
+    'osmnx',
+    'scikit-learn',
+    'adjustText',
+    'progress',
+    'ray',
+    'psutil',
+    'setproctitle',
+    'scikit-learn'
 ]
+
+links = ['http://github.com/ppintosilva/osmnx/tarball/master#egg=package-1.0']
 
 extras_require = {
     'tests': [
-       'pytest >= 3.8.2'],
+       'pytest'],
     'docs': [
-       'sphinx >= 1.4',
+       'sphinx',
        'sphinx_rtd_theme'],
     'examples': [
        'ipykernel']}
-
-dependency_links = [
-    'http://github.com/ppintosilva/osmnx/tarball/master#egg=package-1.0']
 
 # now call setup
 setup(name = 'anprx',
@@ -58,4 +57,4 @@ setup(name = 'anprx',
       packages = ['anprx'],
       install_requires = install_requires,
       extras_require = extras_require,
-      dependency_links = dependency_links)
+      dependency_links = links)
