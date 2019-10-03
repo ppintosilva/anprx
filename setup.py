@@ -42,7 +42,7 @@ extras_require = {
        'ipykernel']}
 
 dependency_links = [
-    'http://github.com/pedroswits/osmnx/tarball/master#egg=package-1.0']
+    'http://github.com/ppintosilva/osmnx/tarball/master#egg=package-1.0']
 
 # now call setup
 setup(name = 'anprx',
@@ -50,7 +50,7 @@ setup(name = 'anprx',
       description = short_description,
       long_description = long_description,
       classifiers = classifiers,
-      url = 'https://github.com/pedroswits/anprx',
+      url = 'https://github.com/ppintosilva/anprx',
       author = 'Pedro Pinto da Silva',
       author_email = 'ppintodasilva@gmail.com',
       license = 'Apache License 2.0',
