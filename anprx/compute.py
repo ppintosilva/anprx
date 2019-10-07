@@ -4,7 +4,6 @@
 from   .utils               import log
 
 import os
-import ray
 import math
 import time
 import numpy                as np
@@ -14,6 +13,11 @@ import pandas.api.types     as ptypes
 import networkx             as nx
 import geopandas            as gpd
 import logging              as lg
+
+import warnings
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    import ray
 
 # ------------------------------------------------------------------------------
 
