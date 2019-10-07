@@ -200,7 +200,7 @@ expected_flows = pd.DataFrame({
                        [54,43.2,60], [54,67.5,43.2,60],
                        [54,67.5,43.2,48,60], [54,67.5,43.2,48,60],
                        [54,67.5,43.2,48,60], [54,67.5,43.2,48,60],
-                       [54,67.5,43.2,48,60], [43.2,48], [43.2,48], [48]],
+                       [54,67.5,43.2,48,60], [43.2,48], [43.2,48], [48.0]],
     'flow_destination' : pd.Series([7,9,10,9,7,5,5,2,2,1]*2, dtype = np.uint32),
     'rate'          : [4/7, 5/9, 1/2, 4/9, 2/7, 0,0,0,0,0,
                        3/7, 4/9, 1/2, 5/9, 5/7, 1,1,1,1,1]
@@ -214,9 +214,11 @@ expected_flows['period'] = expected_flows['period']\
 
 
 expected_flows['mean_avspeed'] = expected_flows['avspeed']\
-                                    .apply(lambda x: np.mean(x))
+    .apply(lambda x: np.mean(np.array(x)))
+
 expected_flows['sd_avspeed'] = expected_flows['avspeed']\
-                                    .apply(lambda x: np.std(x, ddof=1))
+    .apply(lambda x: np.nan if np.all(pd.isnull(x)) or len(x) == 1\
+                            else np.std(np.array(x), ddof=1))
 
 expected_flows['density'] = expected_flows['flow'] \
                             / (expected_flows['distance']/1000)
