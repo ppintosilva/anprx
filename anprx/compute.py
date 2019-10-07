@@ -467,7 +467,7 @@ def all_ods_displacement(
     if parallel:
         j = 0
         jobs = []
-    
+
         if not ray.is_initialized():
             ray.init()
 
@@ -756,7 +756,7 @@ def get_flows(trips, freq,
                 .format(frows, frows/nrows*100, len(trips)),
             level = lg.INFO)
 
-    trips['travel_time'] = pd.to_numeric(trips['travel_time'])
+    trips = trips.assign(travel_time = trips.travel_time.dt.total_seconds())
 
     flows = trips\
             .groupby(['od', 'period'])\
