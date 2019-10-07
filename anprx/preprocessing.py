@@ -193,6 +193,7 @@ def filter_by_attr_distance(
                 .format(sname, row['id'], snames, distance_threshold, dists),
             level = lg.INFO)
     else:
+        row['dist'] = np.nan
         log(("{} {}: found {} matching {}\n{}")\
                 .format(sname, row['id'], len(cdf), snames,
                         pd.concat([ pd.DataFrame(dict(row[log_cols]),
