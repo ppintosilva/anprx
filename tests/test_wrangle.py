@@ -388,17 +388,17 @@ def test_wrangle_cameras():
 
     assert {'1-10', '2', '3', '4', '5', '9'}.issubset(cameras['id'].unique())
 
-    assert cameras.loc[cameras.id == '1-10'].iloc[0]['direction'] == "W"
-    assert cameras.loc[cameras.id == '2'].iloc[0]['direction'] == "E-W"
-    assert cameras.loc[cameras.id == '3'].iloc[0]['direction'] == "N-S"
-    assert cameras.loc[cameras.id == '9'].iloc[0]['direction'] == "E"
+    assert cameras.loc[cameras.id == '1-10']['direction'].iloc[0] == "W"
+    assert cameras.loc[cameras.id == '2']['direction'].iloc[0] == "E-W"
+    assert cameras.loc[cameras.id == '3']['direction'].iloc[0] == "N-S"
+    assert cameras.loc[cameras.id == '9']['direction'].iloc[0] == "E"
 
-    assert cameras.loc[cameras.id == '1-10'].iloc[0]['ref'] == "A186"
-    assert cameras.loc[cameras.id == '9'].iloc[0]['ref'] == "A186"
-    assert cameras.loc[cameras.id == '2'].iloc[0]['ref'] == "A13"
-    assert cameras.loc[cameras.id == '3'].iloc[0]['ref'] == "B1"
-    assert cameras.loc[cameras.id == '4'].iloc[0]['ref'] == "A27"
-    assert cameras.loc[cameras.id == '5'].iloc[0]['ref'] == "B1305"
+    assert cameras.loc[cameras.id == '1-10']['ref'].iloc[0] == "A186"
+    assert cameras.loc[cameras.id == '9']['ref'].iloc[0] == "A186"
+    assert cameras.loc[cameras.id == '2']['ref'].iloc[0] == "A13"
+    assert cameras.loc[cameras.id == '3']['ref'].iloc[0] == "B1"
+    assert cameras.loc[cameras.id == '4']['ref'].iloc[0] == "A27"
+    assert cameras.loc[cameras.id == '5']['ref'].iloc[0] == "B1305"
 
     assert "Condercum Rd" in cameras[cameras['id'] == '5']['address'].iloc[0]
 
@@ -418,14 +418,14 @@ def test_wrangle_nodes():
     )
 
     # Same address, direction and within distance
-    assert nodes.loc[nodes.id == '1'].iloc[0]['camera'] == '1-10'
-    assert nodes.loc[nodes.id == '2'].iloc[0]['camera'] == '2'
-    assert nodes.loc[nodes.id == '3'].iloc[0]['camera'] == '3'
-    assert nodes.loc[nodes.id == '4'].iloc[0]['camera'] == '4'
+    assert nodes.loc[nodes.id == '1']['camera'].iloc[0] == '1-10'
+    assert nodes.loc[nodes.id == '2']['camera'].iloc[0] == '2'
+    assert nodes.loc[nodes.id == '3']['camera'].iloc[0] == '3'
+    assert nodes.loc[nodes.id == '4']['camera'].iloc[0] == '4'
     # Camera with same address but over distance_threshold
-    assert pd.isna(nodes.loc[nodes.id == '5'].iloc[0]['camera'])
+    assert pd.isna(nodes.loc[nodes.id == '5']['camera'].iloc[0])
     # No camera with the same address
-    assert pd.isna(nodes.loc[nodes.id == '6'].iloc[0]['camera'])
+    assert pd.isna(nodes.loc[nodes.id == '6']['camera'].iloc[0])
 
 def test_wrangle_network_pairs(plot):
     """Test default behavior."""

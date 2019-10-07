@@ -30,7 +30,6 @@ import shapely.geometry     as geometry
 
 from   hashlib              import blake2b
 from   functools            import reduce
-from   collections          import OrderedDict
 from   itertools            import chain
 from   functools            import reduce
 
@@ -43,7 +42,7 @@ g_address_regex = (r'(East\/West|North\/South|Northbound \d|Eastbound \d|'
                    r'Southbound|Westbound|Site \d|Camera \d|Camera|Site|L\d+|'
                    r'Lane \d|LT|RT|AH|&)')
 g_road_ref_regex  = r'(A\d+|B\d+|C\d+)'
-g_car_park_regex  = r'(car park)'
+g_car_park_regex  = r'car park'
 g_directions_separator = "/|&"
 g_np_regex = (r'^(([A-Za-z]{1,2}[ ]?[0-9]{1,4})|([A-Za-z]{3}[ ]?[0-9]{1,3})|'
               r'([0-9]{1,3}[ ]?[A-Za-z]{3})|([0-9]{1,4}[ ]?[A-Za-z]{1,2})|'
@@ -87,7 +86,8 @@ def infer_road_attr(
                                 .replace(' +', ' ', regex = True)\
                                 .replace('^ +', '', regex = True)
 
-    car_parks = descriptions.str.contains(car_park_regex, case = False)
+    car_parks = descriptions.str.contains(car_park_regex,
+                                          case = False, na = False)
 
     return pd.DataFrame({
         'direction'      : directions,
