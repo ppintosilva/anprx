@@ -341,7 +341,7 @@ def wrangle_objects(
 
  geodf = gpd.GeoDataFrame(index    = objects.index,
                           geometry = points)
- geodf.crs = {'init' :'epsg:4326'}
+ geodf.crs = 'epsg:4326'
 
  avg_longitude = geodf['geometry'].unary_union.centroid.x
  utm_zone = int(math.floor((avg_longitude + 180) / 6.) + 1)
