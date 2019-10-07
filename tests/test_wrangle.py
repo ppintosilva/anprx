@@ -77,6 +77,9 @@ raw_nodes_testset = pd.DataFrame({
 #   AA22AAA |   2    |    1700   |    35        (low confidence)
 #   ------------------------------------------
 #   np.nan  |   2    |     0     |    75        (nan license plate)
+#   aaw91291249  |   2    |     0     |    75   (bad regex plate number)
+#   aa12    |   2    |     0     |    75   (bad regex plate number)
+#   aa      |   2    |     0     |    75   (bad regex plate number)
 
 baseline_date = pd.to_datetime('21000101', format='%Y%m%d', errors='coerce')
 
@@ -102,10 +105,10 @@ raw_anpr_testset_v3 = pd.DataFrame({
 })
 
 raw_anpr_testset_v4 = pd.DataFrame({
-    'vehicle'    : [np.nan],
-    'camera'     : ['2'],
-    'timestamp'  : [0.0],
-    'confidence' : [75.0]
+    'vehicle'    : [np.nan, 'aaw91291249', 'aa12', 'aa'],
+    'camera'     : ['2'] * 4,
+    'timestamp'  : [0.0] * 4,
+    'confidence' : [75.0] * 4
 })
 
 raw_anpr_testset = pd.concat([raw_anpr_testset_v1, raw_anpr_testset_v2,
