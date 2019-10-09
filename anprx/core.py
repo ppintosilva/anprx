@@ -1344,7 +1344,7 @@ def add_address_details(network,
     for group in edge_groups:
         # For edges with multiple osmids, pick the first osmid
         # Is there a better approach or is this a good enough approximation?
-        osmids = [ osmid[0] if isinstance(osmid, collections.Iterable)
+        osmids = [ osmid[0] if isinstance(osmid, collections.abc.Iterable)
                    else osmid for osmid in map(lambda x: x[3], group) ]
 
         address_details = nominatim.lookup_address(
