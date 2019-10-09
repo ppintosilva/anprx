@@ -118,7 +118,7 @@ def config(**kwargs):
             clean_logger()
 
         settings[key] = value
-        # log('Config: {} = {}'.format(key, value), level = lg.DEBUG)
+        log('Config: {} = {}'.format(key, value), level = lg.INFO)
 
 ###
 ###
@@ -316,9 +316,9 @@ def get_logger(level = None,
         # if the logs folder does not already exist, create it
         create_folders()
 
-        # get today's date and construct a log filename
-        todays_date = dt.datetime.today().strftime('%Y_%m_%d')
-        log_filename = os.path.join(settings["app_folder"], settings["logs_folder_name"], '{}_{}.log'.format(filename, todays_date))
+        log_filename = os.path.join(settings["app_folder"],
+                                    settings["logs_folder_name"],
+                                    '{}.log'.format(filename))
 
         # create file handler and log formatter and set them up
         handler = lg.FileHandler(log_filename, encoding='utf-8')

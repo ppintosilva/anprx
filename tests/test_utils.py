@@ -41,7 +41,9 @@ def assert_file_structure():
     assert os.path.exists(osmnx_folder)
 
 def assert_log_file():
-    log_filename = os.path.join(anprx.utils.settings["app_folder"], anprx.utils.settings["logs_folder_name"], '{}_{}.log'.format(anprx.utils.settings["app_name"], dt.datetime.today().strftime('%Y_%m_%d')))
+    log_filename = os.path.join(anprx.utils.settings["app_folder"],
+                                anprx.utils.settings["logs_folder_name"],
+                                '{}.log'.format(anprx.utils.settings["app_name"]))
 
     assert os.path.exists(log_filename)
 
