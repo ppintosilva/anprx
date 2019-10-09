@@ -743,8 +743,10 @@ def get_flows(trips, freq,
 
     if agg_displacement:
         log("Including displacement in aggregated metrics", level = lg.INFO)
-        aggregator['mean_displacement'] = ('displacement', np.mean)
-        aggregator['sd_displacement']   = ('displacement', np.std)
+        aggregator['mean_dp'] = ('dp', np.mean)
+        aggregator['sd_dp']   = ('dp', np.std)
+        aggregator['mean_dn'] = ('dn', np.mean)
+        aggregator['sd_dn']   = ('dn', np.std)
 
     # Whether to remove steps with missing origin and destination
     if remove_na:
