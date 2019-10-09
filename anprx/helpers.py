@@ -263,7 +263,7 @@ def flatten_dict(dict_, parent_key='', sep='_', inherit_parent_key = True):
     items = []
     for k, v in dict_.items():
         new_key = parent_key + sep + k if parent_key and inherit_parent_key else k
-        if isinstance(v, collections.MutableMapping):
+        if isinstance(v, collections.abc.MutableMapping):
             items.extend(flatten_dict(v,
                                       parent_key = new_key,
                                       sep = sep,

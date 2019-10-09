@@ -30,7 +30,7 @@ def test_lookup_address_invalid_osm_entity():
 def test_lookup_address():
     details = nominatim.lookup_address(osmids, entity = 'W')
 
-    assert len(details) == len(osmids)
+    assert len(details) <= len(osmids)
 
     for dict_ in details:
         assert len(dict_.keys()) > 0
