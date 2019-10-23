@@ -3,6 +3,7 @@
 
 from   .utils               import log
 
+import gc
 import os
 import math
 import time
@@ -693,17 +694,17 @@ def discretise_time(trips, freq):
                    (tmp.period_d > p)]\
                   .assign(period = p) for p in periods]
 
+        # trying to deallocate unused memory
+        gc.collect()
+
         tmp = pd.concat(dfs).drop(columns=['period_o','period_d'])
 
         trips = pd.concat([tmp, tmp2])
-        # sort?
-        trips = trips.sort_values(['vehicle','trip','trip_step','period'])\
-                     .reset_index(drop = True)
+        # sort? # .sort_values(['vehicle','trip','trip_step','period'])\
+        trips = trips.reset_index(drop = True)
 
     else:
         trips = tmp2
-
-    # trips['period'] = trips['period'].apply(lambda x: pd.Period(x, freq))
 
     log("Discretised time in {:,.2f} sec. Added {} rows. Total rows = {}."\
             .format(time.time() - start_time, len(trips) - nrows, len(trips)),
