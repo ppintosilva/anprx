@@ -706,6 +706,9 @@ def discretise_time(trips, freq):
 
     log_memory("tmp2", tmp2)
 
+    # release memory
+    del tmp2_step1, tmp2_others
+
     if len(tmp) > 0:
         dfs =[ tmp[(tmp.period_o <= p) & \
                    (tmp.period_d > p)]\
@@ -722,8 +725,16 @@ def discretise_time(trips, freq):
 
         log_memory("tmp", tmp)
 
+        # release memory
+        del dfs
+
+        # merge expanded and not-expanded dataframes
         trips = pd.concat([tmp, tmp2])
-        # sort? # .sort_values(['vehicle','trip','trip_step','period'])\
+
+        # release memory
+        del tmp, tmp2
+
+        # sort? # .sort_values(['origin','destination','period'])\
         trips = trips.reset_index(drop = True)
 
         log_memory("trips", trips)
