@@ -869,6 +869,10 @@ def get_flows(trips, freq,
                  .fillna({'flow' : 0})\
                  .reset_index()
 
+    log("Total process memory: {:,.1f} MB [AFTER REINDEX]"\
+            .format(process.memory_info().rss/1e6),
+        level = lg.INFO)
+
     # Not using fillna, because of cases that should remain with na:
     # od pairs for which there is no distance and therefore no speed and density
     flows.loc[flows.flow == 0, 'density'] = 0
@@ -893,12 +897,24 @@ def get_flows(trips, freq,
 
     log("Computing rates and flows at destination.", level = lg.INFO)
 
+    log_memory("flows", flows)
+
     flow_d = flows.groupby(['destination','period'])['flow']\
                   .agg(flow_destination = ('flow', 'sum'))\
                   .reset_index()
 
+    log_memory("flows_destination", flow_d)
+
+    log("Total process memory: {:,.1f} MB [BEFORE MERGE]"\
+            .format(process.memory_info().rss/1e6),
+        level = lg.INFO)
+
     flows = pd.merge(flows, flow_d,
                      on = ['destination', 'period'], how = 'left')
+
+    log("Total process memory: {:,.1f} MB [AFTER MERGE]"\
+            .format(process.memory_info().rss/1e6),
+        level = lg.INFO)
 
     flows['rate'] = flows['flow']/flows['flow_destination']
 
