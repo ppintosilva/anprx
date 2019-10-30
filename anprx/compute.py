@@ -728,20 +728,28 @@ def discretise_time(trips, freq):
         total_memory = np.array([ df.memory_usage(index=True).sum()/1e6 \
                                   for df in dfs ]).sum()
 
-        log("Total memory in 'dfs' ({} dataframes): {:,.2f}"\
-                .format(len(dfs), total_memory),
-            level = lg.INFO)
-
-        tmp = pd.concat(dfs).drop(columns=['period_o','period_d'])
-
-        log_memory("tmp", tmp)
-
-        # release memory
-        del dfs
+        del tmp
 
         log("Total process memory: {:,.1f} MB [BEFORE DEL 3]"\
                 .format(process.memory_info().rss/1e6),
             level = lg.INFO)
+
+        log("Total memory in 'dfs' ({} dataframes): {:,.2f}"\
+                .format(len(dfs), total_memory),
+            level = lg.INFO)
+
+        tmp = pd.concat(dfs)
+
+        # release memory
+        del dfs
+
+        log("Total process memory: {:,.1f} MB [BEFORE DEL 4]"\
+                .format(process.memory_info().rss/1e6),
+            level = lg.INFO)
+
+        tmp.drop(columns=['period_o','period_d'], inplace = True)
+
+        log_memory("tmp", tmp)
 
         # merge expanded and not-expanded dataframes
         trips = pd.concat([tmp, tmp2])
