@@ -6,6 +6,7 @@ from   .utils               import log
 import gc
 import os
 import math
+import psutil
 import time
 import numpy                as np
 import osmnx                as ox
@@ -633,6 +634,8 @@ def log_memory(name, df):
         level = lg.INFO)
 
 def discretise_time(trips, freq):
+    process = psutil.Process(os.getpid())
+
     start_time = time.time()
     nrows = len(trips)
 
@@ -706,8 +709,16 @@ def discretise_time(trips, freq):
 
     log_memory("tmp2", tmp2)
 
+    log("Total process memory: {:,.1f} MB [BEFORE DEL 1]"\
+            .format(process.memory_info().rss/1e6),
+        level = lg.INFO)
+
     # release memory
     del tmp2_step1, tmp2_others
+
+    log("Total process memory: {:,.1f} MB [BEFORE DEL 2]"\
+            .format(process.memory_info().rss/1e6),
+        level = lg.INFO)
 
     if len(tmp) > 0:
         dfs =[ tmp[(tmp.period_o <= p) & \
@@ -728,11 +739,19 @@ def discretise_time(trips, freq):
         # release memory
         del dfs
 
+        log("Total process memory: {:,.1f} MB [BEFORE DEL 3]"\
+                .format(process.memory_info().rss/1e6),
+            level = lg.INFO)
+
         # merge expanded and not-expanded dataframes
         trips = pd.concat([tmp, tmp2])
 
         # release memory
         del tmp, tmp2
+
+        log("Total process memory: {:,.1f} MB [BEFORE RETURN]"\
+                .format(process.memory_info().rss/1e6),
+            level = lg.INFO)
 
         # sort? # .sort_values(['origin','destination','period'])\
         trips = trips.reset_index(drop = True)
