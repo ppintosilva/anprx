@@ -728,14 +728,14 @@ def discretise_time(trips, freq):
         total_memory = np.array([ df.memory_usage(index=True).sum()/1e6 \
                                   for df in dfs ]).sum()
 
+        log("Total memory in 'dfs' ({} dataframes): {:,.2f}"\
+                .format(len(dfs), total_memory),
+            level = lg.INFO)
+
         del tmp
 
         log("Total process memory: {:,.1f} MB [BEFORE DEL 3]"\
                 .format(process.memory_info().rss/1e6),
-            level = lg.INFO)
-
-        log("Total memory in 'dfs' ({} dataframes): {:,.2f}"\
-                .format(len(dfs), total_memory),
             level = lg.INFO)
 
         tmp = pd.concat(dfs)
@@ -831,6 +831,16 @@ def get_flows(trips, freq,
     flows = trips\
             .groupby(['od', 'period'])\
             .agg(**aggregator)
+
+    log("Total process memory: {:,.1f} MB [BEFORE DEL TRIPS]"\
+            .format(process.memory_info().rss/1e6),
+        level = lg.INFO)
+
+    del trips
+
+    log("Total process memory: {:,.1f} MB [AFTER DEL TRIPS]"\
+            .format(process.memory_info().rss/1e6),
+        level = lg.INFO)
 
     flows['density'] = flows['flow']/(flows['density']/1000)
 
