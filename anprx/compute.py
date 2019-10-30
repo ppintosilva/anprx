@@ -627,6 +627,11 @@ def get_periods(trips, freq):
                          end   = end_period,
                          freq  = freq)
 
+def log_memory(df):
+    log("shape: {}, memory: {:,.2f} MB"\
+            .format(df.shape, df.memory_usage(index=True).sum()/1e6),
+        level = lg.INFO)
+
 def discretise_time(trips, freq):
     start_time = time.time()
     nrows = len(trips)
@@ -652,6 +657,8 @@ def discretise_time(trips, freq):
     # Cases where origin is NA, we want the floor of period_d instead of ceiling
     trips.loc[trips.trip_step == 1, 'period_d'] = \
         trips.loc[trips.trip_step == 1, 't_destination'].dt.floor(freq)
+
+    log_memory(trips)
 
     # To handle trip steps that span several time intervals, we augment
     # the original dataframe by adding as many rows per trip step as many
@@ -681,27 +688,45 @@ def discretise_time(trips, freq):
 
     tmp  = trips[to_expand]
 
+    log_memory(tmp)
+
     tmp2_step1 = trips[(~to_expand) & (trips.trip_step == 1)]\
                 .rename(columns = {'period_d' : 'period'})\
                 .drop(columns=['period_o'])
+
+    log_memory(tmp2_step1)
+
     tmp2_others = trips[(~to_expand) & (trips.trip_step != 1)]\
                 .rename(columns = {'period_o' : 'period'})\
                 .drop(columns=['period_d'])
+
+    log_memory(tmp2_others)
+
     tmp2 = pd.concat([tmp2_step1, tmp2_others])
+
+    log_memory(tmp2)
 
     if len(tmp) > 0:
         dfs =[ tmp[(tmp.period_o <= p) & \
                    (tmp.period_d > p)]\
                   .assign(period = p) for p in periods]
 
-        # trying to deallocate unused memory
-        gc.collect()
+        total_memory = np.array([ df.memory_usage(index=True).sum()/1e6 \
+                                  for df in dfs ]).sum()
+
+        log("Total memory in dfs ({} dataframes): {:,.2f}"\
+                .format(len(dfs), total_memory),
+            level = lg.INFO)
 
         tmp = pd.concat(dfs).drop(columns=['period_o','period_d'])
+
+        log_memory(tmp)
 
         trips = pd.concat([tmp, tmp2])
         # sort? # .sort_values(['vehicle','trip','trip_step','period'])\
         trips = trips.reset_index(drop = True)
+
+        log_memory(trips)
 
     else:
         trips = tmp2
