@@ -785,6 +785,7 @@ def get_flows(trips, freq,
     """
     Aggregate trip data to compute flows.
     """
+    process = psutil.Process(os.getpid())
     start_time = time.time()
 
     log("Aggregating trips into flows: column 'period' in trips : {}"\
