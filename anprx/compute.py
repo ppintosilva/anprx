@@ -833,6 +833,10 @@ def get_flows(trips, freq,
             .groupby(['od', 'period'])\
             .agg(**aggregator)
 
+    # Remove last period as the interval is open and does not include the
+    # final period
+    periods = get_periods(trips, freq)[:-1]
+
     log("Total process memory: {:,.1f} MB [BEFORE DEL TRIPS]"\
             .format(process.memory_info().rss/1e6),
         level = lg.INFO)
@@ -844,10 +848,6 @@ def get_flows(trips, freq,
         level = lg.INFO)
 
     flows['density'] = flows['flow']/(flows['density']/1000)
-
-    # Remove last period as the interval is open and does not include the
-    # final period
-    periods = get_periods(trips, freq)[:-1]
 
     unique_ods = flows.index.levels[0]
     expected_nrows = len(periods) * len(unique_ods)
