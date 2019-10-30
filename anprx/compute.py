@@ -627,7 +627,7 @@ def get_periods(trips, freq):
                          end   = end_period,
                          freq  = freq)
 
-def log_memory(df, name):
+def log_memory(name, df):
     log("{}: shape = {}, memory = {:,.2f} MB"\
             .format(name, df.shape, df.memory_usage(index=True).sum()/1e6),
         level = lg.INFO)
