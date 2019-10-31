@@ -11,6 +11,7 @@ import time
 import numpy                as np
 import osmnx                as ox
 import pandas               as pd
+import scipy.stats          as stats
 import pandas.api.types     as ptypes
 import networkx             as nx
 import geopandas            as gpd
@@ -781,6 +782,7 @@ def get_flows(trips, freq,
               remove_na = False,
               try_discretise = True,
               od_separator = '_',
+              skip_explicit = False,
               single_precision = False):
     """
     Aggregate trip data to compute flows.
@@ -802,8 +804,10 @@ def get_flows(trips, freq,
         'density'      : ('distance', 'first'),
         'mean_avspeed' : ('av_speed', np.mean),
         'sd_avspeed'   : ('av_speed', np.std ),
+        'skew_avspeed' : ('av_speed', stats.skew),
         'mean_tt'      : ('travel_time', np.mean),
-        'sd_tt'        : ('travel_time', np.std )
+        'sd_tt'        : ('travel_time', np.std ),
+        'skew_tt'      : ('travel_time', stats.skew)
    }
 
     if agg_displacement:
@@ -850,32 +854,46 @@ def get_flows(trips, freq,
     flows['density'] = flows['flow']/(flows['density']/1000)
 
     unique_ods = flows.index.levels[0]
-    expected_nrows = len(periods) * len(unique_ods)
 
-    # We want every combination of origin,destination,period to show up in the
-    # flows, even if the flow is zero. This is useful later, for calculations
-    # and makes 'missing' data explicit.
-    log("Filling missing combinations of (od,period) with zero flows.",
-        level = lg.INFO)
+    if not skip_explicit:
+        # We want every combination of origin,destination,period to show up in the
+        # flows, even if the flow is zero. This is useful later, for calculations
+        # and makes 'missing' data explicit.
+        log("Filling missing combinations of (od,period) with zero flows.",
+            level = lg.INFO)
 
-    # Cartesian product of unique values of 'od', and 'period'
-    # Using 'od' instead of 'origin' and 'destination' prevents od combinations
-    # that don't show up in the data to be included in the cartesian product
-    mux = pd.MultiIndex.from_product([flows.index.levels[0], periods],
-                                     names = ['od', 'period'])
+        # Cartesian product of unique values of 'od', and 'period'
+        # Using 'od' instead of 'origin' and 'destination' prevents od combinations
+        # that don't show up in the data to be included in the cartesian product
+        mux = pd.MultiIndex.from_product([flows.index.levels[0], periods],
+                                         names = ['od', 'period'])
 
-    # reindex and fill with np.nan
-    flows = flows.reindex(mux, fill_value=np.NaN)\
-                 .fillna({'flow' : 0})\
-                 .reset_index()
+        # reindex and fill with np.nan
+        flows = flows.reindex(mux, fill_value=np.NaN)\
+                     .fillna({'flow' : 0})\
+                     .reset_index()
 
-    log("Total process memory: {:,.1f} MB [AFTER REINDEX]"\
-            .format(process.memory_info().rss/1e6),
-        level = lg.INFO)
+        # Not using fillna, because of cases that should remain with na:
+        # od pairs for which there is no distance and therefore no speed and density
+        flows.loc[flows.flow == 0, 'density'] = 0
 
-    # Not using fillna, because of cases that should remain with na:
-    # od pairs for which there is no distance and therefore no speed and density
-    flows.loc[flows.flow == 0, 'density'] = 0
+        log("Total process memory: {:,.1f} MB [AFTER REINDEX]"\
+                .format(process.memory_info().rss/1e6),
+            level = lg.INFO)
+
+        expected_nrows = len(periods) * len(unique_ods)
+
+        log(("Expected rows: {} (nperiods . unique_ods = {} . {}). "
+             "Observed rows: {}.")\
+                .format(expected_nrows, len(periods), len(unique_ods), len(flows)),
+            level = lg.INFO)
+
+        assert len(flows) == expected_nrows
+
+    else:
+        flows.reset_index(inplace = True)
+        log("SKIP filling missing combinations of (od,period) with zero flows: {}".format(flows.columns.values),
+            level = lg.INFO)
 
     # making sure flow is of type int
     flows['flow'] = flows['flow'].astype(np.uint32)
@@ -887,13 +905,6 @@ def get_flows(trips, freq,
     # Move 'origin' and 'destination' columns to the front
     cols = flows.columns.tolist()
     flows = flows[cols[-2:] + cols[:-2]]
-
-    log(("Expected rows: {} (nperiods . unique_ods = {} . {}). "
-         "Observed rows: {}.")\
-            .format(expected_nrows, len(periods), len(unique_ods), len(flows)),
-        level = lg.INFO)
-
-    assert len(flows) == expected_nrows
 
     log("Computing rates and flows at destination.", level = lg.INFO)
 

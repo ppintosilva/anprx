@@ -252,3 +252,17 @@ def test_flows():
         expected_flows[names],
         check_less_precise = 5,
         check_dtype = True)
+
+def test_flows_skip_explicit():
+    observed_flows = get_flows(fake_trips, freq, skip_explicit = True)
+
+    names =['od', 'origin', 'destination', 'period', 'flow', 'flow_destination',
+            'rate', 'mean_avspeed', 'sd_avspeed', 'density']
+
+    pd.testing.assert_frame_equal(
+        observed_flows.drop(columns = ['mean_tt', 'sd_tt'])[names],
+        expected_flows[names]\
+            .loc[expected_flows.flow > 0]\
+            .reset_index(drop = True),
+        check_less_precise = 5,
+        check_dtype = True)
