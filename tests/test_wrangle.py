@@ -302,7 +302,7 @@ def get_wrangled_network(plot = False):
     if raw_G is None:
         raw_G = network_from_cameras(
             cameras = get_wrangled_cameras(),
-            filter_residential = False,
+            road_type = "all",
             clean_intersections = True,
             tolerance = 5,
             plot = plot,
