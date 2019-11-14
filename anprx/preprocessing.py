@@ -520,7 +520,7 @@ def wrangle_cameras(
 
 def network_from_cameras(
     cameras,
-    filter_residential = True,
+    road_type = "all",
     clean_intersections = False,
     tolerance = 30,
     min_bbox_length_km = 0.2,
@@ -538,13 +538,26 @@ def network_from_cameras(
 
     start_time = time.time()
 
-    if filter_residential:
+    accepted_road_filters = ['all', 'primary', 'arterial']
+
+    if road_type == "primary":
         osm_road_filter = \
             ('["area"!~"yes"]["highway"~"motorway|trunk|primary|'
              'secondary|tertiary"]["motor_vehicle"!~"no"]["motorcar"!~"no"]'
              '["access"!~"private"]')
-    else:
+
+    elif road_type == "arterial":
+        osm_road_filter = \
+            ('["area"!~"yes"]["highway"~"residential|living_street|'
+             'unclassified|service"]["motor_vehicle"!~"no"]'
+             '["motorcar"!~"no"]["access"!~"private"]')
+
+    elif road_type == "all":
         osm_road_filter = None
+
+    else:
+        raise ValueError("Road filter has to be one of {}"\
+                         .format(accepted_road_filters))
 
     xs = [p.x for p in cameras['geometry']]
     ys = [p.y for p in cameras['geometry']]
