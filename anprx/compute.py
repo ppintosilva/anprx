@@ -634,7 +634,7 @@ def log_memory(name, df):
             .format(name, df.shape, df.memory_usage(index=True).sum()/1e6),
         level = lg.INFO)
 
-def discretise_time(trips, freq):
+def discretise_time(trips, freq, sort = True):
     process = psutil.Process(os.getpid())
 
     start_time = time.time()
@@ -762,8 +762,11 @@ def discretise_time(trips, freq):
                 .format(process.memory_info().rss/1e6),
             level = lg.INFO)
 
-        # sort? # .sort_values(['origin','destination','period'])\
-        trips = trips.reset_index(drop = True)
+        if sort:
+            trips = trips.sort_values(['vehicle', 'trip', 't_destination'])\
+                         .reset_index(drop = True)
+        else:
+            trips = trips.reset_index(drop = True)
 
         log_memory("trips", trips)
 

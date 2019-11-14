@@ -374,7 +374,8 @@ def get_dtrips():
     if dtrips is None:
         dtrips = discretise_time(
             trips = get_trips(),
-            freq = dtrips_freq
+            freq = dtrips_freq,
+            sort = True
         )
 
     return dtrips
