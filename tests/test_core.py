@@ -333,8 +333,8 @@ def test_filter_by_address_and_get_local_coordinate_system():
 
     for id in candidate_nodes:
         ox_distance = ox.great_circle_vec(
-            lat1 = network.node[id]['y'],
-            lng1 = network.node[id]['x'],
+            lat1 = network.nodes[id]['y'],
+            lng1 = network.nodes[id]['x'],
             lat2 = point.lat,
             lng2 = point.lng)
 

@@ -643,15 +643,15 @@ def distance_to_edge(network,
     distance_node_from = ox.great_circle_vec(
                                 lat1 = point.lat,
                                 lng1 = point.lng,
-                                lat2 = network.node[edge.u]['y'],
-                                lng2 = network.node[edge.u]['x'],
+                                lat2 = network.nodes[edge.u]['y'],
+                                lng2 = network.nodes[edge.u]['x'],
                                 earth_radius = earth_radius(unit = Units.m))
 
     distance_node_to = ox.great_circle_vec(
                                 lat1 = point.lat,
                                 lng1 = point.lng,
-                                lat2 = network.node[edge.v]['y'],
-                                lng2 = network.node[edge.v]['x'],
+                                lat2 = network.nodes[edge.v]['y'],
+                                lng2 = network.nodes[edge.v]['x'],
                                 earth_radius = earth_radius(unit = Units.m))
 
     distances = [ distance_node_to, distance_node_from ]
@@ -908,8 +908,8 @@ def local_coordinate_system(network,
                 as_lvector(
                     origin = origin,
                     point = Point(
-                            lat = network.node[node_id]['y'],
-                            lng = network.node[node_id]['x']))
+                            lat = network.nodes[node_id]['y'],
+                            lng = network.nodes[node_id]['x']))
 
             for node_id in nodes
         }

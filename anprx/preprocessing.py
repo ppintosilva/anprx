@@ -800,8 +800,8 @@ def camera_candidate_edges(
     u_nodes = list(map(lambda x: x[0][1], candidate_edges))
     v_nodes = list(map(lambda x: x[0][2], candidate_edges))
 
-    points_u = [ (G.node[u]['x'], (G.node[u]['y'])) for u in u_nodes]
-    points_v = [ (G.node[v]['x'], (G.node[v]['y'])) for v in v_nodes]
+    points_u = [ (G.nodes[u]['x'], (G.nodes[u]['y'])) for u in u_nodes]
+    points_v = [ (G.nodes[v]['x'], (G.nodes[v]['y'])) for v in v_nodes]
 
     uv_vecs = [ (pv[0] - pu[0], pv[1] - pu[1]) \
                 for pu,pv in zip(points_u, points_v)]
