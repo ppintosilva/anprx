@@ -6,6 +6,7 @@ from   anprx.preprocessing import merge_cameras_network
 from   anprx.preprocessing import camera_pairs_from_graph
 from   anprx.preprocessing import map_nodes_cameras
 from   anprx.preprocessing import wrangle_raw_anpr
+from   anprx.preprocessing import gdfs_from_network
 from   anprx.compute       import trip_identification
 from   anprx.compute       import discretise_time
 
@@ -296,7 +297,7 @@ def get_wrangled_cameras():
     return wrangled_cameras
 
 
-def get_wrangled_network(plot = False):
+def get_raw_network(plot = False):
     global raw_G
 
     if raw_G is None:
@@ -318,7 +319,7 @@ def get_merged_network(plot = False):
 
     if merged_G is None:
         merged_G = merge_cameras_network(
-            G = get_wrangled_network(plot),
+            G = get_raw_network(plot),
             cameras = get_wrangled_cameras(),
             plot = plot,
             file_format = 'png',
@@ -495,3 +496,19 @@ def test_discretise_time():
         dtrips,
         expected_dtrips,
         check_dtype = True)
+
+
+def test_gdfs_from_network():
+    raw_G = get_raw_network()
+
+    nodes_gdf, edges_gdf = gdfs_from_network(raw_G)
+
+    nodes_gdf.to_file('test_nodes.geojson', drive = 'GeoJSON')
+    edges_gdf.to_file('test_edges.geojson', drive = 'GeoJSON')
+
+    merged_G = get_merged_network()
+
+    nodes_gdf, edges_gdf = gdfs_from_network(merged_G)
+
+    nodes_gdf.to_file('test_nodes.geojson', drive = 'GeoJSON')
+    edges_gdf.to_file('test_edges.geojson', drive = 'GeoJSON')

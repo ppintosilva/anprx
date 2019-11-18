@@ -1552,3 +1552,50 @@ def wrangle_raw_anpr(
         level = lg.INFO)
 
     return df.reset_index(drop = True)
+
+
+def gdfs_from_network(G):
+    """
+    Convert a street network from a networkx MultiDiGraph object to a tuple
+    of nodes and edges GeoDataFrames.
+    """
+
+    gdfs = ox.graph_to_gdfs(G)
+
+    nodes_gdf = gdfs[0]
+
+    if 'is_camera' in nodes_gdf.columns:
+        nodes_gdf = nodes_gdf.reset_index()\
+                           .rename(columns = {'index' : 'node'})\
+                           [['node', 'is_camera', 'geometry']]
+    else:
+        nodes_gdf = nodes_gdf.reset_index()\
+                           .rename(columns = {'index' : 'node'})\
+                           [['node', 'geometry']]
+
+
+    edges_gdf = gdfs[1].drop(columns = ['osmid', 'service'])
+
+    # Fix columns which have elements that are lists
+    for col in edges_gdf.columns.tolist():
+        # remove any instances of list: name
+        col_has_list = edges_gdf[col].apply(lambda x: isinstance(x, list))
+
+        # if there is at least one instance of type list:
+        # make each element of list a string and join them
+        if col_has_list.any():
+            edges_gdf.loc[col_has_list, col] = \
+                edges_gdf.loc[col_has_list][col].\
+                    apply(lambda x: ",".join(list(map(lambda y: str(y), x))))
+
+    # Transform direction tuples into objects
+    edges_gdf = edges_gdf.assign(\
+        direction = edges_gdf.direction.str[0] + '-' +\
+                    edges_gdf.direction.str[1])
+
+    # Need to transform to string otherwise there are mixed elements of type
+    # int64 and string
+    edges_gdf.u = edges_gdf.u.to_string()
+    edges_gdf.v = edges_gdf.v.to_string()
+
+    return (nodes_gdf, edges_gdf)
