@@ -503,12 +503,12 @@ def test_gdfs_from_network():
 
     nodes_gdf, edges_gdf = gdfs_from_network(raw_G)
 
-    nodes_gdf.to_file('test_nodes.geojson', drive = 'GeoJSON')
-    edges_gdf.to_file('test_edges.geojson', drive = 'GeoJSON')
+    nodes_gdf.to_file('tests/data/test_nodes.geojson', driver = 'GeoJSON')
+    edges_gdf.to_file('tests/data/test_edges.geojson', driver = 'GeoJSON')
 
     merged_G = get_merged_network()
 
     nodes_gdf, edges_gdf = gdfs_from_network(merged_G)
 
-    nodes_gdf.to_file('test_nodes.geojson', drive = 'GeoJSON')
-    edges_gdf.to_file('test_edges.geojson', drive = 'GeoJSON')
+    nodes_gdf.to_file('tests/data/test_nodes.geojson', driver = 'GeoJSON')
+    edges_gdf.to_file('tests/data/test_edges.geojson', driver = 'GeoJSON')

@@ -1595,7 +1595,7 @@ def gdfs_from_network(G):
 
     # Need to transform to string otherwise there are mixed elements of type
     # int64 and string
-    edges_gdf.u = edges_gdf.u.to_string()
-    edges_gdf.v = edges_gdf.v.to_string()
+    edges_gdf.u = edges_gdf.u.apply(lambda x: str(x))
+    edges_gdf.v = edges_gdf.v.apply(lambda x: str(x))
 
     return (nodes_gdf, edges_gdf)
