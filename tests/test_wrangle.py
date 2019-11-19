@@ -431,6 +431,16 @@ def test_wrangle_nodes():
     # No camera with the same address
     assert pd.isna(nodes.loc[nodes.id == '6']['camera'].iloc[0])
 
+def test_wrangle_network():
+    G = get_raw_network()
+
+    # test that every edge has the geometry attribute
+    geoms = [ pd.notnull(geom) \
+              for u, v, geom in G.edges(keys=False, data="geometry") ]
+
+    # assert no nulls
+    assert all(geoms)
+
 def test_wrangle_network_pairs(plot):
     """Test default behavior."""
 

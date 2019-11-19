@@ -607,6 +607,17 @@ def network_from_cameras(
         level = lg.INFO)
     checkpoint = time.time()
 
+    # Make sure that every edge has a geometry attribute
+    for u, v, data in G.edges(keys=False, data=True):
+        if 'geometry' not in data:
+            # if it doesn't have a geometry attribute, the edge is a straight
+            # line from node to node
+            x1 = G.nodes[u]['x']
+            y1 = G.nodes[u]['y']
+            x2 = G.nodes[v]['x']
+            y2 = G.nodes[v]['y']
+            data['geometry'] = shp.geometry.LineString([(x1, y1), (x2, y2)])
+
     G = add_edge_directions(G)
 
     G = ox.project_graph(G)
