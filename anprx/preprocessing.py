@@ -526,6 +526,7 @@ def network_from_cameras(
     min_bbox_length_km = 0.2,
     max_bbox_length_km = 50,
     bbox_margin = 0.10,
+    retain_all = True,
     plot = False,
     **plot_kwargs
 ):
@@ -598,7 +599,7 @@ def network_from_cameras(
     G = ox.graph_from_point(
         center_point = (center_lat, center_lon),
         distance = length,
-
+        retain_all = retain_all,
         custom_filter = osm_road_filter
     )
 
