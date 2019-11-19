@@ -26,7 +26,7 @@ import pandas.api.types     as ptypes
 import networkx             as nx
 import geopandas            as gpd
 import logging              as lg
-import shapely.geometry     as geometry
+import shapely              as shp
 
 from   hashlib              import blake2b
 from   functools            import reduce
@@ -337,7 +337,7 @@ def wrangle_objects(
  objects.reset_index(drop=True, inplace = True)
 
  points = gpd.GeoSeries(
-     [ geometry.Point(x,y) for x, y in zip(
+     [ shp.geometry.Point(x,y) for x, y in zip(
          objects['lon'],
          objects['lat'])
      ])
@@ -526,7 +526,7 @@ def network_from_cameras(
     min_bbox_length_km = 0.2,
     max_bbox_length_km = 50,
     bbox_margin = 0.10,
-    plot = True,
+    plot = False,
     **plot_kwargs
 ):
     """
@@ -598,6 +598,7 @@ def network_from_cameras(
     G = ox.graph_from_point(
         center_point = (center_lat, center_lon),
         distance = length,
+
         custom_filter = osm_road_filter
     )
 
@@ -731,11 +732,11 @@ def close_up_plots(
                 x + bbox_distance, x - bbox_distance)
 
         # filter points outside the bounding box
-        poly = geometry.box(x - bbox_distance, y - bbox_distance,
+        poly = shp.geometry.box(x - bbox_distance, y - bbox_distance,
                             x + bbox_distance, y + bbox_distance)
 
         subpoints = [ (id,x,y) for id,x,y in zip(ids, points[0], points[1]) \
-                      if geometry.Point((x,y)).within(poly)]
+                      if shp.geometry.Point((x,y)).within(poly)]
 
         subids, tmp0, tmp1 = zip(*subpoints)
         subpoints = (tmp0, tmp1)
@@ -968,8 +969,8 @@ def identify_cameras_merge(
             # corner case:
             # camera overlaps with point in graph: cut again a few meters away
             # does it overlap with u or v?
-            pu = geometry.Point(chosen_edge['point_u'])
-            pv = geometry.Point(chosen_edge['point_v'])
+            pu = shp.geometry.Point(chosen_edge['point_u'])
+            pv = shp.geometry.Point(chosen_edge['point_v'])
 
             dists = (camera_point.distance(pu), camera_point.distance(pv))
 
