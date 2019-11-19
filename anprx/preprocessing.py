@@ -1326,6 +1326,15 @@ def camera_pairs_from_graph(G):
             .format((time.time() - start_time)/60.0),
         level = lg.INFO)
 
+    log("Compute route geometries")
+
+    camera_pairs['geometry'] = \
+        camera_pairs.loc[~pd.isnull(camera_pairs.path), 'path']\
+             .apply(lambda x: list(zip(iter(x), iter(x[1:]))))\
+             .apply(lambda x: list(map(
+                lambda uv: G.edges[uv[0],uv[1],0]['geometry'], x)))\
+             .apply(lambda x: shp.ops.linemerge(shp.geometry.MultiLineString(x)))
+
     return camera_pairs.reset_index()
 
 

@@ -13,6 +13,7 @@ from   anprx.compute       import discretise_time
 import os
 import numpy               as     np
 import pandas              as     pd
+import shapely             as shp
 
 """
 Test set 1 - assert:
@@ -466,6 +467,12 @@ def test_wrangle_network_pairs(plot):
 
     assert pairs.loc[(pairs.origin == '5') & (pairs.destination == '5')]\
                 .iloc[0]['valid'] == 0
+
+    # assert geometries are of type 'LineString' or 'MultiLineString'
+    for geom in pairs.loc[pairs.valid == 1, 'geometry']:
+        print(geom)
+        assert(isinstance(geom, shp.geometry.LineString) or \
+               isinstance(geom, shp.geometry.MultiLineString))
 
 
 def test_wrangle_raw_anpr():
