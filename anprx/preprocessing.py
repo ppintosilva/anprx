@@ -1339,6 +1339,11 @@ def camera_pairs_from_graph(G):
         camera_pairs['geometry']\
             .apply(lambda x: isinstance(x, shp.geometry.LineString))
 
+    # turn paths into a string, so that we can write to file
+    camera_pairs.loc[~pd.isnull(camera_pairs.path), 'path'] = \
+        camera_pairs.loc[~pd.isnull(camera_pairs.path), 'path']\
+        .apply(lambda x: ",".join(list(map(lambda y: str(y), x))))
+
     return gpd.GeoDataFrame(camera_pairs.reset_index())
 
 

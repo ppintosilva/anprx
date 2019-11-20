@@ -486,6 +486,9 @@ def test_wrangle_network_pairs(plot):
         else:
             assert not is_contiguous
 
+    # test that we can write GeoDataFrame to geojson file
+    pairs.to_file('tests/data/pairs.geojson', driver = 'GeoJSON')
+
 
 def test_wrangle_raw_anpr():
 
