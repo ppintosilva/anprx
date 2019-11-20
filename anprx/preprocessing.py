@@ -1339,7 +1339,7 @@ def camera_pairs_from_graph(G):
         camera_pairs['geometry']\
             .apply(lambda x: isinstance(x, shp.geometry.LineString))
 
-    return camera_pairs.reset_index()
+    return gpd.GeoDataFrame(camera_pairs.reset_index())
 
 
 def map_nodes_cameras(

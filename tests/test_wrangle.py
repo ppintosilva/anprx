@@ -13,7 +13,8 @@ from   anprx.compute       import discretise_time
 import os
 import numpy               as     np
 import pandas              as     pd
-import shapely             as shp
+import geopandas           as     gpd
+import shapely             as     shp
 
 """
 Test set 1 - assert:
@@ -447,6 +448,8 @@ def test_wrangle_network_pairs(plot):
 
     cameras = get_wrangled_cameras()
     pairs = get_camera_pairs()
+
+    assert isinstance(pairs, gpd.GeoDataFrame)
 
     for origin in pairs['origin']:
         assert origin[0:2] != 'c_'
