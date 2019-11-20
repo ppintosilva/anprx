@@ -469,10 +469,19 @@ def test_wrangle_network_pairs(plot):
                 .iloc[0]['valid'] == 0
 
     # assert geometries are of type 'LineString' or 'MultiLineString'
-    for geom in pairs.loc[pairs.valid == 1, 'geometry']:
-        print(geom)
-        assert(isinstance(geom, shp.geometry.LineString) or \
-               isinstance(geom, shp.geometry.MultiLineString))
+    valid_geometries = pairs.loc[pairs.valid == 1, 'geometry']
+    valid_contiguous = pairs.loc[pairs.valid == 1, 'is_contiguous']
+
+    for geom,is_contiguous in zip(valid_geometries, valid_contiguous):
+        is_linestring = isinstance(geom, shp.geometry.LineString)
+        is_multilinestring = isinstance(geom, shp.geometry.MultiLineString)
+
+        assert is_linestring or is_multilinestring
+
+        if is_linestring:
+            assert is_contiguous
+        else:
+            assert not is_contiguous
 
 
 def test_wrangle_raw_anpr():

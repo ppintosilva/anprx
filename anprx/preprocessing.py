@@ -1335,6 +1335,10 @@ def camera_pairs_from_graph(G):
                 lambda uv: G.edges[uv[0],uv[1],0]['geometry'], x)))\
              .apply(lambda x: shp.ops.linemerge(shp.geometry.MultiLineString(x)))
 
+    camera_pairs['is_contiguous'] = \
+        camera_pairs['geometry']\
+            .apply(lambda x: isinstance(x, shp.geometry.LineString))
+
     return camera_pairs.reset_index()
 
 
