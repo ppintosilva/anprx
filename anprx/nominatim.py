@@ -8,6 +8,7 @@
 
 import time
 import numpy                as np
+import pandas               as pd
 import osmnx                as ox
 import logging              as lg
 from collections            import OrderedDict
@@ -174,3 +175,79 @@ def lookup_address(osmids,
         details.append(flattened_dict)
 
     return details
+
+
+###
+###
+
+default_amenities_by_category = {
+    "sustenance"    :
+        [
+            "bar", "cafe", "fast_food", "food_court", "pub", "restaurant"
+        ],
+
+    "education"     :
+        [
+            "childcare", "college", "driving_school", "kindergarten",
+            "library", "language_school", "music_school", "school", "university"
+        ],
+
+    "transportation":
+        [
+            "parking", "taxi", "bus_station", "car_rental", "car_wash",
+            "vehicle_inspection"
+         ],
+
+    "healthcare"    :
+        [
+            "clinic", "dentist", "doctors", "hospital", "nursing_home",
+            "pharmacy", "social_facility", "veterinary"
+        ],
+    "entertainment" :
+        [
+            "arts_centre", "casino", "cinema", "community_centre", "gambling",
+            "nightclub", "planetarium", "social_centre", "studio", "theatre"
+        ],
+    "institutions"  :
+        [
+            "marketplace", "bank", "bureau_de_change", "courthouse", "police",
+            "fire_station", "prison", "townhouse", "post_office",
+            "place_of_worship"
+        ]
+}
+
+
+def get_amenities(polygon,
+                  amenities_by_category = default_amenities_by_category):
+    """
+    Lookup the address of multiple OSM ids that share the same entity type.
+
+    Parameters
+    ----------
+    polygon : shapely.geometry.Polygon
+        spatial polygon to run the search in
+
+    amenities_by_category : dict
+        list of OpenStreetMap amenity values per user-defined category
+
+    Returns
+    -------
+    amenities : GeoDataFrame
+        A spatial dataframe of amenities
+    """
+
+    amenities = []
+    # return pois from osmnx, subset columns and assign new category column
+    for category, am_values in amenities_by_category.items():
+        poi_gdf = ox.create_poi_gdf(polygon, am_values)
+        if 'name' in poi_gdf.columns:
+            poi_gdf = poi_gdf[['geometry', 'amenity', 'name']]
+        else:
+            poi_gdf = poi_gdf[['geometry', 'amenity']].assign(name = np.nan)
+
+        poi_gdf = poi_gdf.assign(category = category)
+        amenities.append(poi_gdf)
+
+    amenities_gpd = pd.concat(amenities)
+
+    return(amenities_gpd)

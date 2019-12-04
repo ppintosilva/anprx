@@ -1,5 +1,6 @@
 import pytest
-import anprx.nominatim as nominatim
+import osmnx            as ox
+import anprx.nominatim  as nominatim
 import anprx.exceptions as exceptions
 
 def test_nominatim_search_address():
@@ -35,3 +36,15 @@ def test_lookup_address():
     for dict_ in details:
         assert len(dict_.keys()) > 0
         assert {'road', 'importance', 'type', 'suburb'}.issubset(set(dict_.keys()))
+
+
+def test_get_amenities():
+    polygon = \
+        ox.gdf_from_place(
+            query = "Jesmond, Newcastle Upon Tyne, UK",
+            buffer_dist = 500)\
+        .iloc[0].geometry
+
+    amenities = nominatim.get_amenities(polygon)
+
+    assert len(amenities) > 0
