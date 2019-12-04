@@ -48,3 +48,6 @@ def test_get_amenities():
     amenities = nominatim.get_amenities(polygon)
 
     assert len(amenities) > 0
+
+def test_get_tynewear_polygon():
+    nominatim.get_tynewear_polygon()

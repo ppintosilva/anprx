@@ -7,10 +7,12 @@
 ################################################################################
 
 import time
+import shapely
 import numpy                as np
 import pandas               as pd
 import osmnx                as ox
 import logging              as lg
+import geopandas            as gpd
 from collections            import OrderedDict
 
 from .utils                 import log
@@ -220,7 +222,7 @@ default_amenities_by_category = {
 def get_amenities(polygon,
                   amenities_by_category = default_amenities_by_category):
     """
-    Lookup the address of multiple OSM ids that share the same entity type.
+    Get all amenity POIs, classified by category, within a polygon.
 
     Parameters
     ----------
@@ -251,3 +253,25 @@ def get_amenities(polygon,
     amenities_gpd = pd.concat(amenities)
 
     return(amenities_gpd)
+
+
+def get_tynewear_polygon():
+    """
+    Get the spatial polygon for the county of Tyne and Wear.
+
+    Returns
+    -------
+    polygon : shapely.geometry.Polygon
+    """
+    data = ox.osm_polygon_download("Tyne and Wear county")
+
+    keep_cols = ['place_id','osm_type','osm_id','class',
+                 'display_name','type','importance']
+
+    df = pd.DataFrame(data)[keep_cols]
+
+    geometry = shapely.geometry.Polygon(data[0]['geojson']['coordinates'][0])
+
+    gdf = gpd.GeoDataFrame(df.assign(geometry = geometry))
+
+    return gdf
