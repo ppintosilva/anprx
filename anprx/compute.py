@@ -856,42 +856,12 @@ def get_flows(trips, freq,
 
     flows['density'] = flows['flow']/(flows['density']/1000)
 
-    unique_ods = flows.index.levels[0]
-
     if not skip_explicit:
-        # We want every combination of origin,destination,period to show up in the
-        # flows, even if the flow is zero. This is useful later, for calculations
-        # and makes 'missing' data explicit.
-        log("Filling missing combinations of (od,period) with zero flows.",
-            level = lg.INFO)
-
-        # Cartesian product of unique values of 'od', and 'period'
-        # Using 'od' instead of 'origin' and 'destination' prevents od combinations
-        # that don't show up in the data to be included in the cartesian product
-        mux = pd.MultiIndex.from_product([flows.index.levels[0], periods],
-                                         names = ['od', 'period'])
-
-        # reindex and fill with np.nan
-        flows = flows.reindex(mux, fill_value=np.NaN)\
-                     .fillna({'flow' : 0})\
-                     .reset_index()
-
-        # Not using fillna, because of cases that should remain with na:
-        # od pairs for which there is no distance and therefore no speed and density
-        flows.loc[flows.flow == 0, 'density'] = 0
+        flows = expand_flows(flows, periods)
 
         log("Total process memory: {:,.1f} MB [AFTER REINDEX]"\
                 .format(process.memory_info().rss/1e6),
             level = lg.INFO)
-
-        expected_nrows = len(periods) * len(unique_ods)
-
-        log(("Expected rows: {} (nperiods . unique_ods = {} . {}). "
-             "Observed rows: {}.")\
-                .format(expected_nrows, len(periods), len(unique_ods), len(flows)),
-            level = lg.INFO)
-
-        assert len(flows) == expected_nrows
 
     else:
         flows.reset_index(inplace = True)
@@ -945,3 +915,45 @@ def get_flows(trips, freq,
         level = lg.INFO)
 
     return flows
+
+
+def expand_flows(flows, periods, assert_expected_nrows = True):
+    """
+    Expand flows by filling in zero flows explicitly (missing combinations of
+    origin, destination, period).
+    """
+    # We want every combination of origin,destination,period to show up in the
+    # flows, even if the flow is zero. This is useful later, for calculations
+    # and makes 'missing' data explicit.
+    log("Filling missing combinations of (od,period) with zero flows.",
+        level = lg.INFO)
+
+    # Used below
+    unique_ods = flows.index.levels[0]
+
+    # Cartesian product of unique values of 'od', and 'period'
+    # Using 'od' instead of 'origin' and 'destination' prevents od combinations
+    # that don't show up in the data to be included in the cartesian product
+    mux = pd.MultiIndex.from_product([flows.index.levels[0], periods],
+                                     names = ['od', 'period'])
+
+    # reindex and fill with np.nan
+    flows = flows.reindex(mux, fill_value=np.NaN)\
+                 .fillna({'flow' : 0})\
+                 .reset_index()
+
+    # Not using fillna, because of cases that should remain with na:
+    # od pairs for which there is no distance and therefore no speed and density
+    flows.loc[flows.flow == 0, 'density'] = 0
+
+    expected_nrows = len(periods) * len(unique_ods)
+
+    log(("Expected rows: {} (nperiods . unique_ods = {} . {}). "
+         "Observed rows: {}.")\
+            .format(expected_nrows, len(periods), len(unique_ods), len(flows)),
+        level = lg.INFO)
+
+    if assert_expected_nrows:
+        assert len(flows) == expected_nrows
+
+    return(flows)
