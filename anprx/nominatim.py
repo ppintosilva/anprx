@@ -17,11 +17,55 @@ from collections            import OrderedDict
 
 from .utils                 import log
 from .helpers               import flatten_dict
-from .exceptions            import EmptyResponseError
-from .exceptions            import NoSuchEntitiesError
 
 ###
 ###
+
+class ExternalRequestError(Exception):
+    """
+    Raised when a request to an external API fails.
+
+    Attributes:
+        request -- request to external API
+        API -- name or base url of external API
+        reason -- reason why the request failed
+    """
+
+    def __init__(self, request, API, reason):
+        self.request = request
+        self.API = API
+        self.message = \
+            "Request to {}: {} -- {}."\
+                .format(API, reason, request)
+
+class EmptyResponseError(ExternalRequestError):
+    """
+    Raised when a request to an external API returns an empty response.
+
+    Attributes:
+        request -- request to external API
+        API -- name or base url of external API
+    """
+
+    def __init__(self, request, API):
+        super().__init__(request, API, reason = "empty response")
+
+class NoSuchEntitiesError(ExternalRequestError):
+    """
+    Raised when a request to OpenStreetMap's lookup API does not find the desired Entities.
+
+    Attributes:
+        request -- request to OSM
+        desired_entity -- desired OSM entity
+        found_entities -- found OSM entities
+    """
+
+    def __init__(self, request, desired_entity, found_entity):
+        self.request = request
+        self.API = "https://nominatim.openstreetmap.org/"
+        super().__init__(request, self.API,
+                         reason = "wanted entity {}, but found {} instead"\
+                            .format(desired_entity, found_entity))
 
 def search_address(address,
                    entity = 'way',

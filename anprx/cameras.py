@@ -5,15 +5,11 @@ from   .utils               import log
 from   .utils               import save_fig
 from   .utils               import settings
 from   .plot                import plot_G
-from   .helpers             import add_edge_directions
 from   .helpers             import get_quadrant
 from   .helpers             import cut
 from   .helpers             import common_words
-from   .core                import get_meanpoint
-from   .core                import edges_by_distance
-from   .core                import Point
-from   .core                import RelativeMargins
-from   .core                import bbox_from_points
+from   .network             import add_edge_directions
+from   .network             import edges_by_distance
 
 import os
 import re
@@ -583,7 +579,7 @@ def network_from_cameras(
         raise ValueError("This exception prevents accidently querying large networks")
 
     # but now we need center point in lat,lon
-    points = [Point(lat,lng) for lat,lng in zip(cameras['lat'], cameras['lon'])]
+    # points = [Point(lat,lng) for lat,lng in zip(cameras['lat'], cameras['lon'])]
 
     lat = cameras['lat']
     lon = cameras['lon']

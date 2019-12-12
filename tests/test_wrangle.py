@@ -1,14 +1,14 @@
 """Test module for data wranlging methods."""
 
-from   anprx.preprocessing import wrangle_cameras
-from   anprx.preprocessing import network_from_cameras
-from   anprx.preprocessing import merge_cameras_network
-from   anprx.preprocessing import camera_pairs_from_graph
-from   anprx.preprocessing import map_nodes_cameras
-from   anprx.preprocessing import wrangle_raw_anpr
-from   anprx.preprocessing import gdfs_from_network
-from   anprx.compute       import trip_identification
-from   anprx.compute       import discretise_time
+from   anprx.cameras import wrangle_cameras
+from   anprx.cameras import network_from_cameras
+from   anprx.cameras import merge_cameras_network
+from   anprx.cameras import camera_pairs_from_graph
+from   anprx.cameras import map_nodes_cameras
+from   anprx.cameras import wrangle_raw_anpr
+from   anprx.cameras import gdfs_from_network
+from   anprx.trips   import trip_identification
+from   anprx.flows   import discretise_time
 
 import os
 import numpy               as     np

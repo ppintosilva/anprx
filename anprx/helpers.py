@@ -7,9 +7,7 @@ import  pandas                  as pd
 import  networkx                as nx
 
 import  shapely.geometry        as geometry
-from    sklearn.neighbors       import BallTree
 
-from    .constants              import PropertiesFilter
 from    .utils                  import log
 
 ###
@@ -29,7 +27,8 @@ def flatten(list_):
     generator
     """
     for el in list_:
-        if isinstance(el, collections.abc.Iterable) and not isinstance(el, (str, bytes)):
+        if isinstance(el, collections.abc.Iterable) and\
+           not isinstance(el, (str, bytes)):
             yield from flatten(el)
         else:
             yield el
@@ -39,7 +38,9 @@ def flatten(list_):
 
 def is_in(value, values_set):
     """
-    Computes whether an object is present in, or has at least one element that is present in, values_set. This is equivalent to computing whether two sets intersect (not disjoint), but where value does not have to be a set.
+    Computes whether an object is present in, or has at least one element
+    that is present in, values_set. This is equivalent to computing whether two
+    sets intersect (not disjoint), but where value does not have to be a set.
 
     Parameters
     ---------
@@ -63,96 +64,6 @@ def is_in(value, values_set):
         return not set(value).isdisjoint(values_set)
     else:
         return value in values_set
-###
-###
-
-def edges_with_at_least_one_property(G, properties):
-    """
-    Find edges that match at least once in all property sets: (key, values)
-
-    Parameters
-    ---------
-    G : nx.MultiDiGraph
-        a (multidi)graph
-
-    properties : dict(str : set)
-        properties of edges to filter by
-
-    Returns
-    -------
-    generator of (u,v,k)
-        generator of edges
-    """
-    for u,v,k,d in G.edges(keys = True, data = True):
-        for key, values in properties.items():
-            if key in d.keys() and is_in(d[key], values):
-                yield (u,v,k)
-
-###
-###
-
-def edges_with_all_properties(G, properties):
-    """
-    Find edges that match always in all property sets: (key, values)
-
-    Parameters
-    ---------
-    G : nx.MultiDiGraph
-        a (multidi)graph
-
-    properties : dict(str : set)
-        properties of edges to filter by
-
-    Returns
-    -------
-    generator of (u,v,k)
-        generator of edges
-    """
-
-    for u,v,k,d in G.edges(keys = True, data = True):
-        nmatches = 0
-        for key, values in properties.items():
-
-            if key in d.keys() and is_in(d[key], values):
-                nmatches = nmatches + 1
-            else:
-                break
-
-        if nmatches == len(properties.keys()):
-            yield (u,v,k)
-
-###
-###
-
-def edges_with_properties(G, properties, match_by = PropertiesFilter.all):
-    """
-    Get edges with given properties
-
-    Parameters
-    ---------
-    G : nx.MultiDiGraph
-        a (multidi)graph
-
-    properties : dict(str : set)
-        properties of edges to filter by
-
-    match_by : int
-        One of const.FILTER_PROPERTIES.
-
-    Returns
-    -------
-    generator of (u,v,k)
-        generator of edges
-    """
-    if   match_by == PropertiesFilter.at_least_one:
-        return edges_with_at_least_one_property(G, properties)
-
-    elif match_by == PropertiesFilter.all:
-        return edges_with_all_properties(G, properties)
-
-    else:
-        raise ValueError("Invalid 'match_by' value. Pick one of PropertiesFilter.{{{}}}.".format(PropertiesFilter.__order__))
-
 ###
 ###
 
@@ -189,7 +100,8 @@ def dot2d(v1, v2, method = "einsum"):
         vectors on the right side of the dot product
 
     method: string
-        method used to compute the dot product between each pair of members in v1,v2. One of {'einsum', 'loop'}
+        method used to compute the dot product between each pair of members in
+        v1,v2. One of {'einsum', 'loop'}
 
     Returns
     -------
@@ -197,7 +109,8 @@ def dot2d(v1, v2, method = "einsum"):
         result of the dot products
     """
     if np.shape(v1) != np.shape(v2):
-        raise ValueError("Input vectors don't have the same shape: {}, {}".format(np.shape(v1), np.shape(v2)))
+        raise ValueError("Input vectors don't have the same shape: {}, {}"\
+                          .format(np.shape(v1), np.shape(v2)))
 
     if method == "einsum":
         return np.einsum("ij, ij -> i", v1, v2)
@@ -212,7 +125,8 @@ def dot2d(v1, v2, method = "einsum"):
 
 def angle_between(v1, v2):
     """
-    Calculate the acute angle, in degrees, between two vectors. Vectorised for an array of vectors.
+    Calculate the acute angle, in degrees, between two vectors.
+    Vectorised for an array of vectors.
 
     Parameters
     ---------
@@ -228,7 +142,8 @@ def angle_between(v1, v2):
         acute angles between each pair of vectors
     """
     if np.shape(v1) != np.shape(v2):
-        raise ValueError("Input vectors don't have the same shape: {}, {}".format(np.shape(v1), np.shape(v2)))
+        raise ValueError("Input vectors don't have the same shape: {}, {}"\
+                         .format(np.shape(v1), np.shape(v2)))
 
     v1_u = unit_vector(v1)
     v2_u = unit_vector(v2)
@@ -262,7 +177,8 @@ def flatten_dict(dict_, parent_key='', sep='_', inherit_parent_key = True):
     """
     items = []
     for k, v in dict_.items():
-        new_key = parent_key + sep + k if parent_key and inherit_parent_key else k
+        new_key = parent_key + sep + k if parent_key and inherit_parent_key\
+                  else k
         if isinstance(v, collections.abc.MutableMapping):
             items.extend(flatten_dict(v,
                                       parent_key = new_key,
@@ -296,48 +212,6 @@ def chunks(l, n):
 
 ###
 ###
-
-def as_undirected(edges):
-    """
-    Represent a directed edge as undirected.
-
-    Parameters
-    ---------
-    edges : array-like of Edge
-        array of directed edges (u,v,k)
-
-    Returns
-    -------
-    list of tuples
-    """
-    edge_set = frozenset(
-                  [ frozenset((edge[0], edge[1]))
-                    for edge in edges])
-
-    return [ tuple(edge) for edge in edge_set ]
-
-
-def add_edge_directions(G):
-    """
-    Add the direction of each edge as an attribute
-
-    Parameters
-    ---------
-    G : nx.MultiDiGraph
-
-    Returns
-    -------
-    G
-    """
-    G = ox.add_edge_bearings(G)
-    for u,v,k,data in G.edges(keys = True, data = True):
-        bearing = data['bearing']
-        phi = (360 - bearing) + 90
-        if phi and not np.isnan(phi):
-            data['direction'] = get_quadrant(phi)
-        else:
-            data['direction'] = None
-    return G
 
 def get_quadrant(phi):
     """

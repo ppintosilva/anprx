@@ -1,4 +1,4 @@
-################################################################################
+###############################################################################
 # Module: utils.py
 # Description: Global settings, configuration, logging and caching
 # License: Apache v2.0, see full license in LICENSE

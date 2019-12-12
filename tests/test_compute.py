@@ -1,9 +1,9 @@
 """Test module for data computing methods."""
 
-from   anprx.compute       import displacement
-from   anprx.compute       import all_ods_displacement
-from   anprx.compute       import discretise_time
-from   anprx.compute       import get_flows
+from   anprx.trips       import displacement
+from   anprx.trips       import all_ods_displacement
+from   anprx.flows       import discretise_time
+from   anprx.flows       import get_flows
 
 import os
 import numpy               as     np

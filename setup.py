@@ -24,7 +24,6 @@ install_requires = [
     'statistics',
     'osmnx',
     'scikit-learn',
-    'adjustText',
     'progress',
     'ray',
     'psutil',
