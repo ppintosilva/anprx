@@ -517,7 +517,7 @@ def wrangle_cameras(
 def network_from_cameras(
     cameras,
     road_type = "all",
-    clean_intersections = False,
+    # clean_intersections = False,
     tolerance = 30,
     min_bbox_length_km = 0.2,
     max_bbox_length_km = 50,
@@ -635,24 +635,24 @@ def network_from_cameras(
             level = lg.INFO)
         checkpoint = time.time()
 
-    if clean_intersections:
-        G = ox.clean_intersections(G, tolerance = tolerance)
-
-        log("Cleaned intersections (tol = {}) in {:,.3f} sec"\
-                .format(tolerance, time.time() - checkpoint),
-            level = lg.INFO)
-        checkpoint = time.time()
-
-        if plot:
-            _, _, filename = plot_G(
-                G,
-                name = "road_graph_cleaned",
-                **plot_kwargs)
-
-            log("Saved image of cleaned road graph to disk {} in {:,.3f} sec"\
-                    .format(filename, time.time() - checkpoint),
-                level = lg.INFO)
-            checkpoint = time.time()
+    # if clean_intersections:
+    #     G = ox.clean_intersections(G, tolerance = tolerance)
+    #
+    #     log("Cleaned intersections (tol = {}) in {:,.3f} sec"\
+    #             .format(tolerance, time.time() - checkpoint),
+    #         level = lg.INFO)
+    #     checkpoint = time.time()
+    #
+    #     if plot:
+    #         _, _, filename = plot_G(
+    #             G,
+    #             name = "road_graph_cleaned",
+    #             **plot_kwargs)
+    #
+    #         log("Saved image of cleaned road graph to disk {} in {:,.3f} sec"\
+    #                 .format(filename, time.time() - checkpoint),
+    #             level = lg.INFO)
+    #         checkpoint = time.time()
 
     log("Retrieved road network from points in {:,.3f} sec"\
         .format(time.time() - start_time))
