@@ -23,7 +23,7 @@ with warnings.catch_warnings():
 
 # ------------------------------------------------------------------------------
 
-def transform_anpr(anpr, od_separator = '_'):
+def transform_anpr(anpr):
     """
     Transform data to edge format rather than node format:
 
@@ -51,9 +51,6 @@ def transform_anpr(anpr, od_separator = '_'):
     # origin and destination appropriately
     anpr = anpr.fillna({'destination'   : 'NA'})
 
-    # Computing 'od' column useful to merge with camera pairs dataframe
-    anpr['od'] = anpr['origin'] + od_separator + anpr['destination']
-
     # Sort by vehicle, t_origin: (necessary for cumulative operations)
     anpr = anpr.sort_values(by = ['vehicle','t_origin'])\
                .reset_index(drop = True)
@@ -65,7 +62,7 @@ def transform_anpr(anpr, od_separator = '_'):
 
     # Reorder columns
     anpr = anpr.reindex(columns =
-        ['vehicle', 'origin', 'destination', 'od', 'travel_time',
+        ['vehicle', 'origin', 'destination', 'travel_time',
          't_origin', 't_destination', 'confidence'])
 
     log("Transformed anpr data in node format to edge format in {:,.2f} sec"\
@@ -79,8 +76,7 @@ def trip_identification(
     camera_pairs,
     speed_threshold = 3.0, # km/h : 3 km/h = 1 km/20h
     duplicate_threshold = 300.0,
-    maximum_av_speed = 140.0, # km/h
-    od_separator = '_'
+    maximum_av_speed = 140.0 # km/h
 ):
     """
     Identify trips in a wrangled batch of ANPR data.
@@ -145,26 +141,21 @@ def trip_identification(
     log("Transforming anpr data into edge format.", level = lg.INFO)
 
     # Transform raw anpr data to edge format
-    trips = transform_anpr(anpr, od_separator)
+    trips = transform_anpr(anpr)
 
     partial_time = time.time()
 
     # Preparing Camera Pairs for merge
     camera_pairs = camera_pairs.fillna({'origin' : 'NA' ,'destination' : 'NA'})
 
-    ## adding 'od' column
-    camera_pairs['od'] = camera_pairs['origin'] + od_separator + \
-                         camera_pairs['destination']
-
     ## dropping any unused columns (e.g. 'path', 'origin', 'destination',
     ## 'direction_origin', 'direction_destination', 'valid'). This avoids
     ## storing unecessary information that will be lost anyway when aggregating
-
     ## It can always be obtained by merging with camera pairs again.
-    camera_pairs = camera_pairs[['od', 'distance']]
+    camera_pairs = camera_pairs[['origin', 'destination', 'distance']]
 
     # Merge with camera pairs df to get distance, direction and validness
-    trips = trips.merge(camera_pairs, how = "left", on = "od")
+    trips = trips.merge(camera_pairs, how = "left", on = ['origin', 'destination'])
 
     log(("Merged anpr with camera pairs to gain distance and direction data "
          "in {:,.2f} sec").format(time.time() - partial_time),
@@ -319,19 +310,15 @@ def trip_identification(
     trips.loc[reset_ind, 't_origin'] = \
         trips.loc[first_ind, 't_origin'].values
 
-    trips.loc[reset_ind, 'od'] = \
-        trips.loc[reset_ind, 'origin'] + od_separator + \
-        trips.loc[reset_ind, 'destination']
-
     trips.loc[reset_ind, 'travel_time'] = \
         trips.loc[reset_ind, 't_destination'] - \
         trips.loc[reset_ind, 't_origin']
 
     trips.loc[reset_ind] = \
         trips.loc[reset_ind,
-                  ['vehicle','origin','destination','od',
+                  ['vehicle','origin','destination',
                    'travel_time','t_origin','t_destination','confidence']]\
-             .merge(camera_pairs, how = "left", on = "od")\
+             .merge(camera_pairs, how = "left", on = ['origin','destination'])\
              .set_index(trips.loc[reset_ind].index)
 
     trips.loc[reset_ind, 'av_speed'] = \
@@ -396,7 +383,6 @@ def trip_identification(
     fdf['t_destination']  = fdf['t_origin']
     fdf['t_origin'     ]  = pd.NaT
     fdf['confidence'   ]  = np.nan
-    fdf['od'           ]  = "NA" + od_separator + fdf['destination']
     fdf['distance'     ]  = np.nan
     fdf['av_speed'     ]  = np.nan
 
@@ -442,10 +428,6 @@ def trip_identification(
 
     trips.loc[trips.trip_step == trips.trip_length,
       ['t_destination', 'travel_time']] = pd.NaT
-
-    trips.loc[trips.trip_step == trips.trip_length, 'od'] = \
-        trips[trips.trip_step == trips.trip_length]['od']\
-             .str.split(pat=od_separator).str[0] + od_separator + "NA"
 
     log(("Added trips to each vehicle and fixed the corresponding first/last "
          "steps in {:,.2f} sec").format(time.time() - partial_time),
