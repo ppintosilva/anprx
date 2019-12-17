@@ -1,4 +1,5 @@
 """Test module for data wranlging methods."""
+# ------------------------------------------------------------------------------
 
 from   anprx.cameras import wrangle_cameras
 from   anprx.cameras import network_from_cameras
@@ -15,6 +16,8 @@ import numpy               as     np
 import pandas              as     pd
 import geopandas           as     gpd
 import shapely             as     shp
+
+# ------------------------------------------------------------------------------
 
 """
 Test set 1 - assert:

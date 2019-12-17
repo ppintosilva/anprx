@@ -1,17 +1,15 @@
 """A series of helper methods that are useful in a variety of contexts."""
+# ------------------------------------------------------------------------------
 
 import  collections.abc
 import  numpy                   as np
 import  osmnx                   as ox
 import  pandas                  as pd
 import  networkx                as nx
-
 import  shapely.geometry        as geometry
-
 from    .utils                  import log
 
-###
-###
+# ------------------------------------------------------------------------------
 
 def flatten(list_):
     """

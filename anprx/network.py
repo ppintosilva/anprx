@@ -1,4 +1,5 @@
 """Methods for street networks represented as graphs."""
+# ------------------------------------------------------------------------------
 
 import math
 import time
@@ -9,7 +10,6 @@ import pandas               as pd
 import logging              as lg
 import networkx             as nx
 import shapely.geometry     as geometry
-from sklearn.neighbors      import BallTree
 
 from .helpers               import chunks
 from .helpers               import is_in
@@ -17,14 +17,14 @@ from .helpers               import get_quadrant
 from .utils                 import log
 import anprx.nominatim      as nominatim
 
-###
-###
+# ------------------------------------------------------------------------------
 
 EARTH_RADIUS_METERS = 6371009
 DEG_TO_METERS = 111119
 DEG_TO_METERS_SQ = 12347432161
 RAD_TO_METERS = 6367000
 
+# ------------------------------------------------------------------------------
 
 def as_undirected(edges):
     """

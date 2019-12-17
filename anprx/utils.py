@@ -1,13 +1,8 @@
-###############################################################################
-# Module: utils.py
-# Description: Global settings, configuration, logging and caching
-# License: Apache v2.0, see full license in LICENSE
-# Author: Pedro Pinto da Silva
-# Web: https://github.com/pedroswits/pydummy
-################################################################################
-# Based on: Geoff Boeing's OSMnx package
-# https://github.com/gboeing/osmnx/blob/master/osmnx/utils.py
-################################################################################
+"""Package settings and utilities.
+Based on: Geoff Boeing's OSMnx package
+https://github.com/gboeing/osmnx/blob/master/osmnx/utils.py
+"""
+# ------------------------------------------------------------------------------
 
 import io
 import os
@@ -21,8 +16,7 @@ import osmnx as ox
 import logging as lg
 import datetime as dt
 
-###
-###
+# ------------------------------------------------------------------------------
 
 settings = {
     "app_name" : "anprx",
