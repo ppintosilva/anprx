@@ -1,13 +1,16 @@
+"""Methods for transforming and aggregating wrangled ANPR data."""
+# ------------------------------------------------------------------------------
+
 from   .utils       import log
 
 import os
 import time
-import psutil
 import pandas       as pd
 import numpy        as np
 import scipy.stats  as stats
 import logging      as lg
 
+# ------------------------------------------------------------------------------
 
 def get_periods(trips, freq):
     start_period = trips['t_origin'].dropna().min().floor(freq)
@@ -23,8 +26,6 @@ def log_memory(name, df):
         level = lg.INFO)
 
 def discretise_time(trips, freq, sort = True):
-    process = psutil.Process(os.getpid())
-
     start_time = time.time()
     nrows = len(trips)
 
@@ -42,9 +43,9 @@ def discretise_time(trips, freq, sort = True):
     periods = get_periods(trips, freq)
 
     trips = trips.assign(
-            period_o = trips.t_origin.dt.floor(freq),
-            period_d = trips.t_destination.dt.ceil(freq)
-        )
+        period_o = trips.t_origin.dt.floor(freq),
+        period_d = trips.t_destination.dt.ceil(freq)
+    )
 
     # Cases where origin is NA, we want the floor of period_d instead of ceiling
     trips.loc[trips.trip_step == 1, 'period_d'] = \
@@ -80,34 +81,15 @@ def discretise_time(trips, freq, sort = True):
 
     tmp  = trips[to_expand]
 
-    log_memory("tmp", tmp)
-
     tmp2_step1 = trips[(~to_expand) & (trips.trip_step == 1)]\
                 .rename(columns = {'period_d' : 'period'})\
                 .drop(columns=['period_o'])
-
-    log_memory("tmp2_step1", tmp2_step1)
 
     tmp2_others = trips[(~to_expand) & (trips.trip_step != 1)]\
                 .rename(columns = {'period_o' : 'period'})\
                 .drop(columns=['period_d'])
 
-    log_memory("tmp2_others", tmp2_others)
-
     tmp2 = pd.concat([tmp2_step1, tmp2_others])
-
-    log_memory("tmp2", tmp2)
-
-    log("Total process memory: {:,.1f} MB [BEFORE DEL 1]"\
-            .format(process.memory_info().rss/1e6),
-        level = lg.INFO)
-
-    # release memory
-    del tmp2_step1, tmp2_others
-
-    log("Total process memory: {:,.1f} MB [BEFORE DEL 2]"\
-            .format(process.memory_info().rss/1e6),
-        level = lg.INFO)
 
     if len(tmp) > 0:
         dfs =[ tmp[(tmp.period_o <= p) & \
@@ -117,24 +99,7 @@ def discretise_time(trips, freq, sort = True):
         total_memory = np.array([ df.memory_usage(index=True).sum()/1e6 \
                                   for df in dfs ]).sum()
 
-        log("Total memory in 'dfs' ({} dataframes): {:,.2f}"\
-                .format(len(dfs), total_memory),
-            level = lg.INFO)
-
-        del tmp
-
-        log("Total process memory: {:,.1f} MB [BEFORE DEL 3]"\
-                .format(process.memory_info().rss/1e6),
-            level = lg.INFO)
-
         tmp = pd.concat(dfs)
-
-        # release memory
-        del dfs
-
-        log("Total process memory: {:,.1f} MB [BEFORE DEL 4]"\
-                .format(process.memory_info().rss/1e6),
-            level = lg.INFO)
 
         tmp.drop(columns=['period_o','period_d'], inplace = True)
 
@@ -142,13 +107,6 @@ def discretise_time(trips, freq, sort = True):
 
         # merge expanded and not-expanded dataframes
         trips = pd.concat([tmp, tmp2])
-
-        # release memory
-        del tmp, tmp2
-
-        log("Total process memory: {:,.1f} MB [BEFORE RETURN]"\
-                .format(process.memory_info().rss/1e6),
-            level = lg.INFO)
 
         if sort:
             trips = trips.sort_values(['vehicle', 'trip', 't_destination'])\
@@ -169,16 +127,13 @@ def discretise_time(trips, freq, sort = True):
 
 
 def get_flows(trips, freq,
-              agg_displacement = False,
-              remove_na = False,
+              aggregator = None,
               try_discretise = True,
-              od_separator = '_',
-              skip_explicit = False,
-              single_precision = False):
+              remove_na = False,
+              skip_explicit = True):
     """
     Aggregate trip data to compute flows.
     """
-    process = psutil.Process(os.getpid())
     start_time = time.time()
 
     log("Aggregating trips into flows: column 'period' in trips : {}"\
@@ -190,23 +145,13 @@ def get_flows(trips, freq,
 
     log("Preparing to aggregate trips into flows.", level = lg.INFO)
 
-    aggregator = {
-        'flow'         : ('av_speed', 'size'),
-        'density'      : ('distance', 'first'),
-        'mean_avspeed' : ('av_speed', np.mean),
-        'sd_avspeed'   : ('av_speed', np.std ),
-        'skew_avspeed' : ('av_speed', stats.skew),
-        'mean_tt'      : ('travel_time', np.mean),
-        'sd_tt'        : ('travel_time', np.std ),
-        'skew_tt'      : ('travel_time', stats.skew)
-   }
-
-    if agg_displacement:
-        log("Including displacement in aggregated metrics", level = lg.INFO)
-        aggregator['mean_dp'] = ('dp', np.mean)
-        aggregator['sd_dp']   = ('dp', np.std)
-        aggregator['mean_dn'] = ('dn', np.mean)
-        aggregator['sd_dn']   = ('dn', np.std)
+    if aggregator is None:
+        aggregator = {
+            'flow'         : ('av_speed', 'size'),
+            'mean_avspeed' : ('av_speed', np.mean),
+            'sd_avspeed'   : ('av_speed', np.std ),
+            'skew_avspeed' : ('av_speed', stats.skew)
+       }
 
     # Whether to remove steps with missing origin and destination
     if remove_na:
@@ -222,81 +167,25 @@ def get_flows(trips, freq,
                 .format(frows, frows/nrows*100, len(trips)),
             level = lg.INFO)
 
-    trips = trips.assign(travel_time = trips.travel_time.dt.total_seconds())
-
     flows = trips\
-            .groupby(['od', 'period'])\
+            .groupby(['origin', 'destination', 'period'])\
             .agg(**aggregator)
 
-    # Remove last period as the interval is open and does not include the
-    # final period
-    periods = get_periods(trips, freq)[:-1]
-
-    log("Total process memory: {:,.1f} MB [BEFORE DEL TRIPS]"\
-            .format(process.memory_info().rss/1e6),
-        level = lg.INFO)
-
-    del trips
-
-    log("Total process memory: {:,.1f} MB [AFTER DEL TRIPS]"\
-            .format(process.memory_info().rss/1e6),
-        level = lg.INFO)
-
-    flows['density'] = flows['flow']/(flows['density']/1000)
-
-    if not skip_explicit:
-        flows = expand_flows(flows, periods)
-
-        log("Total process memory: {:,.1f} MB [AFTER REINDEX]"\
-                .format(process.memory_info().rss/1e6),
-            level = lg.INFO)
-
-    else:
+    if skip_explicit:
         flows.reset_index(inplace = True)
-        log("SKIP filling missing combinations of (od,period) with zero flows: {}".format(flows.columns.values),
+        log(("SKIP filling missing combinations of (origin,destination,period)"
+            " with zero flows: {}").format(flows.columns.values),
             level = lg.INFO)
+    else:
+        # Remove last period as the interval is open and does not include the
+        # final period
+        periods = get_periods(trips, freq)[:-1]
+        flows = expand_flows(flows, periods)
 
     # making sure flow is of type int
     flows['flow'] = flows['flow'].astype(np.uint32)
 
-    # Retrieve 'origin' and 'destination' back from 'od'
-    flows['origin'], flows['destination'] = \
-        flows['od'].str.split(od_separator, 1).str
-
-    # Move 'origin' and 'destination' columns to the front
-    cols = flows.columns.tolist()
-    flows = flows[cols[-2:] + cols[:-2]]
-
-    log("Computing rates and flows at destination.", level = lg.INFO)
-
     log_memory("flows", flows)
-
-    flow_d = flows.groupby(['destination','period'])['flow']\
-                  .agg(flow_destination = ('flow', 'sum'))\
-                  .reset_index()
-
-    log_memory("flows_destination", flow_d)
-
-    log("Total process memory: {:,.1f} MB [BEFORE MERGE]"\
-            .format(process.memory_info().rss/1e6),
-        level = lg.INFO)
-
-    flows = pd.merge(flows, flow_d,
-                     on = ['destination', 'period'], how = 'left')
-
-    log("Total process memory: {:,.1f} MB [AFTER MERGE]"\
-            .format(process.memory_info().rss/1e6),
-        level = lg.INFO)
-
-    flows['rate'] = flows['flow']/flows['flow_destination']
-
-    if single_precision:
-        non_float_cols = ['origin', 'destination', 'period', 'od',
-                          'flow', 'flow_destination']
-        float_cols = set(flows.columns.tolist()) - set(non_float_cols)
-        for col in float_cols:
-            flows[col] = flows[col].astype(np.float32)
-
 
     log(("Aggregated trips into flows in {:,.2f} sec.")\
             .format(time.time() - start_time),
@@ -313,26 +202,28 @@ def expand_flows(flows, periods, assert_expected_nrows = True):
     # We want every combination of origin,destination,period to show up in the
     # flows, even if the flow is zero. This is useful later, for calculations
     # and makes 'missing' data explicit.
-    log("Filling missing combinations of (od,period) with zero flows.",
+    log("Filling missing combinations of (o,d,period) with zero flows.",
         level = lg.INFO)
 
-    # Used below
-    unique_ods = flows.index.levels[0]
+    # unique od combinations that show up in the data
+    unique_ods = list(set(map(lambda x: (x[0], x[1]), flows.index.tolist())))
 
     # Cartesian product of unique values of 'od', and 'period'
     # Using 'od' instead of 'origin' and 'destination' prevents od combinations
     # that don't show up in the data to be included in the cartesian product
-    mux = pd.MultiIndex.from_product([flows.index.levels[0], periods],
-                                     names = ['od', 'period'])
+    combs_duple = pd.MultiIndex.from_product([unique_ods, periods]).tolist()
+
+    combs_triple = list(map(lambda x: (x[0][0], x[0][1], x[1]), combs_duple))
+
+    mux = pd.MultiIndex.from_tuples(
+        combs_triple,
+        names = ['origin', 'destination', 'period']
+    )
 
     # reindex and fill with np.nan
     flows = flows.reindex(mux, fill_value=np.NaN)\
                  .fillna({'flow' : 0})\
                  .reset_index()
-
-    # Not using fillna, because of cases that should remain with na:
-    # od pairs for which there is no distance and therefore no speed and density
-    flows.loc[flows.flow == 0, 'density'] = 0
 
     expected_nrows = len(periods) * len(unique_ods)
 
@@ -345,27 +236,3 @@ def expand_flows(flows, periods, assert_expected_nrows = True):
         assert len(flows) == expected_nrows
 
     return(flows)
-
-def sum_flows_datasets(list_flows):
-
-    # every dataset needs to have the same columns and temporal resolution
-    pass
-
-def aggregate_flows(
-    flows,
-    by_hour = False,
-    by_hour_range = False,
-    by_weekday = True):
-    """
-    Sum all observed flows, per origin and destination and additional groups.
-
-    When computing descriptive statistics over several datasets, we first compute
-    partial sums over individual datasets, record the total number of periods,
-    and then compute the average.
-    """
-
-    # Check if temporal resolution allows by_hour and by_hour_range, by_weekday
-
-    flows = trips\
-            .groupby(['od', 'period'])\
-            .agg(**aggregator)

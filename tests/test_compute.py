@@ -161,18 +161,18 @@ fake_trips['av_speed'] = (fake_trips['distance'] * 3.6) \
 
 # Expected Flows:
 # ------
-#   origin | dest | period| flow|  density  | mean_avspeed      | fd | rate
+#   origin | dest | period| flow|  mean_avspeed
 #   ----------------------------------------------------------------------------
-#    A     |   B  |   0   |  4  |  4/1.125  |(45,40.5,33.75,45)   |  7 |  4/7
-#    A     |   B  |   30  |  5  |  5/1.125  |(45,40.5,33.75,45,45)|  9 |  5/9
-#    A     |   B  |   60  |  5  |  5/1.125  |(45,40.5,33.75,45,45)| 10 |  1/2
-#    A     |   B  |   90  |  4  |  4/1.125  |(40.5,33.75,45,45)| 9  | 4/9
-#    A     |   B  |   120 |  2  |  2/1.125  |(33.75,45.0)       | 7  | 2/7
-#    A     |   B  |   150 |  0  |  0        | np.nan            | 5  | 0
-#    A     |   B  |   180 |  0  |  0        | np.nan            | 5  | 0
-#    A     |   B  |   210 |  0  |  0        | np.nan            | 2  | 0
-#    A     |   B  |   240 |  0  |  0        | np.nan            | 2  | 0
-#    A     |   B  |   270 |  0  |  0        | np.nan            | 2  | 0
+#    A     |   B  |   0   |  4  | (45,40.5,33.75,45)
+#    A     |   B  |   30  |  5  | (45,40.5,33.75,45,45)
+#    A     |   B  |   60  |  5  | (45,40.5,33.75,45,45)
+#    A     |   B  |   90  |  4  | (40.5,33.75,45,45)
+#    A     |   B  |   120 |  2  | (33.75,45.0)
+#    A     |   B  |   150 |  0  | np.nan
+#    A     |   B  |   180 |  0  | np.nan
+#    A     |   B  |   210 |  0  | np.nan
+#    A     |   B  |   240 |  0  | np.nan
+#    A     |   B  |   270 |  0  | np.nan
 #   ----------------------------------------------------------------------------
 #    C     |   B  |   0   |  3  |  3/3000   |(54,43.2,60)        | 7 | 3/7
 #    C     |   B  |   30  |  4  |  4/3000   |(54,67.5,43.2,60)   | 9 | 4/9
@@ -191,7 +191,6 @@ expected_flows = pd.DataFrame({
     'origin'        : np.concatenate([np.repeat('A', 10), np.repeat('C', 10)]),
     'destination'   : np.repeat('B', 20),
     'period'        : list(range(0,300,30)) * 2,
-    'distance'      : [1125] * 10 + [3000] * 10,
     'flow'          : pd.Series([4,5,5,4,2,0,0,0,0,0,
                                  3,4,5,5,5,5,5,2,2,1], dtype = np.uint32),
     'avspeed'       : [[45,40.5,33.75,45], [45,40.5,33.75,45,45],
@@ -200,18 +199,11 @@ expected_flows = pd.DataFrame({
                        [54,43.2,60], [54,67.5,43.2,60],
                        [54,67.5,43.2,48,60], [54,67.5,43.2,48,60],
                        [54,67.5,43.2,48,60], [54,67.5,43.2,48,60],
-                       [54,67.5,43.2,48,60], [43.2,48], [43.2,48], [48.0]],
-    'flow_destination' : pd.Series([7,9,10,9,7,5,5,2,2,1]*2, dtype = np.uint32),
-    'rate'          : [4/7, 5/9, 1/2, 4/9, 2/7, 0,0,0,0,0,
-                       3/7, 4/9, 1/2, 5/9, 5/7, 1,1,1,1,1]
+                       [54,67.5,43.2,48,60], [43.2,48], [43.2,48], [48.0]]
 })
-
-expected_flows["od"] = expected_flows["origin"] + "_" + \
-                       expected_flows["destination"]
 
 expected_flows['period'] = expected_flows['period']\
     .apply(lambda x: baseline_date + pd.to_timedelta(x, unit = 's'))
-
 
 expected_flows['mean_avspeed'] = expected_flows['avspeed']\
     .apply(lambda x: np.mean(np.array(x)))
@@ -220,10 +212,7 @@ expected_flows['sd_avspeed'] = expected_flows['avspeed']\
     .apply(lambda x: np.nan if np.all(pd.isnull(x)) or len(x) == 1\
                             else np.std(np.array(x), ddof=1))
 
-expected_flows['density'] = expected_flows['flow'] \
-                            / (expected_flows['distance']/1000)
-
-expected_flows = expected_flows.drop(columns = ['avspeed', 'distance'])
+expected_flows = expected_flows.drop(columns = ['avspeed'])
 
 
 def test_displacement_trips():
@@ -242,26 +231,39 @@ def test_displacement_trips():
 
 
 def test_flows():
-    observed_flows = get_flows(fake_trips, freq)
+    observed_flows = get_flows(
+        fake_trips,
+        freq,
+        skip_explicit = False
+    )
 
-    names =['od', 'origin', 'destination', 'period', 'flow', 'flow_destination',
-            'rate', 'mean_avspeed', 'sd_avspeed', 'density']
+    observed_flows = observed_flows\
+        .drop(columns = ['skew_avspeed'])\
+        .sort_values(by = ['origin', 'destination', 'period'])\
+        .reset_index(drop = True)
+
+    names =['origin', 'destination', 'period',
+            'flow', 'mean_avspeed', 'sd_avspeed']
 
     pd.testing.assert_frame_equal(
-        observed_flows.drop(columns = ['mean_tt', 'sd_tt'])[names],
-        expected_flows[names],
+        observed_flows,
+        expected_flows,
         check_less_precise = 5,
         check_dtype = True)
 
 def test_flows_skip_explicit():
-    observed_flows = get_flows(fake_trips, freq, skip_explicit = True)
+    observed_flows = get_flows(
+        fake_trips,
+        freq,
+        skip_explicit = True
+    )
 
-    names =['od', 'origin', 'destination', 'period', 'flow', 'flow_destination',
-            'rate', 'mean_avspeed', 'sd_avspeed', 'density']
+    names =['origin', 'destination', 'period',
+            'flow', 'mean_avspeed', 'sd_avspeed']
 
     pd.testing.assert_frame_equal(
-        observed_flows.drop(columns = ['mean_tt', 'sd_tt'])[names],
-        expected_flows[names]\
+        observed_flows.drop(columns = ['skew_avspeed']),
+        expected_flows\
             .loc[expected_flows.flow > 0]\
             .reset_index(drop = True),
         check_less_precise = 5,
