@@ -1,7 +1,7 @@
 """Test module for data wranlging methods."""
 # ------------------------------------------------------------------------------
 
-from   anprx.cameras import wrangle_cameras
+from   anprx.cameras import wrangle_cameras, NA_CAMERA
 from   anprx.cameras import network_from_cameras
 from   anprx.cameras import merge_cameras_network
 from   anprx.cameras import camera_pairs_from_graph
@@ -16,6 +16,7 @@ import numpy               as     np
 import pandas              as     pd
 import geopandas           as     gpd
 import shapely             as     shp
+import pandas.api.types    as ptypes
 
 # ------------------------------------------------------------------------------
 
@@ -49,7 +50,7 @@ raw_cameras_testset_1 = pd.DataFrame({
 })
 
 raw_nodes_testset = pd.DataFrame({
-    'id'   : ['1', '2', '3', '4', '5', '6'],
+    'id'   : [1, 2, 3, 4, 5, 6],
     'lat'  : [54.971859, 54.975552, 54.974684, 54.974896, 54.970954, 54.973475],
     'lon'  : [-1.630304, -1.628980, -1.627947, -1.637061, -1.660613,-1.621355],
     'name' : ["NA" , "NB" , "NC", "ND", "NE", "NF"],
@@ -144,9 +145,9 @@ expected_trips_v1 = pd.DataFrame({
     't_origin'              : [pd.NaT, 0, 90, pd.NaT, 1e5/2, 1e5/2 + 90.0],
     't_destination'         : [0, 90.0, pd.NaT, 1e5/2, 1e5/2 + 90.0, pd.NaT],
     'travel_time'           : [pd.NaT, 90.0, pd.NaT] * 2,
-    'trip'                  : np.array([1] * 3 + [2] * 3, dtype=np.uint64),
-    'trip_step'             : np.array([1,2,3] * 2, dtype=np.uint16),
-    'trip_length'           : np.array([3] * 6, dtype = np.uint16),
+    'trip'                  : np.array([1] * 3 + [2] * 3, dtype=int),
+    'trip_step'             : np.array([1,2,3] * 2,       dtype=int),
+    'trip_length'           : np.array([3] * 6,           dtype = int),
     'rest_time'             : [pd.NaT] * 3 + [1e5/2-90.0, pd.NaT, pd.NaT]
 })
 
@@ -170,14 +171,32 @@ expected_trips_v2 = pd.DataFrame({
     't_origin'              : [pd.NaT, 0, 100.0, 200.0, pd.NaT, 1e5],
     't_destination'         : [0, 100.0, 200.0, pd.NaT, 1e5, pd.NaT],
     'travel_time'           : [pd.NaT, 100.0, 100.0, pd.NaT, pd.NaT, pd.NaT],
-    'trip'                  : np.array([1] * 4 + [2] * 2, dtype=np.uint64),
-    'trip_step'             : np.array([1,2,3,4] + [1,2], dtype=np.uint16),
-    'trip_length'           : np.array([4] * 4 + [2] * 2, dtype=np.uint16),
+    'trip'                  : np.array([1] * 4 + [2] * 2, dtype=int),
+    'trip_step'             : np.array([1,2,3,4] + [1,2], dtype=int),
+    'trip_length'           : np.array([4] * 4 + [2] * 2, dtype=int),
     'rest_time'             : [pd.NaT] * 4 + [1e5-200.0, pd.NaT]
 })
 
 expected_trips = pd.concat([expected_trips_v1, expected_trips_v2], axis = 0)\
                    .reset_index(drop = True)
+
+expected_cameras_new_id = np.arange(6)
+expected_cameras_old_id = ['1-10','2','3','4','5','9']
+
+old2new_ids = pd.Series(
+    data  = expected_cameras_new_id,
+    index = expected_cameras_old_id,
+    dtype = int
+)
+
+old2new = lambda x: old2new_ids.loc[x] if not pd.isnull(x) else NA_CAMERA
+
+# Correcting camera id
+expected_trips['origin'] = \
+    expected_trips['origin'].apply(old2new)
+
+expected_trips['destination'] = \
+    expected_trips['destination'].apply(old2new)
 
 # Correcting datetime, timedelta dtypes
 expected_trips['t_origin'] = expected_trips['t_origin']\
@@ -188,7 +207,6 @@ expected_trips['travel_time'] = expected_trips['travel_time']\
     .apply(lambda x: pd.to_timedelta(x, unit = 's'))
 expected_trips['rest_time'] = expected_trips['rest_time']\
     .apply(lambda x: pd.to_timedelta(x, unit = 's'))
-
 
 #   Expected Discretised Trips - Vehicle 1: 'AA00AAA', freq = 30S
 #
@@ -260,6 +278,13 @@ dtrips_freq = '30S'
 expected_dtrips = pd.concat(
     [expected_dtrips_v1, expected_dtrips_v2], axis = 0)\
     .reset_index(drop = True)
+
+# Correcting camera id
+expected_dtrips['origin'] = \
+    expected_dtrips['origin'].apply(old2new)
+
+expected_dtrips['destination'] = \
+    expected_dtrips['destination'].apply(old2new)
 
 # Correcting datetime, timedelta dtypes
 expected_dtrips['t_origin'] = expected_dtrips['t_origin']\
@@ -389,25 +414,30 @@ def get_dtrips():
 ### ----------------------------------------------------------------------------
 
 def test_wrangle_cameras():
-    cameras = get_wrangled_cameras()
+    observed_cameras = get_wrangled_cameras()
 
-    assert len(cameras) == 6
+    assert isinstance(observed_cameras, gpd.GeoDataFrame)
 
-    assert {'1-10', '2', '3', '4', '5', '9'}.issubset(cameras['id'].unique())
+    expected_cameras_direction  = ['W','E-W','N-S','S','N','E']
+    expected_cameras_ref        = ['A186','A13','B1','A27','B1305','A186']
+    expected_cameras_address    = ['A186','Stanhope St A13','Diana St B1',
+                                   'Beaconsfield St A27','B1305 Condercum Rd',
+                                   'A186']
 
-    assert cameras.loc[cameras.id == '1-10']['direction'].iloc[0] == "W"
-    assert cameras.loc[cameras.id == '2']['direction'].iloc[0] == "E-W"
-    assert cameras.loc[cameras.id == '3']['direction'].iloc[0] == "N-S"
-    assert cameras.loc[cameras.id == '9']['direction'].iloc[0] == "E"
+    expected_cameras = pd.DataFrame({
+        'id'        : expected_cameras_new_id,
+        'old_id'    : expected_cameras_old_id,
+        'direction' : expected_cameras_direction,
+        'ref'       : expected_cameras_ref,
+        'address'   : expected_cameras_address
+    })
 
-    assert cameras.loc[cameras.id == '1-10']['ref'].iloc[0] == "A186"
-    assert cameras.loc[cameras.id == '9']['ref'].iloc[0] == "A186"
-    assert cameras.loc[cameras.id == '2']['ref'].iloc[0] == "A13"
-    assert cameras.loc[cameras.id == '3']['ref'].iloc[0] == "B1"
-    assert cameras.loc[cameras.id == '4']['ref'].iloc[0] == "A27"
-    assert cameras.loc[cameras.id == '5']['ref'].iloc[0] == "B1305"
+    pd.testing.assert_frame_equal(
+        observed_cameras[['id','old_id','direction','ref','address']],
+        expected_cameras
+    )
 
-    assert "Condercum Rd" in cameras[cameras['id'] == '5']['address'].iloc[0]
+    assert 'geometry' in observed_cameras.columns.values
 
 
 def test_wrangle_nodes():
@@ -424,15 +454,20 @@ def test_wrangle_nodes():
         distance_threshold    = 100
     )
 
-    # Same address, direction and within distance
-    assert nodes.loc[nodes.id == '1']['camera'].iloc[0] == '1-10'
-    assert nodes.loc[nodes.id == '2']['camera'].iloc[0] == '2'
-    assert nodes.loc[nodes.id == '3']['camera'].iloc[0] == '3'
-    assert nodes.loc[nodes.id == '4']['camera'].iloc[0] == '4'
-    # Camera with same address but over distance_threshold
-    assert pd.isna(nodes.loc[nodes.id == '5']['camera'].iloc[0])
-    # No camera with the same address
-    assert pd.isna(nodes.loc[nodes.id == '6']['camera'].iloc[0])
+    assert isinstance(nodes, gpd.GeoDataFrame)
+
+    # Cameras 5 and 6 don't map
+    expected_nodes_camera_map = pd.DataFrame({
+        'id' : [1,2,3,4,5,6],
+        'camera' : [0,1,2,3,np.nan,np.nan]
+    })
+
+    observed_nodes_camera_map = nodes[['id', 'camera']]
+
+    pd.testing.assert_frame_equal(
+        expected_nodes_camera_map,
+        observed_nodes_camera_map
+    )
 
 def test_wrangle_network():
     G = get_raw_network()
@@ -452,25 +487,20 @@ def test_wrangle_network_pairs(plot):
 
     assert isinstance(pairs, gpd.GeoDataFrame)
 
-    for origin in pairs['origin']:
-        assert origin[0:2] != 'c_'
-
     assert len(pairs) == (len(cameras) + 1) ** 2
 
-    assert pairs.loc[(pairs.origin == '1-10') & (pairs.destination == '2')]\
-                .iloc[0]['valid'] == 1
+    pairs = pairs.set_index(['origin','destination'])
 
-    assert pairs.loc[(pairs.origin == '1-10') & (pairs.destination == '3')]\
-                .iloc[0]['valid'] == 1
-
-    assert pairs.loc[(pairs.origin == '4') & (pairs.destination == '5')]\
-                .iloc[0]['valid'] == 0
-
-    assert pairs.loc[(pairs.origin == '5') & (pairs.destination == '4')]\
-                .iloc[0]['valid'] == 0
-
-    assert pairs.loc[(pairs.origin == '5') & (pairs.destination == '5')]\
-                .iloc[0]['valid'] == 0
+    # old_ids: '1-10', '2'
+    assert pairs.loc[0,1]['valid'] == 1
+    # old_ids: '1-10', '3'
+    assert pairs.loc[0,2]['valid'] == 1
+    # old_ids: '4', '5'
+    assert pairs.loc[3,4]['valid'] == 0
+    # old_ids: '5', '4'
+    assert pairs.loc[4,3]['valid'] == 0
+    # old_ids: '5', '5'
+    assert pairs.loc[4,4]['valid'] == 0
 
     # assert geometries are of type 'LineString' or 'MultiLineString'
     valid_geometries = pairs.loc[pairs.valid == 1, 'geometry']
@@ -498,9 +528,7 @@ def test_wrangle_raw_anpr():
     wrangled_anpr = get_wrangled_anpr()
 
     assert len(wrangled_anpr) == 16 # including 3 duplicates, 2 fast obs
-    assert '1' not in wrangled_anpr['camera'].values
-    assert '10' not in wrangled_anpr['camera'].values
-    assert '1-10' in wrangled_anpr['camera'].values
+    assert ptypes.is_numeric_dtype(wrangled_anpr['camera'])
 
 
 def test_trips():

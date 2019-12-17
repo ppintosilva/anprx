@@ -2,6 +2,7 @@
 # ------------------------------------------------------------------------------
 
 from   .utils               import log
+from   .cameras             import NA_CAMERA
 
 import os
 import math
@@ -35,14 +36,15 @@ def transform_anpr(anpr):
         anpr.t_destination - anpr.timestamp)
 
     # Rename columns
-    anpr = anpr.rename(index=str,
-                       columns = {
-                        "camera":"origin",
-                        "timestamp":"t_origin"})
+    anpr = anpr.rename(columns = {
+        "camera"    :"origin",
+        "timestamp" :"t_origin"
+    })
 
     # Replace nans in destination with 'NA' so that we can concatenate
     # origin and destination appropriately
-    anpr = anpr.fillna({'destination'   : 'NA'})
+    anpr = anpr.fillna({'destination' : NA_CAMERA})
+    anpr['destination'] = anpr['destination'].astype(np.int32)
 
     # Sort by vehicle, t_origin: (necessary for cumulative operations)
     anpr = anpr.sort_values(by = ['vehicle','t_origin'])\
@@ -111,8 +113,8 @@ def trip_identification(
     start_time = time.time()
 
     # Assert dtypes
-    str_cols = ['vehicle', 'camera']
-    num_cols = ['confidence']
+    str_cols = ['vehicle']
+    num_cols = ['confidence', 'camera']
     dt_cols  = ['timestamp']
 
     log("Running asserts and checks...", level = lg.INFO)
@@ -139,7 +141,10 @@ def trip_identification(
     partial_time = time.time()
 
     # Preparing Camera Pairs for merge
-    camera_pairs = camera_pairs.fillna({'origin' : 'NA' ,'destination' : 'NA'})
+    camera_pairs = camera_pairs.fillna({
+        'origin'        : NA_CAMERA ,
+        'destination'   : NA_CAMERA
+    })
 
     ## dropping any unused columns (e.g. 'path', 'origin', 'destination',
     ## 'direction_origin', 'direction_destination', 'valid'). This avoids
@@ -152,15 +157,6 @@ def trip_identification(
 
     log(("Merged anpr with camera pairs to gain distance and direction data "
          "in {:,.2f} sec").format(time.time() - partial_time),
-        level = lg.INFO)
-
-    partial_time = time.time()
-
-    # replace 'NA' in destination with np.nan
-    trips.loc[trips.destination == "NA", 'destination'] = np.nan
-
-    log(("Replaced 'NA' with nan in destination column in {:,.2f} sec")\
-            .format(time.time() - partial_time),
         level = lg.INFO)
 
     partial_time = time.time()
@@ -364,13 +360,12 @@ def trip_identification(
     # Assign trip ids
     trips['trip'] = trips.groupby('vehicle')['trip'].shift(1).fillna(False)
     # trips start at index 1
-    trips['trip'] = trips.groupby('vehicle')['trip'].cumsum()\
-                         .astype('uint64')+1
+    trips['trip'] = trips.groupby('vehicle')['trip'].cumsum()+1
 
     # Add origin=NA first dummy observation to every trip
     fdf = trips.groupby(['vehicle', 'trip']).nth(0).reset_index()
     fdf['destination'  ]  = fdf['origin']
-    fdf['origin'       ]  = np.nan
+    fdf['origin'       ]  = NA_CAMERA
     fdf['rest_time'    ]  = np.nan
     fdf['travel_time'  ]  = pd.NaT
     fdf['t_destination']  = fdf['t_origin']
@@ -398,10 +393,10 @@ def trip_identification(
 
     # Adding info cols about trips
     trips['trip_length'] = trips.groupby(['vehicle','trip'])['origin']\
-                                .transform('size').astype('uint16')
+                                .transform('size')
 
     trips['trip_step'  ] = trips.groupby(['vehicle','trip'])\
-                                .cumcount().astype('uint16')+1
+                                .cumcount()+1
 
     # rest time
     ntrips = dict(trips.groupby(['vehicle'])['trip']\
@@ -413,11 +408,15 @@ def trip_identification(
         trips.loc[(trips.trip < trips.ntrips) & \
                   (trips.trip_step == trips.trip_length), 'travel_time'].values
 
+    # fix types
     trips['rest_time'] = trips['rest_time'].astype('timedelta64[ns]')
 
     # Add nans and NaTs for appropriate variables at the last step of each group
     trips.loc[trips.trip_step == trips.trip_length,
-      ['destination', 'distance', 'av_speed']] = np.nan
+      ['distance', 'av_speed']] = np.nan
+
+    trips.loc[trips.trip_step == trips.trip_length,
+      ['destination']] = NA_CAMERA
 
     trips.loc[trips.trip_step == trips.trip_length,
       ['t_destination', 'travel_time']] = pd.NaT
@@ -428,7 +427,7 @@ def trip_identification(
 
     log("Identified trips from raw anpr data in {:,.2f} sec"\
             .format(time.time() - start_time),
-        level = lg.INFO)
+        level = lg.INFO)    
 
     return trips
 

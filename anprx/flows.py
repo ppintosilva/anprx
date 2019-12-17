@@ -96,14 +96,9 @@ def discretise_time(trips, freq, sort = True):
                    (tmp.period_d > p)]\
                   .assign(period = p) for p in periods]
 
-        total_memory = np.array([ df.memory_usage(index=True).sum()/1e6 \
-                                  for df in dfs ]).sum()
-
         tmp = pd.concat(dfs)
 
-        tmp.drop(columns=['period_o','period_d'], inplace = True)
-
-        log_memory("tmp", tmp)
+        tmp.drop(columns=['period_o','period_d'], inplace = True)        
 
         # merge expanded and not-expanded dataframes
         trips = pd.concat([tmp, tmp2])

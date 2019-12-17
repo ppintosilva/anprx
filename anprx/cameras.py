@@ -49,6 +49,10 @@ g_np_regex = (r'^[A-Za-z]{1,2}[ ]?[0-9]{1,4}$|'
               r'^[A-Za-z]{2}[ ]?[0-9]{2}[ ]?[A-Za-z]{3}$|'
               r'^[A-Za-z]{3}[ ]?[0-9]{4}$')
 
+NA_CAMERA = 999999
+
+# ------------------------------------------------------------------------------
+
 def infer_road_attr(
     descriptions,
     direction_regex      = g_direction_regex,
@@ -501,7 +505,9 @@ def wrangle_cameras(
 
     # sort and reset_index
     cameras = cameras.sort_values(by=[sort_by])
-    cameras.reset_index(drop=True, inplace=True)
+    cameras = cameras.reset_index(drop=False)\
+                     .rename(columns = {'id'    : 'old_id',
+                                        'index' : 'id', })
 
     # convert bool cols to int type to avoid issues with read/write to/from disk
     cameras['both_directions'] = cameras['both_directions'].astype('int')
@@ -1222,7 +1228,7 @@ def camera_pairs_from_graph(G):
     # Camera ids to serve as index
     cameras_id = cameras.index.tolist()
     # Add node to represent unknown origin/destination
-    cameras_id.append("NA")
+    cameras_id.append(NA_CAMERA)
 
     # direction series
     direction = cameras['direction']
@@ -1262,9 +1268,10 @@ def camera_pairs_from_graph(G):
                     'valid'] = 0
 
     # invalid if unknown origin or destination
-    camera_pairs.loc[(camera_pairs.index.get_level_values('origin')=="NA") |\
-                     (camera_pairs.index.get_level_values('destination')=="NA"),\
-                    'valid'] = 0
+    camera_pairs.loc[
+        (camera_pairs.index.get_level_values('origin')==NA_CAMERA) |\
+        (camera_pairs.index.get_level_values('destination')==NA_CAMERA),\
+        'valid'] = 0
 
     # Now we iterate through every row and run shortest path algorithm
     paths = []
@@ -1272,14 +1279,19 @@ def camera_pairs_from_graph(G):
 
     for origin, destination in camera_pairs.index:
         # corner cases
-        if origin == destination or origin == "NA" or destination == "NA":
+        if origin == destination or \
+           origin == NA_CAMERA or \
+           destination == NA_CAMERA:
             spath = np.nan
             distance = np.nan
 
         else:
             try:
-                spath = nx.shortest_path(G, "c_" + origin, "c_" + destination,
-                                         weight = 'length')
+                spath = nx.shortest_path(
+                    G,
+                    "c_{}".format(origin),
+                    "c_{}".format(destination),
+                    weight = 'length')
 
                 edges = [(u,v) for u,v in zip(spath, spath[1:])]
                 lengths = [ G.edges[u,v,0]['length'] for u,v in edges ]
@@ -1525,11 +1537,11 @@ def wrangle_raw_anpr(
     # Sort by timestamp
     df = df.sort_values(by = ['timestamp'])
 
-    # Camera id checks
+    # Camera (old) id checks
     if cameras is not None:
         # Change camera column values to merged camera value
-        merged_rows = cameras['id'].str.contains("-")
-        merged_cameras = cameras[merged_rows]['id']
+        merged_rows = cameras['old_id'].str.contains("-")
+        merged_cameras = cameras[merged_rows]['old_id']
 
         unmerged_to_merged = {}
         for merged_camera in merged_cameras:
@@ -1542,6 +1554,7 @@ def wrangle_raw_anpr(
         is_merged_mask = (df['camera'].isin(original_cameras))
         is_merged_df = df[is_merged_mask]
 
+        # Replacing unclustered with clustered old_id
         df.loc[is_merged_mask, 'camera'] = is_merged_df['camera']\
             .apply(lambda x: unmerged_to_merged[x])
 
@@ -1552,7 +1565,7 @@ def wrangle_raw_anpr(
 
         # Check if camera ids match in anpr and cameras dataframes
         unique_in_anpr = set(df['camera'].unique())
-        unique_in_cameras = set(cameras['id'].unique())
+        unique_in_cameras = set(cameras['old_id'].unique())
 
         only_in_anpr = unique_in_anpr - unique_in_cameras
 
@@ -1577,6 +1590,17 @@ def wrangle_raw_anpr(
          "Dropped {} rows ({:,.2f} %), total is {}.")\
             .format(time.time()-start_time, frows, frows/len(df)*100, len(df)),
         level = lg.INFO)
+
+    # map of old string ids to new integer ids
+    old2new_id = cameras[['id', 'old_id']]\
+                        .set_index('old_id')\
+                        .squeeze() # make it a series
+
+    # Replace camera old_id with id
+    # (replacing string with integer - better for storage)
+    df['camera'] = df['camera'].apply(lambda x: old2new_id.loc[x])
+
+    df['confidence'] = df['confidence'].astype(int)    
 
     return df.reset_index(drop = True)
 
