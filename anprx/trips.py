@@ -3,10 +3,8 @@
 
 from   .utils               import log
 
-import gc
 import os
 import math
-import psutil
 import time
 import numpy                as np
 import osmnx                as ox
@@ -15,11 +13,6 @@ import pandas.api.types     as ptypes
 import networkx             as nx
 import geopandas            as gpd
 import logging              as lg
-
-import warnings
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    import ray
 
 # ------------------------------------------------------------------------------
 
@@ -453,11 +446,61 @@ def all_ods_displacement(
     dfs = []
 
     if parallel:
+        try:
+            import ray
+
+        except:
+            raise ImportError(('The ray package must be installed '
+                                'to use this optional feature.'))
+
         j = 0
         jobs = []
 
         if not ray.is_initialized():
             ray.init()
+
+        # ---
+        # hate to do this but I see no other way
+        # ---
+        @ray.remote
+        def rdisplacement(df, log_data, buffer_size = 100):
+            """
+            Calculate displacement of vehicles travelling from A to B.
+            """
+            newdf = df.reset_index(drop = False)
+            size = len(newdf)
+
+            dps = np.zeros([size], dtype = np.uint16)
+            dns = np.zeros([size], dtype = np.uint16)
+
+            for i, row in newdf.iterrows():
+                # bound df so that we don't run expensive query on the entire group
+                # dataframe pandas doesn't throw out of bounds error so it's alright
+                # to use out of bound indexes in either direction
+                wdf = newdf.loc[(i - buffer_size):(i + buffer_size)]
+
+                dps[i] = np.sum((wdf.t_origin      > row["t_origin"]) & \
+                                (wdf.t_destination < row["t_destination"]))
+
+                dns[i] = np.sum((wdf.t_origin     < row["t_origin"]) & \
+                                (wdf.t_destination > row["t_destination"]))
+
+            newdf = newdf.assign(dp = dps)
+            newdf = newdf.assign(dn = dns)
+            newdf = newdf.set_index('index')
+
+            if log_data['log']:
+                    q = log_data['groups_processed']/log_data['groups_total']*100
+                    log("Checkpoint {}: {}/{} groups processed (~{}%)."\
+                            .format(log_data['checkpoint'],
+                                    log_data['groups_processed'],
+                                    log_data['groups_total'],
+                                    q),
+                        level = lg.INFO)
+
+            return newdf
+
+        # ---
 
     has_trips = 'trip' in df.columns
     if has_trips:
@@ -561,43 +604,5 @@ def displacement(df, buffer_size = 100):
     newdf = newdf.assign(dp = dps)
     newdf = newdf.assign(dn = dns)
     newdf = newdf.set_index('index')
-
-    return newdf
-
-@ray.remote
-def rdisplacement(df, log_data, buffer_size = 100):
-    """
-    Calculate displacement of vehicles travelling from A to B.
-    """
-    newdf = df.reset_index(drop = False)
-    size = len(newdf)
-
-    dps = np.zeros([size], dtype = np.uint16)
-    dns = np.zeros([size], dtype = np.uint16)
-
-    for i, row in newdf.iterrows():
-        # bound df so that we don't run expensive query on the entire group
-        # dataframe pandas doesn't throw out of bounds error so it's alright
-        # to use out of bound indexes in either direction
-        wdf = newdf.loc[(i - buffer_size):(i + buffer_size)]
-
-        dps[i] = np.sum((wdf.t_origin      > row["t_origin"]) & \
-                        (wdf.t_destination < row["t_destination"]))
-
-        dns[i] = np.sum((wdf.t_origin     < row["t_origin"]) & \
-                        (wdf.t_destination > row["t_destination"]))
-
-    newdf = newdf.assign(dp = dps)
-    newdf = newdf.assign(dn = dns)
-    newdf = newdf.set_index('index')
-
-    if log_data['log']:
-            q = log_data['groups_processed']/log_data['groups_total']*100
-            log("Checkpoint {}: {}/{} groups processed (~{}%)."\
-                    .format(log_data['checkpoint'],
-                            log_data['groups_processed'],
-                            log_data['groups_total'],
-                            q),
-                level = lg.INFO)
 
     return newdf
