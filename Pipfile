@@ -4,6 +4,12 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+pytest = "*"
+sphinx = "*"
+sphinx-rtd-theme = "*"
+ray = "*"
+psutil = "*"
+setproctitle = "*"
 
 [packages]
 anprx = {editable = true,path = "."}

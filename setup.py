@@ -8,7 +8,7 @@ long_description = \
 **ANPRx** is a package for traffic analytics using networks of automatic number plate cameras.
 """
 
-classifiers = ['Development Status :: 3 - Alpha',
+classifiers = ['Development Status :: 4 - Beta',
                'License :: OSI Approved :: Apache Software License',
                'Operating System :: OS Independent',
                'Intended Audience :: Science/Research',
@@ -21,30 +21,13 @@ classifiers = ['Development Status :: 3 - Alpha',
                'Programming Language :: Python :: 3.7']
 
 install_requires = [
-    'statistics',
     'osmnx',
-    'scikit-learn',
-    'progress',
-    'ray',
-    'psutil',
-    'setproctitle',
-    'scikit-learn'
+    'scipy'
 ]
-
-links = ['http://github.com/ppintosilva/osmnx/tarball/master#egg=package-1.0']
-
-extras_require = {
-    'tests': [
-       'pytest'],
-    'docs': [
-       'sphinx',
-       'sphinx_rtd_theme'],
-    'examples': [
-       'ipykernel']}
 
 # now call setup
 setup(name = 'anprx',
-      version = '0.1.3',
+      version = '1.0.0',
       description = short_description,
       long_description = long_description,
       classifiers = classifiers,
@@ -54,6 +37,5 @@ setup(name = 'anprx',
       license = 'Apache License 2.0',
       platforms = 'any',
       packages = ['anprx'],
-      install_requires = install_requires,
-      extras_require = extras_require,
-      dependency_links = links)
+      install_requires = install_requires
+)
