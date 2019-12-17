@@ -1537,6 +1537,13 @@ def wrangle_raw_anpr(
     # Sort by timestamp
     df = df.sort_values(by = ['timestamp'])
 
+    # unique vehicles
+    unique_vehicles = pd.Series(df['vehicle'].unique())
+    veh2id = unique_vehicles.reset_index().set_index(0).squeeze()
+
+    # Vehicle strings to integer (saves space!)
+    df['vehicle'] = df['vehicle'].apply(lambda x: veh2id.loc[x])
+
     # Camera (old) id checks
     if cameras is not None:
         # Change camera column values to merged camera value
@@ -1600,7 +1607,7 @@ def wrangle_raw_anpr(
     # (replacing string with integer - better for storage)
     df['camera'] = df['camera'].apply(lambda x: old2new_id.loc[x])
 
-    df['confidence'] = df['confidence'].astype(int)    
+    df['confidence'] = df['confidence'].astype(int)
 
     return df.reset_index(drop = True)
 

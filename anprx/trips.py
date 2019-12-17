@@ -113,13 +113,11 @@ def trip_identification(
     start_time = time.time()
 
     # Assert dtypes
-    str_cols = ['vehicle']
-    num_cols = ['confidence', 'camera']
+    num_cols = ['vehicle', 'camera', 'confidence']
     dt_cols  = ['timestamp']
 
     log("Running asserts and checks...", level = lg.INFO)
-
-    assert all(ptypes.is_string_dtype(anpr[col]) for col in str_cols)
+    
     assert all(ptypes.is_numeric_dtype(anpr[col]) for col in num_cols)
     assert all(ptypes.is_datetime64_any_dtype(anpr[col]) for col in dt_cols)
 
@@ -427,7 +425,7 @@ def trip_identification(
 
     log("Identified trips from raw anpr data in {:,.2f} sec"\
             .format(time.time() - start_time),
-        level = lg.INFO)    
+        level = lg.INFO)
 
     return trips
 

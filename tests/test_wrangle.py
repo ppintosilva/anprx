@@ -125,7 +125,7 @@ raw_anpr_testset = pd.concat([raw_anpr_testset_v1, raw_anpr_testset_v2,
 raw_anpr_testset['timestamp'] = raw_anpr_testset['timestamp']\
     .apply(lambda x: baseline_date + pd.to_timedelta(x, unit = 's'))
 
-#   Expected Trips - Vehicle 1: 'AA00AAA'
+#   Expected Trips - Vehicle 1: 'AA00AAA' (index = 0)
 #
 #   vehicle | ori | dst | to | td | tt | d_ori | d_dst | trip | step | trip_len
 #   ----------------------------------------------------------------------------
@@ -139,7 +139,7 @@ raw_anpr_testset['timestamp'] = raw_anpr_testset['timestamp']\
 #
 
 expected_trips_v1 = pd.DataFrame({
-    'vehicle'               : ['AA00AAA'] * 6,
+    'vehicle'               : [0] * 6,
     'origin'                : [np.nan, '1-10', '2'] * 2,
     'destination'           : ['1-10', '2', np.nan] * 2,
     't_origin'              : [pd.NaT, 0, 90, pd.NaT, 1e5/2, 1e5/2 + 90.0],
@@ -151,7 +151,7 @@ expected_trips_v1 = pd.DataFrame({
     'rest_time'             : [pd.NaT] * 3 + [1e5/2-90.0, pd.NaT, pd.NaT]
 })
 
-#   Expected Trips - Vehicle 2: 'AA11AAA'
+#   Expected Trips - Vehicle 2: 'AA11AAA' (index = 1)
 #
 #   vehicle | ori | dst | to | td | tt | d_ori | d_dst | trip | step | trip_len
 #   ----------------------------------------------------------------------------
@@ -165,7 +165,7 @@ expected_trips_v1 = pd.DataFrame({
 #
 
 expected_trips_v2 = pd.DataFrame({
-    'vehicle'               : ['AA11AAA'] * 6,
+    'vehicle'               : [1] * 6,
     'origin'                : [np.nan, '3', '1-10', '4', np.nan, '3'],
     'destination'           : ['3', '1-10', '4', np.nan, '3', np.nan],
     't_origin'              : [pd.NaT, 0, 100.0, 200.0, pd.NaT, 1e5],
@@ -227,7 +227,7 @@ expected_trips['rest_time'] = expected_trips['rest_time']\
 #
 
 expected_dtrips_v1 = pd.DataFrame({
-    'vehicle'               : ['AA00AAA'] * 11,
+    'vehicle'               : [0] * 11,
     'origin'                : [np.nan, '1-10', '1-10', '1-10', '2',
                                np.nan, '1-10', '1-10', '1-10', '1-10', '2'],
     'destination'           : ['1-10', '2', '2', '2', np.nan,
@@ -261,7 +261,7 @@ expected_dtrips_v1 = pd.DataFrame({
 #
 
 expected_dtrips_v2 = pd.DataFrame({
-    'vehicle'               : ['AA11AAA'] * 12,
+    'vehicle'               : [1] * 12,
     'origin'                : [np.nan, '3', '3', '3', '3', '1-10',
                                '1-10', '1-10', '1-10', '4', np.nan, '3'],
     'destination'           : ['3', '1-10', '1-10', '1-10', '1-10', '4',
@@ -529,6 +529,9 @@ def test_wrangle_raw_anpr():
 
     assert len(wrangled_anpr) == 16 # including 3 duplicates, 2 fast obs
     assert ptypes.is_numeric_dtype(wrangled_anpr['camera'])
+    assert ptypes.is_numeric_dtype(wrangled_anpr['vehicle'])
+
+    assert np.isin(wrangled_anpr['vehicle'], np.array([0,1,2])).all()
 
 
 def test_trips():
@@ -537,20 +540,20 @@ def test_trips():
     trips = get_trips()
 
     pd.testing.assert_frame_equal(
-        trips.loc[trips.vehicle == "AA00AAA", cols],
-        expected_trips.loc[expected_trips.vehicle == "AA00AAA", cols],
+        trips.loc[trips.vehicle == 0, cols],
+        expected_trips.loc[expected_trips.vehicle == 0, cols],
         check_dtype = True)
 
     pd.testing.assert_frame_equal(
-        trips.loc[trips.vehicle == "AA11AAA", cols],
-        expected_trips.loc[expected_trips.vehicle == "AA11AAA", cols],
+        trips.loc[trips.vehicle == 1, cols],
+        expected_trips.loc[expected_trips.vehicle == 1, cols],
         check_dtype = True)
 
 def test_discretise_time():
 
     dtrips = get_dtrips()
 
-    dtrips = dtrips.loc[dtrips.vehicle.isin(['AA00AAA','AA11AAA']),
+    dtrips = dtrips.loc[dtrips.vehicle.isin([0,1]),
     ['vehicle','origin','destination', 't_origin','t_destination','period']]
 
     pd.testing.assert_frame_equal(
