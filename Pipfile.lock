@@ -412,6 +412,13 @@
             ],
             "version": "==7.0"
         },
+        "cloudpickle": {
+            "hashes": [
+                "sha256:922401d7140e133253ff5fab4faa4a1166416066453a783b00b507dca93f8859",
+                "sha256:f3ef2c9d438f1553ce7795afb18c1f190d8146132496169ef6aa9b7b65caa4c3"
+            ],
+            "version": "==1.2.2"
+        },
         "colorama": {
             "hashes": [
                 "sha256:7d73d2a99753107a36ac6b455ee49046802e59d9d076ef8e47b61499fa29afff",
@@ -655,17 +662,17 @@
         },
         "ray": {
             "hashes": [
-                "sha256:37dfcdf9260ae2f6404ac9344fac62f544758912454e5725c5449e4366e8b9fc",
-                "sha256:577980b985c0bb10e5b7383f6157a55203d90bfb1d995fc4ce6d51d38b6a2f0f",
-                "sha256:616dc306305dbab639b0c35f5c8afeb4ea615d6726691a46b1a700a55babf428",
-                "sha256:74b2ae2c5125989cca905beeac5285d10388449562bd0dd1910cce2368c4b24b",
-                "sha256:8bac293e69fa36b2b152e9395327a9c177e34136c4b3a0b142b8ff4c26b7b137",
-                "sha256:a46c1e3f1d883ca79718aa3f782c019bf6959434a399643bee54e22e48eb33eb",
-                "sha256:cb78cd4b5a0c69713965a0350ab8b5b46542d0a0d6d25aabd1cad69b9c15db0e",
-                "sha256:fb963fec1db0d3caab366daeb1c537cf58d1b41073abe3767d652d51822cd256"
+                "sha256:18ab6b7df84c625676a37798370c30e0b958143ca1ddee8ea31d8fac3dbfac93",
+                "sha256:66863ed1f630cdef8179aef6bdec997d074b432748e1ded2b1e58b25dc374769",
+                "sha256:72fab186887ef883c0fa9bc78f238fdf3489413be02f854037d57b17c554ea2d",
+                "sha256:75e0825c236e866f9548c686ac7baad77c4743c0b1601fa1289c7b6ebdbeecfa",
+                "sha256:87c1547ab9f5c1d7c6629a91890830fbb37efff61bfe1646e4013fde383bed9e",
+                "sha256:aee39b2780dc2c0119aedef798c5e3b8579592c652c2e63717ea663344c4fc52",
+                "sha256:c209a5cb28683ba66e2bc2c783182571e2a58a505e9945c28a0af67a0c2f6206",
+                "sha256:f61110fa8980a80b8d298f2bbe10a19e4ef69ce89da271b39c7e3c654a5551e2"
             ],
             "index": "pypi",
-            "version": "==0.7.7"
+            "version": "==0.8.0"
         },
         "redis": {
             "hashes": [
