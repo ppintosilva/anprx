@@ -103,14 +103,6 @@ def test_displacement_all_pairs():
         pd.testing.assert_series_equal(group['dn'].reset_index(drop = True),
                                        expected_dn, check_names = False)
 
-    ndf2 = all_ods_displacement(tdf, parallel = True)
-
-    for name, group in ndf2.groupby(['origin', 'destination']):
-        pd.testing.assert_series_equal(group['dp'].reset_index(drop = True),
-                                       expected_dp, check_names = False)
-        pd.testing.assert_series_equal(group['dn'].reset_index(drop = True),
-                                       expected_dn, check_names = False)
-
 
 
 # Trips:
@@ -146,8 +138,6 @@ fake_trips = pd.DataFrame({
     'trip_step'     : np.repeat(2,10),
     'trip_length'   : np.repeat(3,10)
 })
-
-fake_trips["od"] = fake_trips["origin"] + "_" + fake_trips["destination"]
 
 fake_trips['t_origin'] = fake_trips['t_origin']\
     .apply(lambda x: baseline_date + pd.to_timedelta(x, unit = 's'))
@@ -227,8 +217,6 @@ def test_displacement_trips():
                                    expected_dp_l, check_names = False)
     pd.testing.assert_series_equal(disp_trips['dn'].reset_index(drop = True),
                                    expected_dn_l, check_names = False)
-
-
 
 def test_flows():
     observed_flows = get_flows(
