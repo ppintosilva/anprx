@@ -218,7 +218,31 @@ def test_displacement_trips():
     pd.testing.assert_series_equal(disp_trips['dn'].reset_index(drop = True),
                                    expected_dn_l, check_names = False)
 
+def test_same_period_daily_discretisation():
+    dtrips = discretise_time(
+        fake_trips,
+        freq = "D"
+    )
+
+    # no new rows were added
+    assert len(fake_trips) == len(dtrips)
+    # no NULL/NaT periods
+    assert all(~pd.isnull(dtrips.period))
+
+def test_same_period_weekly_discretisation():
+    dtrips = discretise_time(
+        fake_trips,
+        freq = "7D"
+    )
+
+    # no new rows were added
+    assert len(fake_trips) == len(dtrips)
+    # no NULL/NaT periods
+    assert all(dtrips.period == pd.Timestamp('2099-12-28')) # a monday
+
+
 def test_flows():
+    # includes time discretisation
     observed_flows = get_flows(
         fake_trips,
         freq,
@@ -240,6 +264,7 @@ def test_flows():
         check_dtype = True)
 
 def test_flows_skip_explicit():
+    # includes time discretisation
     observed_flows = get_flows(
         fake_trips,
         freq,

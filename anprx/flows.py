@@ -14,7 +14,7 @@ import logging      as lg
 
 def get_periods(trips, freq):
     start_period = trips['t_origin'].dropna().min().floor(freq)
-    end_period = trips['t_destination'].dropna().max().ceil(freq)
+    end_period = trips['t_destination'].dropna().max().floor(freq)
 
     return pd.date_range(start = start_period,
                          end   = end_period,
@@ -25,31 +25,68 @@ def log_memory(name, df):
             .format(name, df.shape, df.memory_usage(index=True).sum()/1e6),
         level = lg.INFO)
 
-def discretise_time(trips, freq, sort = True):
+def discretise_time(
+    trips,
+    freq,
+    interval_pthreshold = .05,
+    same_period_offset = pd.tseries.offsets.Day(n=1),
+    sort = True):
+    """
+    Discretise time
+    """
     start_time = time.time()
     nrows = len(trips)
+
+    interval_size = pd.tseries.frequencies.to_offset(freq)
 
     log("Discretising time of trips (len = {}) into {} periods"\
             .format(len(trips), freq),
         level = lg.INFO)
 
-    start_period = trips['t_origin'].dropna().min().floor(freq)
-    end_period = trips['t_destination'].dropna().max().ceil(freq)
-
-    log("Start period = {}, end period = {}"\
-            .format(start_period, end_period),
-        level = lg.INFO)
-
     periods = get_periods(trips, freq)
 
+    log("start period = {}, end period = {}"\
+            .format(pd.Interval(periods[0], periods[0] + interval_size),
+                    pd.Interval(periods[-1], periods[-1] + interval_size)),
+        level = lg.INFO)
+
+    # if we're aggregating over time periods of length equal or longer than an
+    # offset then we consider that trips always start and end in the same period
+    # This simplifies everything and hence we don't need to create multiple
+    # entries for the same trip step
+    if interval_size >= same_period_offset:
+        first_step = (trips.trip_step == 1)
+
+        # Floor to closest Monday
+        if interval_size == pd.tseries.offsets.Day(n=7):
+            trips = trips.assign(period = (trips.t_origin - \
+                pd.to_timedelta(trips.t_origin.dt.dayofweek, unit='d'))\
+                .dt.floor('D'))
+            # fix for when t_origin is null
+            trips[first_step]['period'] = \
+                (trips[first_step]['t_destination'] - \
+                pd.to_timedelta(trips.t_destination.dt.dayofweek, unit='d'))\
+                .dt.floor('D')
+        else:
+            trips = trips.assign(period = trips.t_origin.dt.floor(freq))
+            # fix for when t_origin is null
+            trips[first_step]['period'] = \
+                trips[first_step]['t_destination'].dt.floor(freq)
+
+        log(("Discretised time in {:,.2f} sec. No new rows were added because "
+            "frequency is large enough that we can consider that trips always "
+            "start and end in the same time period.")\
+                .format(time.time() - start_time),
+            level = lg.INFO)
+        # we can return
+        return trips
+
+    # else we consider that a trip step can count towards the total vehicle
+    # flow between a origin and destination during multiple time periods
     trips = trips.assign(
         period_o = trips.t_origin.dt.floor(freq),
-        period_d = trips.t_destination.dt.ceil(freq)
+        period_d = trips.t_destination.dt.floor(freq)
     )
-
-    # Cases where origin is NA, we want the floor of period_d instead of ceiling
-    trips.loc[trips.trip_step == 1, 'period_d'] = \
-        trips.loc[trips.trip_step == 1, 't_destination'].dt.floor(freq)
 
     log_memory("trips", trips)
 
@@ -79,29 +116,58 @@ def discretise_time(trips, freq, sort = True):
                 (trips.trip_step < trips.trip_length) & \
                 (trips.period_o != trips.period_d)
 
-    tmp  = trips[to_expand]
+    trips_to_expand  = trips[to_expand]
 
-    tmp2_step1 = trips[(~to_expand) & (trips.trip_step == 1)]\
-                .rename(columns = {'period_d' : 'period'})\
-                .drop(columns=['period_o'])
+    trips_not_expand_step1 = \
+        trips[(~to_expand) & (trips.trip_step == 1)]\
+            .rename(columns = {'period_d' : 'period'})\
+            .drop(columns=['period_o'])
 
-    tmp2_others = trips[(~to_expand) & (trips.trip_step != 1)]\
-                .rename(columns = {'period_o' : 'period'})\
-                .drop(columns=['period_d'])
+    trips_not_expand_step_last = \
+        trips[(~to_expand) & (trips.trip_step != 1)]\
+            .rename(columns = {'period_o' : 'period'})\
+            .drop(columns=['period_d'])
 
-    tmp2 = pd.concat([tmp2_step1, tmp2_others])
+    trips_not_expand = pd.concat([trips_not_expand_step1,
+                                  trips_not_expand_step_last])
 
-    if len(tmp) > 0:
-        dfs =[ tmp[(tmp.period_o <= p) & \
-                   (tmp.period_d > p)]\
+    # sweet release
+    del trips_not_expand_step1, trips_not_expand_step_last
+
+
+
+    if len(trips_to_expand) > 0:
+        dfs =[ trips_to_expand[(trips_to_expand.period_o <= p) & \
+                               (trips_to_expand.period_d >= p)]\
                   .assign(period = p) for p in periods]
 
-        tmp = pd.concat(dfs)
+        trips_to_expand = pd.concat(dfs)
 
-        tmp.drop(columns=['period_o','period_d'], inplace = True)        
+        # sweet release
+        del dfs
+
+        def calc_overlap(x):
+            return \
+            (min(x.t_destination, x.period + interval_size) \
+             - max(x.t_origin, x.period))/interval_size
+
+        # total proportion of the time interval covered by the observation
+        trips_to_expand['period_overlap'] = \
+            trips_to_expand.apply(calc_overlap, axis=1)
+
+        # Don't count towards the flow if less than ptreshold percent
+        # of the period is covered by the trip step
+        trips_to_expand = \
+            trips_to_expand[trips_to_expand.period_overlap >= interval_pthreshold]
+
+        trips_to_expand.drop(columns=['period_o','period_d', 'period_overlap'],
+                             inplace = True)
 
         # merge expanded and not-expanded dataframes
-        trips = pd.concat([tmp, tmp2])
+        trips = pd.concat([trips_to_expand, trips_not_expand])
+
+        # sweet release
+        del trips_to_expand, trips_not_expand
 
         if sort:
             trips = trips.sort_values(['vehicle', 'trip', 't_destination'])\
@@ -112,7 +178,7 @@ def discretise_time(trips, freq, sort = True):
         log_memory("trips", trips)
 
     else:
-        trips = tmp2
+        trips = trips_not_expand
 
     log("Discretised time in {:,.2f} sec. Added {} rows. Total rows = {}."\
             .format(time.time() - start_time, len(trips) - nrows, len(trips)),
@@ -174,7 +240,7 @@ def get_flows(trips, freq,
     else:
         # Remove last period as the interval is open and does not include the
         # final period
-        periods = get_periods(trips, freq)[:-1]
+        periods = get_periods(trips, freq)
         flows = expand_flows(flows, periods)
 
     # making sure flow is of type int
