@@ -221,7 +221,8 @@ def test_displacement_trips():
 def test_same_period_daily_discretisation():
     dtrips = discretise_time(
         fake_trips,
-        freq = "D"
+        freq = "D",
+        same_period = True
     )
 
     # no new rows were added
@@ -232,7 +233,8 @@ def test_same_period_daily_discretisation():
 def test_same_period_weekly_discretisation():
     dtrips = discretise_time(
         fake_trips,
-        freq = "7D"
+        freq = "7D",
+        same_period = True
     )
 
     # no new rows were added

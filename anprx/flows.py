@@ -29,7 +29,7 @@ def discretise_time(
     trips,
     freq,
     interval_pthreshold = .02,
-    same_period_offset = pd.tseries.offsets.Day(n=1),
+    same_period = False,
     sort = True):
     """
     Discretise time
@@ -54,7 +54,7 @@ def discretise_time(
     # offset then we consider that trips always start and end in the same period
     # This simplifies everything and hence we don't need to create multiple
     # entries for the same trip step
-    if interval_size >= same_period_offset:
+    if same_period:
         first_step = (trips.trip_step == 1)
 
         # Floor to closest Monday
