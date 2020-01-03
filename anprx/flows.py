@@ -28,7 +28,7 @@ def log_memory(name, df):
 def discretise_time(
     trips,
     freq,
-    interval_pthreshold = .05,
+    interval_pthreshold = .02,
     same_period_offset = pd.tseries.offsets.Day(n=1),
     sort = True):
     """
