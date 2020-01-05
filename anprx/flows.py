@@ -187,11 +187,9 @@ def discretise_time(
     return trips
 
 
-def get_flows(trips, freq,
+def get_flows(trips,
               aggregator = None,
-              try_discretise = True,
-              remove_na = False,
-              skip_explicit = True):
+              remove_na = False):
     """
     Aggregate trip data to compute flows.
     """
@@ -201,8 +199,10 @@ def get_flows(trips, freq,
             .format('period' in trips.columns),
         level = lg.INFO)
 
-    if 'period' not in trips.columns and try_discretise:
-        trips = discretise_time(trips, freq)
+    if 'period' not in trips.columns:
+        raise ValueError(
+            ("Column 'period' not in trips dataframe. "
+             "Have you discretised time?"))
 
     log("Preparing to aggregate trips into flows.", level = lg.INFO)
 
@@ -232,19 +232,8 @@ def get_flows(trips, freq,
             .groupby(['origin', 'destination', 'period'])\
             .agg(**aggregator)
 
-    if skip_explicit:
-        flows.reset_index(inplace = True)
-        log(("SKIP filling missing combinations of (origin,destination,period)"
-            " with zero flows: {}").format(flows.columns.values),
-            level = lg.INFO)
-    else:
-        # Remove last period as the interval is open and does not include the
-        # final period
-        periods = get_periods(trips, freq)
-        flows = expand_flows(flows, periods)
 
-    # making sure flow is of type int
-    flows['flow'] = flows['flow'].astype(np.uint32)
+    flows.reset_index(inplace = True)
 
     log_memory("flows", flows)
 
@@ -255,7 +244,7 @@ def get_flows(trips, freq,
     return flows
 
 
-def expand_flows(flows, periods, assert_expected_nrows = True):
+def expand_flows(flows, assert_expected_nrows = True):
     """
     Expand flows by filling in zero flows explicitly (missing combinations of
     origin, destination, period).
@@ -266,8 +255,13 @@ def expand_flows(flows, periods, assert_expected_nrows = True):
     log("Filling missing combinations of (o,d,period) with zero flows.",
         level = lg.INFO)
 
+    periods = flows['period'].unique()
+
     # unique od combinations that show up in the data
-    unique_ods = list(set(map(lambda x: (x[0], x[1]), flows.index.tolist())))
+    unique_ods = list(set(list(zip(flows.origin, flows.destination))))
+
+    # set index so then we can reindex
+    flows = flows.set_index(['origin','destination','period'])
 
     # Cartesian product of unique values of 'od', and 'period'
     # Using 'od' instead of 'origin' and 'destination' prevents od combinations
@@ -285,6 +279,9 @@ def expand_flows(flows, periods, assert_expected_nrows = True):
     flows = flows.reindex(mux, fill_value=np.NaN)\
                  .fillna({'flow' : 0})\
                  .reset_index()
+
+    # converting back to int after reindex (w/fill np.nan) caused float casting
+    flows['flow'] = flows['flow'].astype('int64')
 
     expected_nrows = len(periods) * len(unique_ods)
 

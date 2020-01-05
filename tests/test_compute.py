@@ -4,6 +4,7 @@ from   anprx.trips       import displacement
 from   anprx.trips       import all_ods_displacement
 from   anprx.flows       import discretise_time
 from   anprx.flows       import get_flows
+from   anprx.flows       import expand_flows
 
 import os
 import numpy               as     np
@@ -125,7 +126,6 @@ def test_displacement_all_pairs():
 #   ----------------------------------------------------------------------------
 
 baseline_date = pd.to_datetime('21000101', format='%Y%m%d', errors='coerce')
-freq = "30S"
 
 fake_trips = pd.DataFrame({
     'vehicle'       : pd.Series(np.arange(10) + 1, dtype = object),
@@ -182,7 +182,7 @@ expected_flows = pd.DataFrame({
     'destination'   : np.repeat('B', 20),
     'period'        : list(range(0,300,30)) * 2,
     'flow'          : pd.Series([4,5,5,4,2,0,0,0,0,0,
-                                 3,4,5,5,5,5,5,2,2,1], dtype = np.uint32),
+                                 3,4,5,5,5,5,5,2,2,1], dtype = np.int64),
     'avspeed'       : [[45,40.5,33.75,45], [45,40.5,33.75,45,45],
                        [45,40.5,33.75,45,45], [40.5,33.75,45,45],
                        [33.75,45], np.nan, np.nan, np.nan, np.nan,np.nan,
@@ -244,42 +244,34 @@ def test_same_period_weekly_discretisation():
 
 
 def test_flows():
-    # includes time discretisation
-    observed_flows = get_flows(
+
+    fake_dtrips = discretise_time(
         fake_trips,
-        freq,
-        skip_explicit = False
+        freq = "30S",
+        same_period = False
     )
 
-    observed_flows = observed_flows\
-        .drop(columns = ['skew_avspeed'])\
-        .sort_values(by = ['origin', 'destination', 'period'])\
-        .reset_index(drop = True)
+    observed_flows = \
+        get_flows(fake_dtrips)\
+        .drop(columns = ['skew_avspeed'])
 
-    names =['origin', 'destination', 'period',
-            'flow', 'mean_avspeed', 'sd_avspeed']
 
     pd.testing.assert_frame_equal(
         observed_flows,
-        expected_flows,
-        check_less_precise = 5,
-        check_dtype = True)
-
-def test_flows_skip_explicit():
-    # includes time discretisation
-    observed_flows = get_flows(
-        fake_trips,
-        freq,
-        skip_explicit = True
-    )
-
-    names =['origin', 'destination', 'period',
-            'flow', 'mean_avspeed', 'sd_avspeed']
-
-    pd.testing.assert_frame_equal(
-        observed_flows.drop(columns = ['skew_avspeed']),
         expected_flows\
             .loc[expected_flows.flow > 0]\
             .reset_index(drop = True),
+        check_less_precise = 5,
+        check_dtype = True)
+
+    # expand them and re-test
+    expanded_flows = \
+        expand_flows(observed_flows)\
+        .sort_values(by = ['origin', 'destination', 'period'])\
+        .reset_index(drop = True)
+
+    pd.testing.assert_frame_equal(
+        expanded_flows,
+        expected_flows,
         check_less_precise = 5,
         check_dtype = True)
