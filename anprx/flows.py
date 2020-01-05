@@ -27,9 +27,10 @@ def log_memory(name, df):
 def discretise_time(
     trips,
     freq,
-    interval_pthreshold = .02,
+    apply_pthreshold = False,
+    pthreshold = .02,
     same_period = False,
-    sort = True):
+    sort = False):
     """
     Discretise time
     """
@@ -151,24 +152,34 @@ def discretise_time(
         log("Computed trips to expand.")
         log_memory("trips", trips_to_expand)
 
-        def calc_overlap(x):
-            return \
-            (min(x.t_destination, x.period + interval_size) \
-             - max(x.t_origin, x.period))/interval_size
+        if apply_pthreshold:
 
-        # total proportion of the time interval covered by the observation
-        trips_to_expand['period_overlap'] = \
-            trips_to_expand.apply(calc_overlap, axis=1)
+            def calc_overlap(x):
+                return \
+                (min(x.t_destination, x.period + interval_size) \
+                 - max(x.t_origin, x.period))/interval_size
 
-        # Don't count towards the flow if less than ptreshold percent
-        # of the period is covered by the trip step
-        trips_to_expand = \
-            trips_to_expand[trips_to_expand.period_overlap >= interval_pthreshold]
+            # total proportion of the time interval covered by the observation
+            trips_to_expand['period_overlap'] = \
+                trips_to_expand.apply(calc_overlap, axis=1)
 
-        log(("Calculated and filtered steps with period_overlap "
-             "lower than threshold {}.").format(interval_pthreshold))
+            log(("Calculated steps with period_overlap "
+                 "lower than threshold {}.").format(pthreshold))
 
-        trips_to_expand.drop(columns=['period_o','period_d', 'period_overlap'],
+            # Don't count towards the flow if less than ptreshold percent
+            # of the period is covered by the trip step
+            trips_to_expand = \
+                trips_to_expand[trips_to_expand.period_overlap >= pthreshold]
+
+            log(("Filtered steps with period_overlap "
+                 "lower than threshold {}.").format(pthreshold))
+
+            trips_to_expand.drop(columns=['period_overlap'], inplace = True)
+
+        else:
+            log("Skipped applying ptreshold.")
+
+        trips_to_expand.drop(columns=['period_o','period_d'],
                              inplace = True)
 
         # merge expanded and not-expanded dataframes

@@ -404,6 +404,7 @@ def get_dtrips():
         dtrips = discretise_time(
             trips = get_trips(),
             freq = dtrips_freq,
+            apply_pthreshold = True,
             sort = True
         )
 

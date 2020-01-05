@@ -248,7 +248,8 @@ def test_flows():
     fake_dtrips = discretise_time(
         fake_trips,
         freq = "30S",
-        same_period = False
+        same_period = False,
+        apply_pthreshold = True
     )
 
     names = ['origin','destination','period','flow','mean_avspeed','sd_avspeed']
