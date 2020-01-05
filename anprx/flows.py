@@ -128,13 +128,16 @@ def discretise_time(
             .rename(columns = {'period_o' : 'period'})\
             .drop(columns=['period_d'])
 
+    # sweet release
+    del trips
+
     trips_not_expand = pd.concat([trips_not_expand_step1,
                                   trips_not_expand_step_last])
 
     # sweet release
     del trips_not_expand_step1, trips_not_expand_step_last
 
-
+    log("Computed trips not to expand.")
 
     if len(trips_to_expand) > 0:
         dfs =[ trips_to_expand[(trips_to_expand.period_o <= p) & \
@@ -145,6 +148,9 @@ def discretise_time(
 
         # sweet release
         del dfs
+
+        log("Computed trips to expand.")
+        log_memory("trips", trips_to_expand)
 
         def calc_overlap(x):
             return \
@@ -160,11 +166,17 @@ def discretise_time(
         trips_to_expand = \
             trips_to_expand[trips_to_expand.period_overlap >= interval_pthreshold]
 
+        log(("Calculated and filtered steps with period_overlap "
+             "lower than threshold {}.").format(interval_pthreshold))
+
         trips_to_expand.drop(columns=['period_o','period_d', 'period_overlap'],
                              inplace = True)
 
         # merge expanded and not-expanded dataframes
         trips = pd.concat([trips_to_expand, trips_not_expand])
+
+        log("Concatenated all trips together.")
+        log_memory("trips", trips)
 
         # sweet release
         del trips_to_expand, trips_not_expand
