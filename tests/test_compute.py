@@ -251,10 +251,9 @@ def test_flows():
         same_period = False
     )
 
-    observed_flows = \
-        get_flows(fake_dtrips)\
-        .drop(columns = ['skew_avspeed'])
+    names = ['origin','destination','period','flow','mean_avspeed','sd_avspeed']
 
+    observed_flows = get_flows(fake_dtrips)[names]
 
     pd.testing.assert_frame_equal(
         observed_flows,

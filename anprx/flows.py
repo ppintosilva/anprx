@@ -7,7 +7,6 @@ import os
 import time
 import pandas       as pd
 import numpy        as np
-import scipy.stats  as stats
 import logging      as lg
 
 # ------------------------------------------------------------------------------
@@ -220,10 +219,10 @@ def get_flows(trips,
 
     if aggregator is None:
         aggregator = {
-            'flow'         : ('av_speed', 'size'),
-            'mean_avspeed' : ('av_speed', np.mean),
-            'sd_avspeed'   : ('av_speed', np.std ),
-            'skew_avspeed' : ('av_speed', stats.skew)
+            'flow'          : ('av_speed', 'size'),
+            'median_avspeed': ('av_speed', np.median),
+            'mean_avspeed'  : ('av_speed', np.mean),
+            'sd_avspeed'    : ('av_speed', np.std )
        }
 
     # Whether to remove steps with missing origin and destination
