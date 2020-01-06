@@ -59,19 +59,21 @@ def discretise_time(
 
         # Floor to closest Monday
         if interval_size == pd.tseries.offsets.Day(n=7):
-            trips = trips.assign(period = (trips.t_origin - \
-                pd.to_timedelta(trips.t_origin.dt.dayofweek, unit='d'))\
-                .dt.floor('D'))
+            dow = trips.t_origin.dt.dayofweek
+
+            trips = trips.assign(period = \
+                (trips.t_origin - pd.to_timedelta(dow, unit='d')).dt.floor('D'))
             # fix for when t_origin is null
-            trips[first_step]['period'] = \
-                (trips[first_step]['t_destination'] - \
-                pd.to_timedelta(trips.t_destination.dt.dayofweek, unit='d'))\
-                .dt.floor('D')
+            tdest_first = trips.loc[first_step, 't_destination']
+            dow = tdest_first.dt.dayofweek
+
+            trips.loc[first_step, 'period'] = \
+                (tdest_first - pd.to_timedelta(dow, unit='d')).dt.floor('D')
         else:
             trips = trips.assign(period = trips.t_origin.dt.floor(freq))
             # fix for when t_origin is null
-            trips[first_step]['period'] = \
-                trips[first_step]['t_destination'].dt.floor(freq)
+            trips.loc[first_step, 'period'] = \
+                trips.loc[first_step, 't_destination'].dt.floor(freq)
 
         log(("Discretised time in {:,.2f} sec. No new rows were added because "
             "frequency is large enough that we can consider that trips always "

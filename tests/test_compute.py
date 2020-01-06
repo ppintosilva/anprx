@@ -279,6 +279,44 @@ def test_flows():
 #-------
 #-------
 
+trips_NA = pd.DataFrame({
+    'vehicle'       : [1,1,1,1,1],
+    'origin'        : [NA_CAMERA,0,1,NA_CAMERA,2],
+    'destination'   : [0,1,NA_CAMERA,2,NA_CAMERA],
+    't_origin'      : [pd.NaT, pd.Timestamp("2018-01-01 00:00:05"),
+                       pd.Timestamp("2018-01-01 00:01:55"),
+                       pd.NaT, pd.Timestamp("2018-01-03 00:00:05")],
+    't_destination' : [pd.Timestamp("2018-01-01 00:00:05"),
+                       pd.Timestamp("2018-01-01 00:01:55"), pd.NaT,
+                       pd.Timestamp("2018-01-03 00:00:05"), pd.NaT],
+    'trip_step'     : [1,2,3,1,2],
+    'trip_length'   : [3,3,3,2,2]
+})
+
+def test_same_period_daily_discretisation_NA():
+
+    dtrips = discretise_time(
+        trips_NA,
+        freq = "D",
+        same_period = True
+    )
+
+    # no new rows were added
+    assert len(trips_NA) == len(dtrips)
+
+def test_discretisation_NA():
+
+    dtrips = discretise_time(
+        trips_NA,
+        freq = "30S",
+        same_period = False,
+        apply_pthreshold = False
+    )
+
+    # no new rows were added
+    assert len(dtrips) == (len(trips_NA) + 3)
+
+
 def test_NA_flows():
 
     fake = pd.DataFrame({
