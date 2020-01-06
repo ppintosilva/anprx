@@ -307,14 +307,13 @@ def test_same_period_daily_discretisation_NA():
 def test_discretisation_NA():
 
     dtrips = discretise_time(
-        trips_NA,
+        trips_NA.iloc[0:3],
         freq = "30S",
         same_period = False,
         apply_pthreshold = False
     )
-
     # no new rows were added
-    assert len(dtrips) == (len(trips_NA) + 3)
+    assert len(dtrips) == (len(trips_NA.iloc[0:3]) + 3)
 
 
 def test_NA_flows():
