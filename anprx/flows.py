@@ -2,6 +2,7 @@
 # ------------------------------------------------------------------------------
 
 from   .utils       import log
+from   .cameras     import NA_CAMERA
 
 import os
 import time
@@ -9,9 +10,6 @@ import pandas       as pd
 import numpy        as np
 import logging      as lg
 
-# ------------------------------------------------------------------------------
-NA_LOCATION = 999999
-# ------------------------------------------------------------------------------
 
 def get_periods(trips, freq):
     start_period = trips['t_origin'].dropna().min().floor(freq)
@@ -254,10 +252,10 @@ def get_flows(trips,
     else:
         # keep origin and destination as NAs in aggregation
         trips = trips.fillna(value = {
-            'origin'        : NA_LOCATION,
-            'destination'   : NA_LOCATION
+            'origin'        : NA_CAMERA,
+            'destination'   : NA_CAMERA
         })
-        log("Replacing NA origins and destinations with {}".format(NA_LOCATION))
+        log("Replacing NA origins and destinations with {}".format(NA_CAMERA))
 
     flows = trips\
             .groupby(['origin', 'destination', 'period'])\

@@ -5,7 +5,7 @@ from   anprx.trips       import all_ods_displacement
 from   anprx.flows       import discretise_time
 from   anprx.flows       import get_flows
 from   anprx.flows       import expand_flows
-from   anprx.flows       import NA_LOCATION
+from   anprx.cameras     import NA_CAMERA
 import os
 import numpy               as     np
 import pandas              as     pd
@@ -295,12 +295,12 @@ def test_NA_flows():
     observed_flows = get_flows(fake, aggregator, remove_na = False)
 
     expected_flows = pd.DataFrame({
-        'origin'        : [NA_LOCATION,0,1],
-        'destination'   : [0,1,NA_LOCATION],
+        'origin'        : [NA_CAMERA,0,1],
+        'destination'   : [0,1,NA_CAMERA],
         'period'        : [0] * 3,
         'flow'          : [3,3,3]
     }).sort_values(by = ['origin', 'destination'])\
-      .reset_index(drop = True)    
+      .reset_index(drop = True)
 
     pd.testing.assert_frame_equal(
         observed_flows,
