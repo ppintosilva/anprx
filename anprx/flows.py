@@ -10,6 +10,8 @@ import numpy        as np
 import logging      as lg
 
 # ------------------------------------------------------------------------------
+NA_LOCATION = 999999
+# ------------------------------------------------------------------------------
 
 def get_periods(trips, freq):
     start_period = trips['t_origin'].dropna().min().floor(freq)
@@ -249,6 +251,13 @@ def get_flows(trips,
             "Total = {}.")\
                 .format(frows, frows/nrows*100, len(trips)),
             level = lg.INFO)
+    else:
+        # keep origin and destination as NAs in aggregation
+        trips = trips.fillna(value = {
+            'origin'        : NA_LOCATION,
+            'destination'   : NA_LOCATION
+        })
+        log("Replacing NA origins and destinations with {}".format(NA_LOCATION))
 
     flows = trips\
             .groupby(['origin', 'destination', 'period'])\

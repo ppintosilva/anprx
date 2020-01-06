@@ -5,7 +5,7 @@ from   anprx.trips       import all_ods_displacement
 from   anprx.flows       import discretise_time
 from   anprx.flows       import get_flows
 from   anprx.flows       import expand_flows
-
+from   anprx.flows       import NA_LOCATION
 import os
 import numpy               as     np
 import pandas              as     pd
@@ -275,3 +275,34 @@ def test_flows():
         expected_flows,
         check_less_precise = 5,
         check_dtype = True)
+
+#-------
+#-------
+
+def test_NA_flows():
+
+    fake = pd.DataFrame({
+        'vehicle'       : [1,10,100,2,20,200,3,30,300],
+        'origin'        : [np.NaN,np.NaN,np.NaN,0,0,0,1,1,1],
+        'destination'   : [0,0,0,1,1,1,np.NaN,np.NaN,np.NaN],
+        'period'        : [0] * 9,
+    })
+
+    aggregator = {
+        'flow' : ('vehicle', 'size')
+    }
+
+    observed_flows = get_flows(fake, aggregator, remove_na = False)
+
+    expected_flows = pd.DataFrame({
+        'origin'        : [NA_LOCATION,0,1],
+        'destination'   : [0,1,NA_LOCATION],
+        'period'        : [0] * 3,
+        'flow'          : [3,3,3]
+    }).sort_values(by = ['origin', 'destination'])\
+      .reset_index(drop = True)    
+
+    pd.testing.assert_frame_equal(
+        observed_flows,
+        expected_flows,
+        check_dtype = False)
