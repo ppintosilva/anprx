@@ -1435,7 +1435,7 @@ def map_nodes_cameras(
                     .format(id),
                 level = lg.WARNING)
 
-            chosen_id = np.NaN
+            chosen_id = NA_CAMERA
 
         camera_map.loc[index] = chosen_id
 
@@ -1444,6 +1444,7 @@ def map_nodes_cameras(
         level = lg.INFO)
 
     wnodes = nodes.assign(camera = camera_map)
+    wnodes['camera'] = wnodes['camera'].astype('int')
     wnodes['both_directions'] = wnodes['both_directions'].astype('int')
 
     # Return wrangled nodes with 1:1 mapping to cameras

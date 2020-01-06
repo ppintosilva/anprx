@@ -8,6 +8,7 @@ from   anprx.cameras import camera_pairs_from_graph
 from   anprx.cameras import map_nodes_cameras
 from   anprx.cameras import wrangle_raw_anpr
 from   anprx.cameras import gdfs_from_network
+from   anprx.cameras import NA_CAMERA
 from   anprx.trips   import trip_identification
 from   anprx.flows   import discretise_time
 
@@ -460,7 +461,7 @@ def test_wrangle_nodes():
     # Cameras 5 and 6 don't map
     expected_nodes_camera_map = pd.DataFrame({
         'id' : [1,2,3,4,5,6],
-        'camera' : [0,1,2,3,np.nan,np.nan]
+        'camera' : [0,1,2,3,NA_CAMERA,NA_CAMERA]
     })
 
     observed_nodes_camera_map = nodes[['id', 'camera']]
