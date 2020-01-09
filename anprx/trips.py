@@ -66,6 +66,47 @@ def transform_anpr(anpr):
 
     return anpr
 
+def calculate_avspeed(
+    anpr,
+    camera_pairs
+):
+    """
+    Add shortest distance and average speed columns to
+    transformed wrangled anpr data.
+    """
+
+    start_time = time.time()
+
+    # Preparing Camera Pairs for merge
+    camera_pairs = camera_pairs.fillna({
+        'origin'        : NA_CAMERA ,
+        'destination'   : NA_CAMERA
+    })
+
+    ## dropping any unused columns (e.g. 'path', 'origin', 'destination',
+    ## 'direction_origin', 'direction_destination', 'valid'). This avoids
+    ## storing unecessary information that will be lost anyway when aggregating
+    ## It can always be obtained by merging with camera pairs again.
+    camera_pairs = camera_pairs[['origin', 'destination', 'distance']]
+
+    # Merge with camera pairs df to get distance, direction and validness
+    anpr_t = anpr.merge(
+        camera_pairs,
+        how = "left",
+        on = ['origin', 'destination']
+    )
+
+    log(("Merged anpr with camera pairs to gain distance and direction data "
+         "in {:,.2f} sec").format(time.time() - start_time),
+        level = lg.INFO)
+
+    # And compute average speed in km/h
+    anpr_t['av_speed'] = \
+        (anpr_t.distance * 0.001)/(anpr_t.travel_time / np.timedelta64(1, 'h'))
+
+    return anpr_t
+
+
 def trip_identification(
     anpr,
     camera_pairs,
@@ -117,7 +158,7 @@ def trip_identification(
     dt_cols  = ['timestamp']
 
     log("Running asserts and checks...", level = lg.INFO)
-    
+
     assert all(ptypes.is_numeric_dtype(anpr[col]) for col in num_cols)
     assert all(ptypes.is_datetime64_any_dtype(anpr[col]) for col in dt_cols)
 
@@ -134,34 +175,11 @@ def trip_identification(
     log("Transforming anpr data into edge format.", level = lg.INFO)
 
     # Transform raw anpr data to edge format
-    trips = transform_anpr(anpr)
+    transformed_anpr = transform_anpr(anpr)
+
+    trips = calculate_avspeed(transformed_anpr, camera_pairs)
 
     partial_time = time.time()
-
-    # Preparing Camera Pairs for merge
-    camera_pairs = camera_pairs.fillna({
-        'origin'        : NA_CAMERA ,
-        'destination'   : NA_CAMERA
-    })
-
-    ## dropping any unused columns (e.g. 'path', 'origin', 'destination',
-    ## 'direction_origin', 'direction_destination', 'valid'). This avoids
-    ## storing unecessary information that will be lost anyway when aggregating
-    ## It can always be obtained by merging with camera pairs again.
-    camera_pairs = camera_pairs[['origin', 'destination', 'distance']]
-
-    # Merge with camera pairs df to get distance, direction and validness
-    trips = trips.merge(camera_pairs, how = "left", on = ['origin', 'destination'])
-
-    log(("Merged anpr with camera pairs to gain distance and direction data "
-         "in {:,.2f} sec").format(time.time() - partial_time),
-        level = lg.INFO)
-
-    partial_time = time.time()
-
-    # And compute average speed in km/h
-    trips['av_speed'] = \
-        (trips.distance * 0.001)/(trips.travel_time / np.timedelta64(1, 'h'))
 
     # Duplicates
     # ----------------------------------------------------------------------
